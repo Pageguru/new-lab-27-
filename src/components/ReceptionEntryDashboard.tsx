@@ -607,7 +607,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
       dueAmount,
       paymentMode,
       paymentStatus: calculatedPaymentStatus,
-      status: 'In Lab',
+      status: 'Sample Collected',
       sentToTechnician: true,
       technicianStatus: 'Sent to Lab',
       sentToLabAt: `Today, ${nowTime}`,
@@ -853,12 +853,31 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
       if (paymentFilter === 'Due' && paymentStatusType !== 'Due') return false;
     }
 
-    // 4. Status Filter (Workflow tabs)
-    const isReady = item.status === 'Report Ready' || item.technicianStatus === 'Report Generated' || Boolean(item.reportId);
+    // 4. Status Filter (Workflow tabs: Sent to Lab → in lab → Report Ready)
+    const isReady = Boolean(
+      item.status === 'Report Ready' ||
+      item.technicianStatus === 'Report Generated' ||
+      Boolean(item.reportId)
+    );
+    const isInLab = !isReady && Boolean(
+      item.technicianStatus === 'Accepted' ||
+      (item.status === 'In Lab' && item.technicianStatus !== 'Sent to Lab')
+    );
+
     if (statusFilter !== 'All') {
-      if (statusFilter === 'Publish Pending' && (!isReady || item.isReportPublished)) return false;
-      if (statusFilter === 'Report Ready' && !isReady) return false;
-      if (statusFilter !== 'Publish Pending' && statusFilter !== 'Report Ready' && item.status !== statusFilter) return false;
+      if (statusFilter === 'Report Ready') {
+        if (!isReady) return false;
+      } else if (statusFilter === 'Publish Pending') {
+        if (!isReady || item.isReportPublished) return false;
+      } else if (statusFilter === 'In Lab') {
+        if (isReady || !isInLab) return false;
+      } else if (statusFilter === 'Sample Collected') {
+        if (isReady || isInLab) return false;
+        if (item.status !== 'Sample Collected' && item.technicianStatus !== 'Sent to Lab') return false;
+      } else {
+        if (isReady || isInLab) return false;
+        if (item.status !== statusFilter) return false;
+      }
     }
 
     return true;
@@ -873,7 +892,9 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
   const totalDuePending = receptionEntries.reduce((acc, e) => acc + e.dueAmount, 0);
   const patientsWithDueCount = receptionEntries.filter((e) => e.dueAmount > 0).length;
   const waitingSamplesCount = receptionEntries.filter((e) => e.status === 'Waiting').length;
-  const reportsReadyCount = receptionEntries.filter((e) => e.status === 'Report Ready').length;
+  const reportsReadyCount = receptionEntries.filter(
+    (e) => e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)
+  ).length;
 
   // Next status stepper
   const handleAdvanceStatus = (entry: ReceptionPatientEntry) => {
@@ -1897,7 +1918,11 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                     ? receptionEntries.filter((e) => e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)).length
                     : st === 'Publish Pending'
                     ? receptionEntries.filter((e) => (e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && !e.isReportPublished).length
-                    : receptionEntries.filter((e) => e.status === st).length;
+                    : st === 'In Lab'
+                    ? receptionEntries.filter((e) => !(e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && (e.technicianStatus === 'Accepted' || (e.status === 'In Lab' && e.technicianStatus !== 'Sent to Lab'))).length
+                    : st === 'Sample Collected'
+                    ? receptionEntries.filter((e) => !(e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && !(e.technicianStatus === 'Accepted' || (e.status === 'In Lab' && e.technicianStatus !== 'Sent to Lab')) && (e.status === 'Sample Collected' || e.technicianStatus === 'Sent to Lab')).length
+                    : receptionEntries.filter((e) => !(e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && e.status === st).length;
                 return (
                   <button
                     key={st}
@@ -1925,22 +1950,25 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                 </div>
               ) : (
                 filteredQueue.map((entry) => {
-                  const isAlreadySent = Boolean(
-                    entry.sentToTechnician ||
-                    entry.technicianStatus === 'Sent to Lab' ||
-                    entry.technicianStatus === 'Accepted' ||
-                    entry.technicianStatus === 'Report Generated' ||
-                    entry.status === 'In Lab' ||
-                    entry.status === 'Report Ready'
-                  );
-
                   const isReportReady = Boolean(
                     entry.status === 'Report Ready' ||
                     entry.technicianStatus === 'Report Generated' ||
-                    entry.reportId
+                    Boolean(entry.reportId)
                   );
 
-                  const isLockedForEdit = isAlreadySent || isReportReady;
+                  const isInLab = !isReportReady && Boolean(
+                    entry.technicianStatus === 'Accepted' ||
+                    (entry.status === 'In Lab' && entry.technicianStatus !== 'Sent to Lab')
+                  );
+
+                  const isSentToLab = !isReportReady && !isInLab && Boolean(
+                    entry.sentToTechnician ||
+                    entry.technicianStatus === 'Sent to Lab' ||
+                    entry.status === 'Sample Collected'
+                  );
+
+                  const isAlreadySent = isReportReady || isInLab || isSentToLab;
+                  const isLockedForEdit = isAlreadySent;
 
                   const paymentStatusType: 'Full Payment' | 'Advance' | 'Due' =
                     entry.dueAmount === 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid'
@@ -1959,7 +1987,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                       key={entry.id}
                       className="border border-slate-200 rounded-xl p-3 hover:border-teal-300 hover:shadow-xs transition bg-white space-y-2"
                     >
-                      {/* Header: Left → Token No. + Phone No. | Right → Sent to Lab button / badge */}
+                      {/* Header: Left → Token No. + Phone No. | Right → Status Flow (Sent to Lab → in lab → Report Ready) */}
                       <div className="flex items-center justify-between gap-2.5 pb-2 border-b border-slate-100">
                         {/* Left: Token No. + Phone No. (+ Patient Name & Details) */}
                         <div className="flex items-center gap-2 min-w-0">
@@ -1987,9 +2015,24 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                           </div>
                         </div>
 
-                        {/* Right: Sent to Lab button (only before sending) OR Sent to Lab badge (after sending) */}
-                        <div className="shrink-0">
-                          {!isAlreadySent ? (
+                        {/* Right: Status Flow (Sent to Lab → in lab → Report Ready) */}
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          {isReportReady ? (
+                            <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Report Ready</span>
+                            </span>
+                          ) : isInLab ? (
+                            <span className="bg-blue-50 text-[#123B6D] border border-blue-200 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
+                              <FlaskConical className="w-3.5 h-3.5 text-[#123B6D]" />
+                              <span>In Lab</span>
+                            </span>
+                          ) : isSentToLab ? (
+                            <span className="bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
+                              <Clock className="w-3.5 h-3.5 text-teal-600" />
+                              <span>Sent to Lab</span>
+                            </span>
+                          ) : (
                             <button
                               type="button"
                               onClick={() => handleSendToLab(entry)}
@@ -1999,11 +2042,6 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                               <FlaskConical className="w-3 h-3 text-amber-300" />
                               <span>Sent to Lab</span>
                             </button>
-                          ) : (
-                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Sent to Lab</span>
-                            </span>
                           )}
                         </div>
                       </div>
@@ -2074,10 +2112,10 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                           )}
                         </div>
 
-                        {/* Right: Edit, Delete & Print Slip buttons (WhatsApp removed as requested) */}
+                        {/* Right: Edit (if editable), Delete & Print Slip buttons */}
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {/* Edit button (Locked & disabled if Sent to Lab or Report is Ready) */}
-                          {!isLockedForEdit ? (
+                          {/* Edit button (Only editable before sending to lab) */}
+                          {!isLockedForEdit && (
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(entry)}
@@ -2087,18 +2125,6 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                               <Edit2 className="w-3.5 h-3.5 text-blue-700" />
                               <span>Edit</span>
                             </button>
-                          ) : (
-                            <span
-                              title={
-                                isReportReady
-                                  ? '🔒 Report Ready: Entry locked, editing not allowed'
-                                  : '🔒 Sent to Lab: Entry locked, editing not allowed'
-                              }
-                              className="px-2.5 py-1 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-not-allowed select-none"
-                            >
-                              <Lock className="w-3 h-3 text-slate-400" />
-                              <span>{isReportReady ? 'Report Ready' : 'In Lab'}</span>
-                            </span>
                           )}
 
                           {/* Delete button */}
