@@ -169,6 +169,9 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
 
+  // Confirmation message state when clicking Complete button
+  const [showCompleteConfirmation, setShowCompleteConfirmation] = useState(false);
+
   // Helper to extract tests list from patient or reception entry (Receipt)
   const extractTestsFromPatientOrReceipt = (p?: Patient | null, r?: any): string[] => {
     if (r?.tests && r.tests.length > 0) {
@@ -444,6 +447,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       setUhid(`LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`);
       loadParamsForReceiptTests(testsFromReceipt);
     }
+    setShowCompleteConfirmation(false);
   }, [isOpen, preSelectedPatient, preselectedPatient, existingReport]);
 
   const loadTemplatesIntoParams = (templateIds: string[]) => {
@@ -698,6 +702,16 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       return;
     }
 
+    // When Complete is clicked, show confirmation message inside the Make Report popup
+    if (action === 'complete') {
+      setShowCompleteConfirmation(true);
+      return;
+    }
+
+    executeSaveReport('draft');
+  };
+
+  const executeSaveReport = (action: 'draft' | 'complete') => {
     const isDraft = action === 'draft';
     const reportObj = buildLabReportObject(isDraft);
 
@@ -729,13 +743,18 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     }
   };
 
+  const handleModalClose = () => {
+    setShowCompleteConfirmation(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const abnormalCount = params.filter((p) => p.isAbnormal).length;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header Bar */}
         <div className="bg-[#123B6D] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -767,7 +786,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleModalClose}
             className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition"
             title="Close"
           >
@@ -1274,7 +1293,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
             {/* Cancel: Close the popup without saving changes */}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleModalClose}
               className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-300 rounded-lg transition cursor-pointer active:scale-95"
               title="Close the popup without saving changes"
             >
@@ -1304,6 +1323,54 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* CONFIRMATION POPUP INSIDE THE MAKE REPORT POPUP */}
+        {showCompleteConfirmation && (
+          <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-7 max-w-sm sm:max-w-md w-full text-center space-y-4 animate-in zoom-in-95 duration-150">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 leading-snug">
+                  Are you sure you want to complete this report?
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  The report will be marked as verified and moved to <strong className="text-emerald-700">Report Done / Report Ready</strong>.
+                </p>
+              </div>
+
+              {/* Buttons: Yes on Left, No on Right */}
+              <div className="flex items-center justify-center gap-3 pt-2">
+                {/* Yes -> Complete the report and move it to Report Done / Report Ready */}
+                <button
+                  type="button"
+                  id="confirm-complete-yes"
+                  onClick={() => {
+                    setShowCompleteConfirmation(false);
+                    executeSaveReport('complete');
+                  }}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Check className="w-4 h-4 text-emerald-200" />
+                  <span>Yes</span>
+                </button>
+
+                {/* No -> Cancel the confirmation and return to the report entry screen */}
+                <button
+                  type="button"
+                  id="confirm-complete-no"
+                  onClick={() => setShowCompleteConfirmation(false)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition border border-slate-300 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <X className="w-4 h-4 text-slate-500" />
+                  <span>No</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
