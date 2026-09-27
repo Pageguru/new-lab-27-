@@ -17,6 +17,9 @@ import {
   ChevronDown,
   Edit3,
   Lock,
+  Receipt,
+  Check,
+  Bookmark,
 } from 'lucide-react';
 import { Patient, LabReport, ReportItem } from '../types';
 import { TEST_TEMPLATES, TestTemplate, checkIsAbnormal } from '../data/testTemplates';
@@ -30,7 +33,7 @@ interface CreateReportModalProps {
   preSelectedPatient?: Patient | null;
   preselectedPatient?: Patient | null;
   existingReport?: LabReport | null;
-  onReportCreated: (report: LabReport, patientId?: string) => void;
+  onReportCreated: (report: LabReport, patientId?: string, isDraft?: boolean) => void;
   onOpenReportPreview?: (reportId: string, mobile: string) => void;
   allowNewPatientEntry?: boolean;
 }
@@ -150,15 +153,193 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
   const [customUnit, setCustomUnit] = useState('');
   const [customRange, setCustomRange] = useState('');
 
-  // Notification / Success
+  // Tests on Patient Receipt & Receipt details
+  const [patientReceiptTests, setPatientReceiptTests] = useState<string[]>([]);
+  const [receiptToken, setReceiptToken] = useState<string>('');
+  const [receiptPaymentInfo, setReceiptPaymentInfo] = useState<{
+    total: number;
+    due: number;
+    paid: number;
+    mode: string;
+    status: string;
+  } | null>(null);
+
+  // Draft vs Complete mode & Success message
+  const [isDraftMode, setIsDraftMode] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
+
+  // Helper to extract tests list from patient or reception entry (Receipt)
+  const extractTestsFromPatientOrReceipt = (p?: Patient | null, r?: any): string[] => {
+    if (r?.tests && r.tests.length > 0) {
+      return Array.isArray(r.tests)
+        ? r.tests
+        : String(r.tests).split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (p?.tests && p.tests.length > 0) {
+      return Array.isArray(p.tests)
+        ? p.tests
+        : String(p.tests).split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (r?.selectedTestsBreakdown && r.selectedTestsBreakdown.length > 0) {
+      return r.selectedTestsBreakdown.map((t: any) => t.name);
+    }
+    return ['Complete Blood Count (CBC) with ESR'];
+  };
+
+  // Helper to load parameter rows according to patient receipt tests
+  const loadParamsForReceiptTests = (testsList: string[]) => {
+    const newParams: EditableParam[] = [];
+    const matchedTemplateIds: string[] = [];
+    const addedParamKeys = new Set<string>();
+
+    const safeTests = Array.isArray(testsList) && testsList.length > 0
+      ? testsList
+      : ['Complete Blood Count (CBC) with ESR'];
+
+    safeTests.forEach((rawTest) => {
+      const testName = String(rawTest || '').trim();
+      if (!testName) return;
+      const lower = testName.toLowerCase();
+
+      // Check matching templates in TEST_TEMPLATES
+      const matchingIds: string[] = [];
+      if (lower.includes('cbc') || lower.includes('blood count') || lower.includes('hemogram') || lower.includes('hemoglobin')) {
+        matchingIds.push('cbc');
+      }
+      if (lower.includes('diabet') || lower.includes('sugar') || lower.includes('hba1c') || lower.includes('fbs') || lower.includes('rbs') || lower.includes('glucose')) {
+        matchingIds.push('diabetes');
+      }
+      if (lower.includes('lipid') || lower.includes('cholesterol') || lower.includes('triglyceride')) {
+        matchingIds.push('lipid');
+      }
+      if (lower.includes('lft') || lower.includes('liver') || lower.includes('bilirubin') || lower.includes('sgot') || lower.includes('sgpt')) {
+        matchingIds.push('lft');
+      }
+      if (lower.includes('kft') || lower.includes('kidney') || lower.includes('renal') || lower.includes('creatinine') || lower.includes('urea') || lower.includes('uric')) {
+        matchingIds.push('kft');
+      }
+      if (lower.includes('thyroid') || lower.includes('t3') || lower.includes('t4') || lower.includes('tsh')) {
+        matchingIds.push('thyroid');
+      }
+      if (lower.includes('urine')) {
+        matchingIds.push('urine_rm');
+      }
+      if (lower.includes('dengue') || lower.includes('ns1')) {
+        matchingIds.push('dengue');
+      }
+      if (lower.includes('widal') || lower.includes('typhoid')) {
+        matchingIds.push('widal');
+      }
+      if (lower.includes('vitamin') || lower.includes('vit d') || lower.includes('b12')) {
+        matchingIds.push('vitamins');
+      }
+
+      if (matchingIds.length > 0) {
+        matchingIds.forEach((tId) => {
+          if (!matchedTemplateIds.includes(tId)) {
+            matchedTemplateIds.push(tId);
+          }
+          const tmpl = TEST_TEMPLATES.find((t) => t.id === tId);
+          if (tmpl && Array.isArray(tmpl.parameters)) {
+            tmpl.parameters.forEach((p, idx) => {
+              const key = `${tId}-${p.name.toLowerCase()}`;
+              if (!addedParamKeys.has(key)) {
+                addedParamKeys.add(key);
+                newParams.push({
+                  id: `${tmpl.id}-${idx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                  testName: tmpl.name,
+                  parameter: p.name,
+                  result: p.defaultNormalValue || '',
+                  unit: p.unit || '',
+                  referenceRange: p.referenceRange || '',
+                  isAbnormal: false,
+                  notes: p.notes,
+                  minNormal: p.minNormal,
+                  maxNormal: p.maxNormal,
+                  isNumeric: p.isNumeric,
+                });
+              }
+            });
+          }
+        });
+      } else {
+        // Standalone investigation from patient receipt
+        const key = `custom-${testName.toLowerCase()}`;
+        if (!addedParamKeys.has(key)) {
+          addedParamKeys.add(key);
+          newParams.push({
+            id: `receipt-test-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            testName: testName,
+            parameter: testName,
+            result: 'Normal',
+            unit: '',
+            referenceRange: 'Normal / Biological Reference Interval',
+            isAbnormal: false,
+            notes: 'Investigation from patient receipt',
+          });
+        }
+      }
+    });
+
+    if (newParams.length === 0) {
+      matchedTemplateIds.push('cbc');
+      const cbcTmpl = TEST_TEMPLATES.find((t) => t.id === 'cbc');
+      cbcTmpl?.parameters.forEach((p, idx) => {
+        newParams.push({
+          id: `cbc-${idx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          testName: cbcTmpl.name,
+          parameter: p.name,
+          result: p.defaultNormalValue || '',
+          unit: p.unit || '',
+          referenceRange: p.referenceRange || '',
+          isAbnormal: false,
+          notes: p.notes,
+          minNormal: p.minNormal,
+          maxNormal: p.maxNormal,
+          isNumeric: p.isNumeric,
+        });
+      });
+    }
+
+    setSelectedTemplateIds(matchedTemplateIds.length > 0 ? matchedTemplateIds : ['cbc']);
+    setParams(newParams);
+  };
 
   // Initialize or update when modal opens, existingReport changes, or patient changes
   useEffect(() => {
     if (!isOpen) return;
 
     setSaveSuccess(false);
+    setSaveSuccessMessage('');
     const activePatient = preSelectedPatient || preselectedPatient;
+
+    // Look up corresponding reception entry for token, receipt, and tests
+    const activeReceptionEntry = receptionEntries.find(
+      (r) =>
+        (activePatient?.id && r.id === activePatient.id) ||
+        (activePatient?.uhid && r.uhid === activePatient.uhid) ||
+        (activePatient?.tokenNumber && (r.tokenNumber === activePatient.tokenNumber || r.tokenNo === activePatient.tokenNumber)) ||
+        (activePatient?.mobile && r.mobile && r.mobile.replace(/\D/g, '').slice(-10) === activePatient.mobile.replace(/\D/g, '').slice(-10))
+    );
+
+    const testsFromReceipt = extractTestsFromPatientOrReceipt(activePatient, activeReceptionEntry);
+    setPatientReceiptTests(testsFromReceipt);
+
+    const token =
+      activeReceptionEntry?.tokenNumber ||
+      activeReceptionEntry?.tokenNo ||
+      activePatient?.tokenNumber ||
+      activePatient?.tokenNo ||
+      '';
+    setReceiptToken(token);
+
+    const total = activeReceptionEntry?.totalAmount ?? activePatient?.totalBill ?? 0;
+    const due = activeReceptionEntry?.dueAmount ?? activePatient?.dueAmount ?? 0;
+    const paid = activeReceptionEntry?.paidAmount ?? activePatient?.paidAmount ?? 0;
+    const mode = activeReceptionEntry?.paymentMode ?? activePatient?.paymentMode ?? 'UPI';
+    const status = activeReceptionEntry?.paymentStatus ?? (due === 0 ? 'Paid' : 'Due');
+    setReceiptPaymentInfo({ total, due, paid, mode, status });
 
     // Check if there is an existing report to edit
     let targetReport: LabReport | null | undefined = existingReport;
@@ -168,9 +349,10 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
     if (targetReport) {
       // -------------------------------------------------------------
-      // EDIT MODE: Populate state with the existing report's actual data
+      // EDIT / DRAFT MODE: Populate state with the existing report's actual data
       // -------------------------------------------------------------
       setIsEditMode(true);
+      setIsDraftMode(Boolean(targetReport.isDraft));
       setReportId(targetReport.reportId);
       setUhid(targetReport.uhid || (activePatient ? activePatient.uhid : ''));
       setPatientName(targetReport.patientName || (activePatient ? activePatient.name : ''));
@@ -203,7 +385,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       // Populate parameters directly from the existing report items
       if (targetReport.items && Array.isArray(targetReport.items) && targetReport.items.length > 0) {
         const loadedParams: EditableParam[] = targetReport.items.map((item, idx) => ({
-          id: `edit-param-${idx}-${Date.now()}-${Math.random()}`,
+          id: `edit-param-${idx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           testName: item.testName || 'Test',
           parameter: item.parameter || 'Parameter',
           result: item.result || '',
@@ -214,15 +396,16 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
         }));
         setParams(loadedParams);
       } else {
-        loadTemplatesIntoParams(['cbc']);
+        loadParamsForReceiptTests(testsFromReceipt);
       }
       return;
     }
 
     // -------------------------------------------------------------
-    // CREATE MODE: Brand new report generation
+    // CREATE MODE: Brand new report generation from Receipt Tests
     // -------------------------------------------------------------
     setIsEditMode(false);
+    setIsDraftMode(false);
     const rptNum = Math.floor(1000 + Math.random() * 9000);
     setReportId(`RPT-2026-${rptNum}`);
     setSampleCollectedAt(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 08:30 AM');
@@ -240,38 +423,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
         setReportId(activePatient.reportId);
       }
 
-      // Try to match patient tests to template IDs (safely handle array or comma string)
-      const rawTests = activePatient.tests;
-      const testsList: string[] = Array.isArray(rawTests)
-        ? rawTests
-        : typeof rawTests === 'string'
-        ? (rawTests as string).split(',').map((s) => s.trim()).filter(Boolean)
-        : [];
-
-      const matchedTemplates: string[] = [];
-      testsList.forEach((t) => {
-        if (!t) return;
-        const lower = String(t).toLowerCase();
-        if (lower.includes('cbc') || lower.includes('blood count') || lower.includes('hemogram')) matchedTemplates.push('cbc');
-        if (lower.includes('diabet') || lower.includes('sugar') || lower.includes('hba1c') || lower.includes('fbs') || lower.includes('rbs')) matchedTemplates.push('diabetes');
-        if (lower.includes('lipid') || lower.includes('cholesterol')) matchedTemplates.push('lipid');
-        if (lower.includes('lft') || lower.includes('liver') || lower.includes('bilirubin')) matchedTemplates.push('lft');
-        if (lower.includes('kft') || lower.includes('kidney') || lower.includes('renal') || lower.includes('creatinine') || lower.includes('urea')) matchedTemplates.push('kft');
-        if (lower.includes('thyroid') || lower.includes('t3') || lower.includes('t4') || lower.includes('tsh')) matchedTemplates.push('thyroid');
-        if (lower.includes('urine')) matchedTemplates.push('urine_rm');
-        if (lower.includes('dengue')) matchedTemplates.push('dengue');
-        if (lower.includes('widal') || lower.includes('typhoid')) matchedTemplates.push('widal');
-        if (lower.includes('vitamin')) matchedTemplates.push('vitamins');
-      });
-
-      if (matchedTemplates.length > 0) {
-        const unique = Array.from(new Set(matchedTemplates));
-        setSelectedTemplateIds(unique);
-        loadTemplatesIntoParams(unique);
-      } else {
-        setSelectedTemplateIds(['cbc']);
-        loadTemplatesIntoParams(['cbc']);
-      }
+      loadParamsForReceiptTests(testsFromReceipt);
     } else if (availablePatients.length > 0 && !selectedPatientId) {
       const first = availablePatients[0];
       if (first) {
@@ -283,42 +435,14 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
         setReferringDoctor(first.referringDoctor || 'Dr. Self / Walk-in');
         setUhid(first.uhid || `LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`);
         
-        const rawTests = first.tests;
-        const testsList: string[] = Array.isArray(rawTests)
-          ? rawTests
-          : typeof rawTests === 'string'
-          ? (rawTests as string).split(',').map((s) => s.trim()).filter(Boolean)
-          : [];
-
-        const matchedTemplates: string[] = [];
-        testsList.forEach((t) => {
-          if (!t) return;
-          const lower = String(t).toLowerCase();
-          if (lower.includes('cbc') || lower.includes('blood count') || lower.includes('hemogram')) matchedTemplates.push('cbc');
-          if (lower.includes('diabet') || lower.includes('sugar') || lower.includes('hba1c') || lower.includes('fbs') || lower.includes('rbs')) matchedTemplates.push('diabetes');
-          if (lower.includes('lipid') || lower.includes('cholesterol')) matchedTemplates.push('lipid');
-          if (lower.includes('lft') || lower.includes('liver') || lower.includes('bilirubin')) matchedTemplates.push('lft');
-          if (lower.includes('kft') || lower.includes('kidney') || lower.includes('renal') || lower.includes('creatinine') || lower.includes('urea')) matchedTemplates.push('kft');
-          if (lower.includes('thyroid') || lower.includes('t3') || lower.includes('t4') || lower.includes('tsh')) matchedTemplates.push('thyroid');
-          if (lower.includes('urine')) matchedTemplates.push('urine_rm');
-          if (lower.includes('dengue')) matchedTemplates.push('dengue');
-          if (lower.includes('widal') || lower.includes('typhoid')) matchedTemplates.push('widal');
-          if (lower.includes('vitamin')) matchedTemplates.push('vitamins');
-        });
-
-        if (matchedTemplates.length > 0) {
-          const unique = Array.from(new Set(matchedTemplates));
-          setSelectedTemplateIds(unique);
-          loadTemplatesIntoParams(unique);
-        } else {
-          setSelectedTemplateIds(['cbc']);
-          loadTemplatesIntoParams(['cbc']);
-        }
+        const firstRec = receptionEntries.find(r => r.id === first.id || r.uhid === first.uhid);
+        const firstTests = extractTestsFromPatientOrReceipt(first, firstRec);
+        setPatientReceiptTests(firstTests);
+        loadParamsForReceiptTests(firstTests);
       }
     } else {
       setUhid(`LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`);
-      setSelectedTemplateIds(['cbc']);
-      loadTemplatesIntoParams(['cbc']);
+      loadParamsForReceiptTests(testsFromReceipt);
     }
   }, [isOpen, preSelectedPatient, preselectedPatient, existingReport]);
 
@@ -330,7 +454,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       if (tmpl && Array.isArray(tmpl.parameters)) {
         tmpl.parameters.forEach((p, idx) => {
           newParams.push({
-            id: `${tmpl.id}-${idx}-${Date.now()}-${Math.random()}`,
+            id: `${tmpl.id}-${idx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             testName: tmpl.name,
             parameter: p.name,
             result: p.defaultNormalValue || '',
@@ -355,6 +479,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     setSelectedPatientId(patId);
     if (patId === 'new_walkin') {
       setIsEditMode(false);
+      setIsDraftMode(false);
       setPatientName('');
       setPatientAge('35');
       setPatientGender('Male');
@@ -362,25 +487,43 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       setReferringDoctor('Dr. Self / Direct Consultation');
       setUhid(`LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`);
       setReportId(`RPT-2026-${Math.floor(1000 + Math.random() * 9000)}`);
-      loadTemplatesIntoParams(['cbc']);
+      setPatientReceiptTests(['Complete Blood Count (CBC) with ESR']);
+      setReceiptToken('TK-WALK');
+      setReceiptPaymentInfo(null);
+      loadParamsForReceiptTests(['Complete Blood Count (CBC) with ESR']);
     } else {
       const found = availablePatients.find((p) => p.id === patId);
       if (found) {
+        const foundRec = receptionEntries.find(r => r.id === found.id || r.uhid === found.uhid);
+        const foundTests = extractTestsFromPatientOrReceipt(found, foundRec);
+        setPatientReceiptTests(foundTests);
+
+        const token = foundRec?.tokenNumber || foundRec?.tokenNo || found.tokenNumber || found.tokenNo || '';
+        setReceiptToken(token);
+
+        const total = foundRec?.totalAmount ?? found.totalBill ?? 0;
+        const due = foundRec?.dueAmount ?? found.dueAmount ?? 0;
+        const paid = foundRec?.paidAmount ?? found.paidAmount ?? 0;
+        const mode = foundRec?.paymentMode ?? found.paymentMode ?? 'UPI';
+        const status = foundRec?.paymentStatus ?? (due === 0 ? 'Paid' : 'Due');
+        setReceiptPaymentInfo({ total, due, paid, mode, status });
+
         setPatientName(found.name || '');
         setPatientAge(String(found.age || 30));
         setPatientGender(found.gender || 'Male');
         setPatientMobile(found.mobile || '');
         setReferringDoctor(found.referringDoctor || 'Dr. Self / Walk-in');
         setUhid(found.uhid || `LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`);
+        
         if (found.reportId) {
           setReportId(found.reportId);
-          // Check if this patient already has a report
           const existing = getReportById(found.reportId) || reports.find((r) => r.reportId === found.reportId);
           if (existing && existing.items && Array.isArray(existing.items) && existing.items.length > 0) {
             setIsEditMode(true);
+            setIsDraftMode(Boolean(existing.isDraft));
             setParams(
               existing.items.map((item, idx) => ({
-                id: `edit-param-${idx}-${Date.now()}-${Math.random()}`,
+                id: `edit-param-${idx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                 testName: item.testName || 'Test',
                 parameter: item.parameter || 'Parameter',
                 result: item.result || '',
@@ -393,38 +536,10 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
             return;
           }
         }
-        // Match templates from patient's tests
-        const rawTests = found.tests;
-        const testsList: string[] = Array.isArray(rawTests)
-          ? rawTests
-          : typeof rawTests === 'string'
-          ? (rawTests as string).split(',').map((s) => s.trim()).filter(Boolean)
-          : [];
-
-        const matchedTemplates: string[] = [];
-        testsList.forEach((t) => {
-          if (!t) return;
-          const lower = String(t).toLowerCase();
-          if (lower.includes('cbc') || lower.includes('blood count') || lower.includes('hemogram')) matchedTemplates.push('cbc');
-          if (lower.includes('diabet') || lower.includes('sugar') || lower.includes('hba1c') || lower.includes('fbs') || lower.includes('rbs')) matchedTemplates.push('diabetes');
-          if (lower.includes('lipid') || lower.includes('cholesterol')) matchedTemplates.push('lipid');
-          if (lower.includes('lft') || lower.includes('liver') || lower.includes('bilirubin')) matchedTemplates.push('lft');
-          if (lower.includes('kft') || lower.includes('kidney') || lower.includes('renal') || lower.includes('creatinine') || lower.includes('urea')) matchedTemplates.push('kft');
-          if (lower.includes('thyroid') || lower.includes('t3') || lower.includes('t4') || lower.includes('tsh')) matchedTemplates.push('thyroid');
-          if (lower.includes('urine')) matchedTemplates.push('urine_rm');
-          if (lower.includes('dengue')) matchedTemplates.push('dengue');
-          if (lower.includes('widal') || lower.includes('typhoid')) matchedTemplates.push('widal');
-          if (lower.includes('vitamin')) matchedTemplates.push('vitamins');
-        });
-
-        if (matchedTemplates.length > 0) {
-          const unique = Array.from(new Set(matchedTemplates));
-          setSelectedTemplateIds(unique);
-          loadTemplatesIntoParams(unique);
-        } else {
-          setSelectedTemplateIds(['cbc']);
-          loadTemplatesIntoParams(['cbc']);
-        }
+        
+        setIsEditMode(false);
+        setIsDraftMode(false);
+        loadParamsForReceiptTests(foundTests);
       }
     }
   };
@@ -525,7 +640,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     setShowCustomParamForm(false);
   };
 
-  const buildLabReportObject = (): LabReport => {
+  const buildLabReportObject = (isDraft: boolean): LabReport => {
     const reportItems: ReportItem[] = params.map((p) => ({
       testName: p.testName,
       parameter: p.parameter,
@@ -539,6 +654,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     const finalReport: LabReport = {
       reportId: reportId || `RPT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       uhid: uhid || `LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      tokenNumber: receiptToken,
       patientName: patientName || 'Patient Name',
       ageGender: `${patientAge} Yrs / ${patientGender}`,
       mobile: patientMobile || '9876543210',
@@ -552,17 +668,19 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       pathologist: pathologistName,
       pathologistDegrees: pathologistDegrees,
       barcode: '||||| | |||| ||| |||||| ||||| |||',
-      verified: true,
+      verified: !isDraft,
       verificationHash: `SHA256: ${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`,
       items: reportItems,
       clinicalImpression,
+      isDraft,
+      status: isDraft ? 'Normal' : 'Verified',
       labId: activeTenantId !== 'all' ? activeTenantId : (existingReport?.labId || 'lab-apex'),
     };
 
     return finalReport;
   };
 
-  const handleSaveReport = (action: 'view' | 'whatsapp' | 'saveOnly') => {
+  const handleSaveReport = (action: 'draft' | 'complete') => {
     setValidationError('');
 
     if (!canCreateNewPatient && (!selectedPatientId || selectedPatientId === 'new_walkin')) {
@@ -580,42 +698,34 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       return;
     }
 
-    const reportObj = buildLabReportObject();
+    const isDraft = action === 'draft';
+    const reportObj = buildLabReportObject(isDraft);
 
     // 1. Save / Update to global CmsContext
-    if (isEditMode) {
+    if (isEditMode || isDraftMode) {
       updateLabReport(reportObj.reportId, reportObj);
     } else {
       addLabReport(reportObj);
     }
 
-    // 2. Notify parent LabSoftwareApp
-    onReportCreated(reportObj, selectedPatientId !== 'new_walkin' ? selectedPatientId : undefined);
-
-    setSaveSuccess(true);
-
-    if (action === 'view') {
-      onClose();
-      if (onOpenReportPreview) {
-        onOpenReportPreview(reportObj.reportId, reportObj.mobile);
-      }
-    } else if (action === 'whatsapp') {
-      const reportUrl = `${window.location.origin}?report=${reportObj.reportId}`;
-      const text = encodeURIComponent(
-        `Hello ${reportObj.patientName}, your authenticated diagnostic report (${reportObj.reportId}) from ${reportObj.labName} is ready. View & download without login: ${reportUrl}`
-      );
-      window.open(`https://wa.me/91${reportObj.mobile}?text=${text}`, '_blank');
-      setTimeout(() => {
-        onClose();
-        if (onOpenReportPreview) {
-          onOpenReportPreview(reportObj.reportId, reportObj.mobile);
-        }
-      }, 500);
-    } else {
+    if (isDraft) {
+      setIsDraftMode(true);
+      setSaveSuccessMessage('Report saved as draft! Remains editable in In Testing.');
+      setSaveSuccess(true);
+      onReportCreated(reportObj, selectedPatientId !== 'new_walkin' ? selectedPatientId : undefined, true);
       setTimeout(() => {
         setSaveSuccess(false);
         onClose();
-      }, 800);
+      }, 700);
+    } else {
+      setIsDraftMode(false);
+      setSaveSuccessMessage('Report completed! Moved to Report Done tab.');
+      setSaveSuccess(true);
+      onReportCreated(reportObj, selectedPatientId !== 'new_walkin' ? selectedPatientId : undefined, false);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        onClose();
+      }, 700);
     }
   };
 
@@ -629,26 +739,30 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
         {/* Header Bar */}
         <div className="bg-[#123B6D] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl ${isEditMode ? 'bg-amber-400 text-slate-900' : 'bg-emerald-400 text-slate-900'} flex items-center justify-center font-bold shadow-xs`}>
-              {isEditMode ? <Edit3 className="w-5 h-5" /> : <FlaskConical className="w-5 h-5" />}
+            <div className={`w-9 h-9 rounded-xl ${isDraftMode ? 'bg-amber-400 text-slate-900' : isEditMode ? 'bg-blue-400 text-slate-900' : 'bg-emerald-400 text-slate-900'} flex items-center justify-center font-bold shadow-xs`}>
+              {isDraftMode ? <Bookmark className="w-5 h-5" /> : isEditMode ? <Edit3 className="w-5 h-5" /> : <FlaskConical className="w-5 h-5" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-extrabold tracking-tight">
-                  {isEditMode ? 'Edit Diagnostic Test Report' : 'Create Diagnostic Test Report'}
+                  {isDraftMode ? 'Make Report (Draft)' : isEditMode ? 'Make Report - Edit Report' : 'Make Report'}
                 </h2>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                  isEditMode
+                  isDraftMode
                     ? 'bg-amber-400 text-slate-950 font-black'
+                    : isEditMode
+                    ? 'bg-blue-400 text-slate-950 font-black'
                     : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
                 }`}>
-                  {isEditMode ? `Editing: ${reportId}` : 'NABL Standard'}
+                  {isDraftMode ? 'Draft • Editable' : isEditMode ? `Editing: ${reportId}` : 'NABL Standard'}
                 </span>
               </div>
               <p className="text-xs text-slate-300">
-                {isEditMode
-                  ? 'Modify observed test results, adjust biological reference intervals, and save the updated authentic report.'
-                  : 'Enter observed laboratory values, verify abnormal flags, and dispatch authentic NABL reports.'}
+                {isDraftMode
+                  ? 'Saved as draft. Enter observed test results and save draft anytime, or complete to move to Report Done.'
+                  : isEditMode
+                  ? 'Modify observed test results according to patient receipt, and save draft or complete.'
+                  : 'Enter observed laboratory values according to patient receipt, verify abnormal flags, and complete the report.'}
               </p>
             </div>
           </div>
@@ -883,6 +997,71 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
             </div>
           </div>
 
+          {/* STEP 2: TESTS ON PATIENT RECEIPT / BOOKING TOKEN */}
+          <div className="bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-slate-50 rounded-xl border border-blue-200 p-4 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-blue-200/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#123B6D] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[#123B6D]">
+                      Tests on Patient Receipt / Booking Token
+                    </h3>
+                    <span className="bg-[#123B6D] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      {patientReceiptTests.length} {patientReceiptTests.length === 1 ? 'Test' : 'Tests'} Billed
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Parameters in the report table below are loaded according to the investigations ordered on this patient's receipt.
+                  </p>
+                </div>
+              </div>
+
+              {/* Receipt Details Badges */}
+              <div className="flex items-center gap-2 text-xs flex-wrap">
+                {receiptToken && (
+                  <span className="bg-white border border-blue-200 text-[#123B6D] font-mono px-2.5 py-1 rounded-md font-black shadow-2xs">
+                    Token: {receiptToken}
+                  </span>
+                )}
+                {receiptPaymentInfo && (
+                  <span className={`px-2.5 py-1 rounded-md font-bold text-[11px] border shadow-2xs ${
+                    receiptPaymentInfo.due === 0
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    Receipt: ₹{receiptPaymentInfo.total} ({receiptPaymentInfo.status} • {receiptPaymentInfo.mode})
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Test List from Receipt Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {patientReceiptTests.map((tName, idx) => (
+                <div
+                  key={`${tName}-${idx}`}
+                  className="bg-white border border-blue-200 hover:border-[#123B6D] rounded-lg p-2.5 flex items-center justify-between shadow-2xs transition group"
+                >
+                  <div className="flex items-center gap-2 truncate pr-2">
+                    <div className="w-5 h-5 rounded-md bg-blue-100 text-[#123B6D] text-[10px] font-black flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </div>
+                    <span className="font-bold text-slate-800 text-xs truncate" title={tName}>
+                      {tName}
+                    </span>
+                  </div>
+                  <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 flex items-center gap-0.5">
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    Receipt Match
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* PARAMETER VALUES ENTRY TABLE */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
             <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -1071,36 +1250,57 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
         <div className="bg-white border-t border-slate-200 px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-600 flex items-center gap-2">
             <span className="font-bold text-slate-900">{patientName || 'Patient'}</span>
-            <span>• {params.length} tests</span>
-            {isEditMode && (
-              <span className="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
+            <span>• {params.length} parameters</span>
+            {isDraftMode && (
+              <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] flex items-center gap-1 border border-amber-300">
+                <Bookmark className="w-3 h-3 text-amber-700" />
+                Draft Mode (Editable)
+              </span>
+            )}
+            {isEditMode && !isDraftMode && (
+              <span className="bg-blue-100 text-blue-900 font-bold px-2 py-0.5 rounded text-[11px]">
                 Modifying {reportId}
               </span>
             )}
             {saveSuccess && (
               <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px]">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                {isEditMode ? 'Report Updated Successfully!' : 'Report Saved & Sent to Reception Desk!'}
+                {saveSuccessMessage}
               </span>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+            {/* Cancel: Close the popup without saving changes */}
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-300 rounded-lg transition cursor-pointer active:scale-95"
+              title="Close the popup without saving changes"
             >
               Cancel
             </button>
 
+            {/* Save & Draft: Save the entered report/results as a draft. The report remains editable. */}
             <button
               type="button"
-              onClick={() => handleSaveReport('saveOnly')}
-              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-5 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+              onClick={() => handleSaveReport('draft')}
+              className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+              title="Save entered parameters as draft. Remains editable."
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>{isEditMode ? 'Update & Save Report' : 'Complete & Send to Reception Desk'}</span>
+              <FileText className="w-4 h-4 text-amber-700" />
+              <span>Save & Draft</span>
+            </button>
+
+            {/* Complete: Save and complete the report. The report moves to the Report Done tab. */}
+            <button
+              type="button"
+              onClick={() => handleSaveReport('complete')}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+              title="Save and complete report. Moves to Report Done tab."
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+              <span>Complete</span>
             </button>
           </div>
         </div>

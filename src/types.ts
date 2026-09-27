@@ -406,6 +406,7 @@ export interface Patient {
   entryDate?: string;
   reportId: string;
   status: 'Sample Collected' | 'In Processing' | 'Pending Verification' | 'Report Ready' | 'Delivered' | 'Waiting' | 'In Testing' | 'Report Done';
+  isDraft?: boolean;
   tests: string[];
   totalBill: number;
   paidAmount: number;
@@ -453,6 +454,7 @@ export interface LabReport {
   items: ReportItem[];
   verified: boolean;
   verificationHash: string;
+  isDraft?: boolean;
   clinicalImpression?: string;
   status?: 'Normal' | 'Verified' | 'Cancelled';
   cancelled?: boolean;

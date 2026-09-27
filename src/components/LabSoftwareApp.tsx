@@ -134,8 +134,10 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
 
       const tokenNumber = r.tokenNumber || r.tokenNo || `TK-${r.id.replace('rcp-', '')}`;
       const isReturned = Boolean(r.returnedByTechnician);
-      const isReportDone = r.status === 'Report Ready' || r.technicianStatus === 'Report Generated' || Boolean(r.reportId);
-      const isInTesting = !isReportDone && !isReturned && (r.technicianStatus === 'Accepted' || r.status === 'In Lab');
+      const existingReport = r.reportId ? reports.find((rp) => rp.reportId === r.reportId) : null;
+      const isDraft = Boolean(existingReport?.isDraft);
+      const isReportDone = !isDraft && (r.status === 'Report Ready' || r.technicianStatus === 'Report Generated' || (Boolean(r.reportId) && Boolean(existingReport?.verified)));
+      const isInTesting = !isReportDone && !isReturned && (r.technicianStatus === 'Accepted' || r.status === 'In Lab' || isDraft);
       const isWaiting = !isReportDone && !isInTesting && !isReturned;
       const workflowStatus = isReturned ? 'Returned' : isReportDone ? 'Report Done' : isInTesting ? 'In Testing' : 'Waiting';
 
@@ -154,6 +156,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
         entryDate: r.entryDate || (r.registeredAt && r.registeredAt.includes('-') ? r.registeredAt : undefined),
         reportId: r.reportId || '',
         status: workflowStatus as any,
+        isDraft,
         tests: testList,
         totalBill: r.totalAmount || 0,
         paidAmount: r.paidAmount || 0,
@@ -171,7 +174,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
         notes: r.notes,
       };
     });
-  }, [receptionEntries, vendorLabSettings?.address]);
+  }, [receptionEntries, vendorLabSettings?.address, reports]);
 
   // Tab counts
   const countAll = patients.length;
@@ -590,16 +593,62 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
     });
   };
 
-  const handleReportCreated = (report: LabReport, patientId?: string) => {
+  const handleReportCreated = (report: LabReport, patientId?: string, isDraft?: boolean) => {
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (isDraft) {
+      const draftReport: LabReport = {
+        ...report,
+        isDraft: true,
+        verified: false,
+        sentToReceptionDesk: false,
+      };
+
+      const existing = getReportById(draftReport.reportId) || reports.find((r) => r.reportId === draftReport.reportId);
+      if (existing) {
+        updateLabReport(draftReport.reportId, draftReport);
+      } else {
+        addLabReport(draftReport);
+      }
+
+      // Sync with reception entry - keep in testing / draft
+      const rec = receptionEntries.find(
+        (r) =>
+          r.id === patientId ||
+          r.uhid === report.uhid ||
+          r.reportId === report.reportId ||
+          (r.mobile && report.mobile && r.mobile.replace(/\D/g, '').slice(-10) === report.mobile.replace(/\D/g, '').slice(-10))
+      );
+      if (rec) {
+        updateReceptionEntry(rec.id, {
+          reportId: draftReport.reportId,
+          status: 'In Lab',
+          technicianStatus: 'Accepted',
+        });
+      }
+
+      setToastNotice(`Report saved as draft for ${report.patientName}. The report remains editable in In Testing.`);
+      setTimeout(() => setToastNotice(null), 4000);
+      return;
+    }
+
+    // Complete report
     const stampedReport: LabReport = {
       ...report,
+      isDraft: false,
+      verified: true,
       sentToReceptionDesk: true,
       sentToReceptionAt: `Today, ${timeStr}`,
     };
-    addLabReport(stampedReport);
 
-    // Sync with reception entry if applicable and send to Reception Desk
+    const existing = getReportById(stampedReport.reportId) || reports.find((r) => r.reportId === stampedReport.reportId);
+    if (existing) {
+      updateLabReport(stampedReport.reportId, stampedReport);
+    } else {
+      addLabReport(stampedReport);
+    }
+
+    // Sync with reception entry if applicable and complete report
     const rec = receptionEntries.find(
       (r) =>
         r.id === patientId ||
@@ -618,7 +667,10 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
       });
     }
 
-    setToastNotice(`Report completed and sent to Reception Desk for ${report.patientName}!`);
+    // Move to Report Done tab!
+    setPatientTab('report_done');
+
+    setToastNotice(`Report completed and moved to Report Done tab for ${report.patientName}!`);
     setTimeout(() => setToastNotice(null), 4500);
 
     setPreviewReport(stampedReport);
@@ -1260,11 +1312,15 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
                                     <button
                                       type="button"
                                       onClick={() => handleOpenCreateReportModal(p)}
-                                      className="px-2.5 py-1.5 rounded-lg bg-[#123B6D] hover:bg-[#0e2c52] text-white text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                                      title="Enter test results and complete diagnostic report"
+                                      className={`px-2.5 py-1.5 rounded-lg ${
+                                        p.isDraft
+                                          ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                          : 'bg-[#123B6D] hover:bg-[#0e2c52] text-white'
+                                      } text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95`}
+                                      title={p.isDraft ? 'Continue editing draft report' : 'Enter test results and complete diagnostic report'}
                                     >
                                       <FileText className="w-3.5 h-3.5 text-amber-300" />
-                                      <span>Make Report</span>
+                                      <span>{p.isDraft ? 'Make Report (Draft)' : 'Make Report'}</span>
                                     </button>
 
                                     <button
@@ -2441,8 +2497,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
           patients={patients}
           existingReport={selectedReportToEdit || undefined}
           allowNewPatientEntry={false}
-          onReportCreated={(createdReport) => {
-            handleReportCreated(createdReport, selectedPatientForReport?.id);
+          onReportCreated={(createdReport, patientId, isDraft) => {
+            handleReportCreated(createdReport, patientId || selectedPatientForReport?.id, isDraft);
           }}
           preselectedPatient={selectedPatientForReport || undefined}
           onOpenReportPreview={(rptId, mob) => {
