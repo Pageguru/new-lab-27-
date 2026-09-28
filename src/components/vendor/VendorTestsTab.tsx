@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import {
   FlaskConical,
   Plus,
-  PlusCircle,
   Edit2,
   Trash2,
   Search,
@@ -15,7 +14,6 @@ import {
   DollarSign,
   Droplet,
   Eye,
-  ListFilter,
   Check,
   AlertTriangle,
   TrendingDown,
@@ -393,71 +391,6 @@ export const VendorTestsTab: React.FC<VendorTestsTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* TOP SUB-TAB HEADER: 1. ADD ONLINE TEST & 2. ONLINE TESTS LIST (EDIT / DELETE) */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="p-2.5 rounded-xl bg-teal-50 text-[#0F766E] border border-teal-100">
-              <FlaskConical className="w-5 h-5" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md">
-                  Section 2 • Diagnostic Directory
-                </span>
-                <span className="text-[11px] font-bold text-slate-400">|</span>
-                <span className="text-[11px] font-bold text-slate-500">
-                  {vendorTests.length} Tests Online
-                </span>
-              </div>
-              <h2 className="text-xl font-black text-[#123B6D]">Online Test Management</h2>
-            </div>
-          </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Publish and manage pathology tests available for online booking on your patient website. Configure parameters, biological normal ranges, specimen tubes, and pricing.
-          </p>
-        </div>
-
-        {/* Sub-tab Pill Switcher */}
-        <div className="flex items-center gap-2 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200 self-start md:self-auto shrink-0">
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('add')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
-              currentSubTab === 'add'
-                ? 'bg-[#123B6D] text-white shadow-xs font-black'
-                : 'text-slate-700 hover:text-[#123B6D] hover:bg-white/60'
-            }`}
-          >
-            <PlusCircle className={`w-4 h-4 ${currentSubTab === 'add' ? 'text-amber-400' : 'text-emerald-600'}`} />
-            <span>1. Add Test</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
-              currentSubTab === 'add' ? 'bg-amber-400 text-slate-950' : 'bg-emerald-100 text-emerald-800'
-            }`}>
-              Add &gt;
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('list')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
-              currentSubTab === 'list'
-                ? 'bg-[#123B6D] text-white shadow-xs font-black'
-                : 'text-slate-700 hover:text-[#123B6D] hover:bg-white/60'
-            }`}
-          >
-            <ListFilter className={`w-4 h-4 ${currentSubTab === 'list' ? 'text-amber-400' : 'text-[#123B6D]'}`} />
-            <span>2. Test List</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
-              currentSubTab === 'list' ? 'bg-white/20 text-white' : 'bg-blue-100 text-[#123B6D]'
-            }`}>
-              Edit / Delete
-            </span>
-          </button>
-        </div>
-      </div>
-
       {/* Toast Notification */}
       {toastMessage && (
         <div className="bg-emerald-50 border-2 border-emerald-300 text-emerald-900 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between gap-3 shadow-xs animate-fadeIn">
