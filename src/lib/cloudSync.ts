@@ -28,6 +28,7 @@ import {
   ContactSubmission,
   DomainRequest
 } from '../types';
+import { optimizeDataUrl } from '../utils/imageOptimizer';
 
 // Collection identifiers in Cloud Firestore
 export const COLLECTIONS = {
@@ -115,8 +116,41 @@ export async function syncLabSettingsToCloud(
 ): Promise<void> {
   try {
     if (!db || !labId) return;
+
+    // Safety: Auto-optimize any heavy base64 image strings if present
+    const payload = { ...settings };
+    if (payload.logoUrl && payload.logoUrl.startsWith('data:image/') && payload.logoUrl.length > 150000) {
+      payload.logoUrl = await optimizeDataUrl(payload.logoUrl, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+    }
+    if (payload.qrCode1Url && payload.qrCode1Url.startsWith('data:image/') && payload.qrCode1Url.length > 150000) {
+      payload.qrCode1Url = await optimizeDataUrl(payload.qrCode1Url, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+    }
+    if (payload.qrCode2Url && payload.qrCode2Url.startsWith('data:image/') && payload.qrCode2Url.length > 150000) {
+      payload.qrCode2Url = await optimizeDataUrl(payload.qrCode2Url, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+    }
+    if (payload.featureImageUrl && payload.featureImageUrl.startsWith('data:image/') && payload.featureImageUrl.length > 200000) {
+      payload.featureImageUrl = await optimizeDataUrl(payload.featureImageUrl, { maxWidth: 1200, maxHeight: 800, quality: 0.82 });
+    }
+    if (payload.ogImageUrl && payload.ogImageUrl.startsWith('data:image/') && payload.ogImageUrl.length > 200000) {
+      payload.ogImageUrl = await optimizeDataUrl(payload.ogImageUrl, { maxWidth: 1200, maxHeight: 800, quality: 0.82 });
+    }
+    if (payload.founderPhotoUrl && payload.founderPhotoUrl.startsWith('data:image/') && payload.founderPhotoUrl.length > 150000) {
+      payload.founderPhotoUrl = await optimizeDataUrl(payload.founderPhotoUrl, { maxWidth: 800, maxHeight: 800, quality: 0.85 });
+    }
+    if (Array.isArray(payload.heroBanners) && payload.heroBanners.length > 0) {
+      const optimizedBanners: string[] = [];
+      for (const b of payload.heroBanners) {
+        if (b && b.startsWith('data:image/') && b.length > 200000) {
+          optimizedBanners.push(await optimizeDataUrl(b, { maxWidth: 1400, maxHeight: 700, quality: 0.82 }));
+        } else {
+          optimizedBanners.push(b);
+        }
+      }
+      payload.heroBanners = optimizedBanners;
+    }
+
     const cleanSettings = sanitizeForFirestore({
-      ...settings,
+      ...payload,
       labId,
       _updatedAt: new Date().toISOString(),
     });
@@ -300,8 +334,12 @@ export function subscribeToPackages(
 export async function syncDoctorToCloud(docItem: VendorDoctor): Promise<void> {
   try {
     if (!db || !docItem.id) return;
+    const payload = { ...docItem };
+    if (payload.imageUrl && payload.imageUrl.startsWith('data:image/') && payload.imageUrl.length > 150000) {
+      payload.imageUrl = await optimizeDataUrl(payload.imageUrl, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+    }
     const cleanDoc = sanitizeForFirestore({
-      ...docItem,
+      ...payload,
       _updatedAt: new Date().toISOString(),
     });
     const ref = doc(db, COLLECTIONS.DOCTORS, docItem.id);

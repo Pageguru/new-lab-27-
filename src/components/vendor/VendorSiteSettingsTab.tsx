@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { VendorLabSettings } from '../../types';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 
 export type SiteSettingsSubSection =
   | 'logo'
@@ -150,83 +151,112 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
   const [isCustomFeatureUrlOpen, setIsCustomFeatureUrlOpen] = useState(false);
   const [customFeatureUrlInput, setCustomFeatureUrlInput] = useState('');
 
-  // Keep synced if vendorLabSettings changes externally
+  // Keep synced if vendorLabSettings changes externally (only when lab ID changes or on initial load)
+  const currentLoadedLabIdRef = React.useRef(vendorLabSettings.labId || '');
   useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      logoUrl: vendorLabSettings.logoUrl || prev.logoUrl || '',
-      labName: vendorLabSettings.labName || prev.labName || '',
-      tagline: vendorLabSettings.tagline || prev.tagline || '',
-      siteDescription:
-        vendorLabSettings.siteDescription ||
-        vendorLabSettings.description ||
-        prev.siteDescription ||
-        '',
-      description: vendorLabSettings.description || prev.description || '',
-      featureImageUrl:
-        vendorLabSettings.featureImageUrl ||
-        vendorLabSettings.ogImageUrl ||
-        prev.featureImageUrl ||
-        '',
-      ogImageUrl:
-        vendorLabSettings.ogImageUrl ||
-        vendorLabSettings.featureImageUrl ||
-        prev.ogImageUrl ||
-        '',
-      qrCode1Url: vendorLabSettings.qrCode1Url || prev.qrCode1Url || '',
-      upiId1: vendorLabSettings.upiId1 || prev.upiId1 || 'apexlab@icici',
-      merchantName: vendorLabSettings.merchantName || prev.merchantName || 'Apex Diagnostic Lab',
-      purchasedPlan: vendorLabSettings.purchasedPlan || prev.purchasedPlan || '1 Month',
-      remainingVisibilityDays:
-        vendorLabSettings.remainingVisibilityDays ?? prev.remainingVisibilityDays ?? 24,
-    }));
-  }, [vendorLabSettings]);
-
-  // Handle Local Logo Upload
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const result = uploadEvent.target?.result as string;
-        setFormData((prev) => ({ ...prev, logoUrl: result }));
-      };
-      reader.readAsDataURL(file);
+    if (vendorLabSettings.labId && vendorLabSettings.labId !== currentLoadedLabIdRef.current) {
+      currentLoadedLabIdRef.current = vendorLabSettings.labId;
+      setFormData({
+        logoUrl: vendorLabSettings.logoUrl || '',
+        labName: vendorLabSettings.labName || '',
+        tagline: vendorLabSettings.tagline || '',
+        siteDescription:
+          vendorLabSettings.siteDescription ||
+          vendorLabSettings.description ||
+          '',
+        description: vendorLabSettings.description || '',
+        featureImageUrl:
+          vendorLabSettings.featureImageUrl ||
+          vendorLabSettings.ogImageUrl ||
+          '',
+        ogImageUrl:
+          vendorLabSettings.ogImageUrl ||
+          vendorLabSettings.featureImageUrl ||
+          '',
+        qrCode1Url: vendorLabSettings.qrCode1Url || '',
+        upiId1: vendorLabSettings.upiId1 || 'apexlab@icici',
+        merchantName: vendorLabSettings.merchantName || 'Apex Diagnostic Lab Pvt Ltd',
+        qrCode2Url: vendorLabSettings.qrCode2Url || '',
+        upiId2: vendorLabSettings.upiId2 || 'apexdiag@oksbi',
+        purchasedPlan: vendorLabSettings.purchasedPlan || '1 Month',
+        planDurationDays: vendorLabSettings.planDurationDays || 30,
+        remainingVisibilityDays: vendorLabSettings.remainingVisibilityDays ?? 24,
+        planPurchasedAt: vendorLabSettings.planPurchasedAt || '2026-02-15',
+        planExpiresAt: vendorLabSettings.planExpiresAt || '2026-03-17',
+      });
     }
-  };
+  }, [vendorLabSettings.labId]);
 
-  // Handle Feature Image Upload
-  const handleFeatureImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Local Logo Upload with instant optimization & auto-save
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const result = uploadEvent.target?.result as string;
-        setFormData((prev) => ({
-          ...prev,
-          featureImageUrl: result,
-          ogImageUrl: result,
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Handle Payment QR Upload
-  const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>, qrSlot: 1 | 2) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const result = uploadEvent.target?.result as string;
-        if (qrSlot === 1) {
-          setFormData((prev) => ({ ...prev, qrCode1Url: result }));
-        } else {
-          setFormData((prev) => ({ ...prev, qrCode2Url: result }));
+      try {
+        const optimized = await optimizeImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+        if (optimized) {
+          setFormData((prev) => ({ ...prev, logoUrl: optimized }));
+          updateVendorLabSettings({ logoUrl: optimized });
+          setToastMessage('Laboratory logo uploaded and saved successfully!');
+          setIsSavedToast(true);
+          setTimeout(() => setIsSavedToast(false), 3000);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Error optimizing logo image:', err);
+      }
     }
+    if (e.target) e.target.value = '';
+  };
+
+  // Handle Feature Image Upload with instant optimization & auto-save
+  const handleFeatureImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const optimized = await optimizeImageFile(file, { maxWidth: 1200, maxHeight: 800, quality: 0.82 });
+        if (optimized) {
+          setFormData((prev) => ({
+            ...prev,
+            featureImageUrl: optimized,
+            ogImageUrl: optimized,
+          }));
+          updateVendorLabSettings({
+            featureImageUrl: optimized,
+            ogImageUrl: optimized,
+          });
+          setToastMessage('Feature banner image uploaded and saved successfully!');
+          setIsSavedToast(true);
+          setTimeout(() => setIsSavedToast(false), 3000);
+        }
+      } catch (err) {
+        console.error('Error optimizing feature banner:', err);
+      }
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  // Handle Payment QR Upload with instant optimization & auto-save
+  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>, qrSlot: 1 | 2) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const optimized = await optimizeImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+        if (optimized) {
+          if (qrSlot === 1) {
+            setFormData((prev) => ({ ...prev, qrCode1Url: optimized }));
+            updateVendorLabSettings({ qrCode1Url: optimized });
+          } else {
+            setFormData((prev) => ({ ...prev, qrCode2Url: optimized }));
+            updateVendorLabSettings({ qrCode2Url: optimized });
+          }
+          setToastMessage(`Payment QR Code ${qrSlot} uploaded and saved successfully!`);
+          setIsSavedToast(true);
+          setTimeout(() => setIsSavedToast(false), 3000);
+        }
+      } catch (err) {
+        console.error('Error optimizing QR image:', err);
+      }
+    }
+    if (e.target) e.target.value = '';
   };
 
   // Delete Confirmation state for removing logo and feature image

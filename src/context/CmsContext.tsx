@@ -2632,7 +2632,24 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       (cloudSettingsMap) => {
         if (cloudSettingsMap && Object.keys(cloudSettingsMap).length > 0) {
           setVendorLabSettingsMap((prev) => {
-            const next = { ...prev, ...cloudSettingsMap };
+            const next = { ...prev };
+            for (const [labId, cloudSettings] of Object.entries(cloudSettingsMap)) {
+              const currentLocal = prev[labId];
+              if (!currentLocal) {
+                next[labId] = cloudSettings;
+                continue;
+              }
+              const cloudTime = cloudSettings._updatedAt ? new Date(cloudSettings._updatedAt).getTime() : 0;
+              const localTime = (currentLocal as any)._updatedAt ? new Date((currentLocal as any)._updatedAt).getTime() : 0;
+              
+              // Only overwrite local if cloud is strictly newer OR local has no timestamp
+              if (!localTime || cloudTime >= localTime) {
+                next[labId] = { ...currentLocal, ...cloudSettings };
+              } else {
+                // Local has a newer edit; keep local and re-sync to cloud so it never gets lost!
+                syncLabSettingsToCloud(labId, currentLocal);
+              }
+            }
             try {
               localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(next));
             } catch {}
@@ -4362,11 +4379,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...current,
         ...newSettings,
         labId: targetLabId,
+        _updatedAt: new Date().toISOString(),
       };
-      return {
+      const nextMap = {
         ...prev,
         [targetLabId]: updatedPayload,
       };
+      try {
+        localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(nextMap));
+      } catch {}
+      return nextMap;
     });
     if (updatedPayload) {
       syncLabSettingsToCloud(targetLabId, updatedPayload);

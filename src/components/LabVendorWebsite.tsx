@@ -72,6 +72,7 @@ import { TermsConditionsModal } from './TermsConditionsModal';
 import { VendorPolicyModal, PolicyTabType } from './vendor/VendorPolicyModal';
 import { getTenantWebsiteUrl, getTenantSubdomain, getTenantBrowserUrl, SUPER_ADMIN_DOMAIN } from '../constants/domains';
 import { isTenantMatch } from '../utils/tenantSecurity';
+import { optimizeImageFile } from '../utils/imageOptimizer';
 
 interface LabVendorWebsiteProps {
   language?: Language;
@@ -450,7 +451,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     setIsBannerManagerOpen(true);
   };
 
-  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -459,15 +460,15 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      if (base64) {
-        setTempBannersList((prev) => [...prev, base64]);
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 1400, maxHeight: 700, quality: 0.82 });
+      if (optimized) {
+        setTempBannersList((prev) => [...prev, optimized]);
         setBannerSaveNotice('Image photo added! Click "Save & Publish" to update.');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error optimizing banner photo:', err);
+    }
     if (e.target) e.target.value = '';
   };
 
@@ -4491,7 +4492,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                 }`}>
                   <div className="font-bold text-xs uppercase tracking-wider mb-1">
-                    Preparation / तैयारी: {details.isFastingRequired ? '10-12 Hours Fasting' : 'No Fasting Required'}
+                    Preparation: {details.isFastingRequired ? '10-12 Hours Fasting' : 'No Fasting Required'}
                   </div>
                   <p className="text-xs leading-relaxed opacity-90">
                     {details.fastingDetail}
@@ -4502,7 +4503,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-slate-900 font-extrabold text-xs uppercase tracking-wider">
                     <Activity className="w-4 h-4 text-blue-600" />
-                    <span>Clinical Significance &amp; Uses (टेस्ट का उपयोग):</span>
+                    <span>Clinical Significance &amp; Uses:</span>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
                     {details.clinicalUse}

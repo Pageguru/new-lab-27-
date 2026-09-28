@@ -194,6 +194,7 @@ export interface VendorSocialLinks {
 export interface VendorLabSettings {
   labId?: string;
   labShopId?: string;
+  _updatedAt?: string;
   labName: string;
   name?: string;
   tagline: string;

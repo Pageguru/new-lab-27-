@@ -37,6 +37,7 @@ import { ReceptionPatientEntry, TestItem } from '../../types';
 import { CollectRemainingPaymentModal } from '../CollectRemainingPaymentModal';
 import { DayEndCashClosingModal } from '../reception/DayEndCashClosingModal';
 import { DoctorCommissionModal } from './DoctorCommissionModal';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 
 // Built-in clean vector QR code data URIs for instant preview/testing
 const PRESET_QR_1 = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23123B6D"><rect width="100" height="100" fill="white"/><rect x="10" y="10" width="24" height="24" fill="%23123B6D"/><rect x="14" y="14" width="16" height="16" fill="white"/><rect x="18" y="18" width="8" height="8" fill="%23123B6D"/><rect x="66" y="10" width="24" height="24" fill="%23123B6D"/><rect x="70" y="14" width="16" height="16" fill="white"/><rect x="74" y="18" width="8" height="8" fill="%23123B6D"/><rect x="10" y="66" width="24" height="24" fill="%23123B6D"/><rect x="14" y="70" width="16" height="16" fill="white"/><rect x="18" y="74" width="8" height="8" fill="%23123B6D"/><rect x="40" y="12" width="8" height="12"/><rect x="52" y="18" width="8" height="6"/><rect x="40" y="38" width="18" height="6"/><rect x="66" y="42" width="8" height="8"/><rect x="78" y="48" width="12" height="6"/><rect x="40" y="52" width="8" height="18"/><rect x="52" y="64" width="8" height="8"/><rect x="66" y="66" width="8" height="12"/><rect x="76" y="66" width="14" height="6"/><rect x="72" y="78" width="18" height="12"/><rect x="44" y="78" width="14" height="8"/><circle cx="50" cy="50" r="5" fill="%23F59E0B"/></svg>`;
@@ -128,31 +129,37 @@ export const VendorBillingTab: React.FC = () => {
   };
 
   // Handle File Upload 1
-  const handleFileUpload1 = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload1 = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setQr1Url(dataUrl);
-      updateVendorLabSettings({ qrCode1Url: dataUrl });
-      showNotification('Counter QR Code updated successfully!');
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+      if (optimized) {
+        setQr1Url(optimized);
+        updateVendorLabSettings({ qrCode1Url: optimized });
+        showNotification('Counter QR Code updated and saved successfully!');
+      }
+    } catch (err) {
+      console.error('Error optimizing QR Code 1:', err);
+    }
+    if (e.target) e.target.value = '';
   };
 
   // Handle File Upload 2
-  const handleFileUpload2 = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload2 = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setQr2Url(dataUrl);
-      updateVendorLabSettings({ qrCode2Url: dataUrl });
-      showNotification('Home Collection QR Code updated successfully!');
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+      if (optimized) {
+        setQr2Url(optimized);
+        updateVendorLabSettings({ qrCode2Url: optimized });
+        showNotification('Home Collection QR Code updated and saved successfully!');
+      }
+    } catch (err) {
+      console.error('Error optimizing QR Code 2:', err);
+    }
+    if (e.target) e.target.value = '';
   };
 
   // Save QR Code Configurations

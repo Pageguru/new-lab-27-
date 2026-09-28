@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { TestItem, ReceptionPatientEntry } from '../../types';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 
 interface HeroBookingFormProps {
   onOpenReportPortal?: () => void;
@@ -222,18 +223,17 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
   };
 
   // Handle Screenshot Upload
-  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleScreenshotChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setErrorMessage('Screenshot file size should be less than 5MB');
-        return;
+      try {
+        const optimized = await optimizeImageFile(file, { maxWidth: 1000, maxHeight: 1000, quality: 0.75 });
+        if (optimized) {
+          setScreenshotPreview(optimized);
+        }
+      } catch (err) {
+        console.error('Error optimizing screenshot:', err);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setScreenshotPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

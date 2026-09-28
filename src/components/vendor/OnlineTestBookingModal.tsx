@@ -176,20 +176,20 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
   const handleProceedToPayment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName.trim()) {
-      alert('कृपया मरीज़ का नाम दर्ज करें (Please enter patient name)');
+      alert('Please enter the patient name.');
       return;
     }
     const cleanMobile = mobile.replace(/\D/g, '');
     if (cleanMobile.length < 10) {
-      alert('कृपया 10 अंकों का मोबाइल नंबर दर्ज करें (Please enter 10-digit mobile number)');
+      alert('Please enter a valid 10-digit mobile number.');
       return;
     }
     if (selectedTests.length === 0) {
-      alert('कृपया कम से कम एक टेस्ट चुनें (Please select at least one test)');
+      alert('Please select at least one test.');
       return;
     }
     if (visitType === 'Home Collection' && !homeAddress.trim()) {
-      alert('कृपया घर का पता दर्ज करें (Please enter address for home sample collection)');
+      alert('Please enter the address for home sample collection.');
       return;
     }
 
@@ -457,7 +457,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
 
                 {/* Subtotal Banner */}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200 font-extrabold text-sm text-[#123B6D]">
-                  <span>Total Amount (कुल शुल्क):</span>
+                  <span>Total Amount:</span>
                   <span>₹{totalAmount}</span>
                 </div>
               </div>
@@ -466,12 +466,12 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
               <div className="space-y-3">
                 <div className="font-bold text-slate-700 text-xs flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-[#123B6D]" />
-                  <span>मरीज़ की जानकारी (Patient Details)</span>
+                  <span>Patient Details</span>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Patient Full Name (पूरा नाम) <span className="text-rose-500">*</span>
+                    Patient Full Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -486,7 +486,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Age (उम्र) <span className="text-rose-500">*</span>
+                      Age <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -501,7 +501,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Gender (लिंग) <span className="text-rose-500">*</span>
+                      Gender <span className="text-rose-500">*</span>
                     </label>
                     <div className="grid grid-cols-3 gap-1">
                       {(['Male', 'Female', 'Other'] as const).map((g) => (
@@ -525,7 +525,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      10-Digit Mobile (मोबाइल नंबर) <span className="text-rose-500">*</span>
+                      10-Digit Mobile Number <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-2.5 top-2 text-slate-400 font-bold text-xs">+91</span>
@@ -540,13 +540,13 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                       />
                     </div>
                     <span className="text-[10px] text-slate-400 mt-0.5 block">
-                      इसी नंबर पर WhatsApp रिपोर्ट व बिल टोकन जाएगा
+                      Test reports and receipt token will be sent to this WhatsApp number
                     </span>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Referring Doctor (रेफरिंग डॉक्टर)
+                      Referring Doctor
                     </label>
                     <input
                       type="text"
@@ -562,7 +562,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
               {/* Visit Type: Walk-in vs Home Collection */}
               <div className="space-y-2 pt-1 border-t border-slate-200">
                 <label className="block text-[11px] font-bold text-slate-700">
-                  Select Visit Option (जाँच कहाँ करवानी है?)
+                  Select Visit Option
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -631,7 +631,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
 
                     <div>
                       <label className="block text-[11px] font-bold text-teal-900 mb-1">
-                        Preferred Time Slot (समय स्लॉट)
+                        Preferred Time Slot
                       </label>
                       <select
                         value={preferredSlot}
@@ -655,7 +655,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                   type="submit"
                   className="w-full bg-[#123B6D] hover:bg-[#0e2c52] text-white py-3 rounded-xl text-xs font-black transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>Proceed to Payment (चरण 2: भुगतान विकल्प)</span>
+                  <span>Proceed to Payment</span>
                   <ArrowRight className="w-4 h-4 text-amber-400" />
                 </button>
               </div>
@@ -684,7 +684,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
               {/* Choice of Payment: Option A (UPI QR) vs Option B (Pay at Branch) */}
               <div className="space-y-2">
                 <label className="block text-[11px] font-bold text-slate-700">
-                  Select Payment Option (भुगतान का तरीका चुनें):
+                  Select Payment Option:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -729,7 +729,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                       )}
                     </div>
                     <span className="text-[10px] text-slate-500">
-                      ब्रांच पर नकद / कार्ड से दें (Pay at Counter)
+                      Pay with Cash, Card, or UPI at reception counter
                     </span>
                   </button>
                 </div>
@@ -803,7 +803,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                   {/* Optional UTR Input */}
                   <div className="w-full text-left pt-1">
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      UPI Reference / UTR No. (वैकल्पिक / Optional)
+                      UPI Reference / UTR No. (Optional)
                     </label>
                     <input
                       type="text"
@@ -828,7 +828,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                         Pay ₹{totalAmount} at Lab Reception Counter
                       </h4>
                       <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                        कोई ऑनलाइन पेमेंट करने की आवश्यकता नहीं है। आप लैब काउंटर पर पहुँचकर नकद (Cash), कार्ड (Card) या UPI से भुगतान कर सकते हैं।
+                        No advance online payment required. You can pay via Cash, Card, or UPI directly at the laboratory counter upon arrival.
                       </p>
                     </div>
                   </div>
@@ -836,15 +836,15 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                   <div className="bg-white p-3 rounded-xl border border-blue-100 text-[11px] text-slate-600 space-y-1">
                     <div className="flex items-center gap-1.5 font-bold text-slate-800">
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>आपकी बुकिंग तुरंत रिसेप्शन स्क्रीन पर दर्ज हो जाएगी</span>
+                      <span>Your booking is immediately registered at the reception desk</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>टोकन नंबर जनरेट होगा जिससे लाइन में नहीं लगना पड़ेगा</span>
+                      <span>Instant priority queue token generated — no waiting in line</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>रसीद रिसेप्शन पर प्राप्त करें</span>
+                      <span>Collect your printed receipt at the counter</span>
                     </div>
                   </div>
                 </div>
@@ -899,13 +899,13 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
 
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  🎉 Booking Confirmed & Queue Token Generated
+                  🎉 Booking Confirmed &amp; Queue Token Generated
                 </span>
                 <h3 className="text-xl font-black text-[#123B6D] mt-2">
-                  बुकिंग सफलतापूर्वक दर्ज हुई!
+                  Booking Confirmed Successfully!
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  आपकी एंट्री लैब के रिसेप्शन डैशबोर्ड पर लाइव भेज दी गई है।
+                  Your entry has been dispatched live to the laboratory reception queue.
                 </p>
               </div>
 
@@ -977,18 +977,18 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
 
               {/* Next Steps Guide */}
               <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 text-left text-xs text-slate-700 space-y-1">
-                <div className="font-bold text-[#123B6D]">महत्वपूर्ण निर्देश (Next Steps):</div>
+                <div className="font-bold text-[#123B6D]">Important Next Steps:</div>
                 <div className="text-[11px] text-slate-600 space-y-0.5">
                   {confirmedEntry.visitType === 'Home Collection' ? (
                     <p>
-                      • हमारे लैब के प्रमाणित फ्लेबोटोमिस्ट आपके दिए पते पर निर्धारित समय में पहुँचेंगे।
+                      • A certified laboratory phlebotomist will visit your specified address at the scheduled time slot.
                     </p>
                   ) : (
                     <p>
-                      • जब आप लैब आएँ, रिसेप्शन काउंटर पर टोकन नंबर <strong>{confirmedEntry.tokenNumber}</strong> बताएँ। आपकी एंट्री पहले से लिस्ट में मौजूद है।
+                      • When you visit the laboratory, present Token Number <strong>{confirmedEntry.tokenNumber}</strong> at the reception counter. Your entry is pre-registered in the queue.
                     </p>
                   )}
-                  <p>• रिपोर्ट तैयार होते ही आपको WhatsApp और पोर्टल लिंक भेज दिया जाएगा।</p>
+                  <p>• As soon as your report is ready, you will receive an instant notification on WhatsApp with your digital download link.</p>
                 </div>
               </div>
 

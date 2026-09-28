@@ -48,6 +48,7 @@ import { VendorWebsiteSections, VendorLabSettings, VendorBannerItem, VendorDocto
 import { generateDefaultOgImage } from '../../utils/seo';
 import { getTenantWebsiteUrl, getTenantDirectUrl, SUPER_ADMIN_DOMAIN } from '../../constants/domains';
 import { VendorPolicyModal, PolicyTabType } from './VendorPolicyModal';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 
 export type WebsiteSubSection =
   | 'banners'
@@ -375,15 +376,18 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
     triggerToast('Banner status updated!');
   };
 
-  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setBannerForm((prev) => ({ ...prev, imageUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 1200, maxHeight: 600, quality: 0.82 });
+      if (optimized) {
+        setBannerForm((prev) => ({ ...prev, imageUrl: optimized }));
+      }
+    } catch (err) {
+      console.error('Error optimizing banner file:', err);
+    }
+    if (e.target) e.target.value = '';
   };
 
   // Simple Hero Banner Photo Upload (Pure image banners without complex codes)
@@ -406,20 +410,20 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
     }
   }, [vendorLabSettings.heroBanners]);
 
-  const handleHeroBannerPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroBannerPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        const updated = [...heroBanners, dataUrl];
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 1400, maxHeight: 700, quality: 0.82 });
+      if (optimized) {
+        const updated = [...heroBanners, optimized];
         setHeroBanners(updated);
         updateVendorLabSettings({ heroBanners: updated });
         triggerToast('Hero banner photo uploaded & published to website!');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error optimizing hero banner:', err);
+    }
     if (e.target) e.target.value = '';
   };
 
@@ -490,15 +494,20 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
 
   const [newCredential, setNewCredential] = useState('');
 
-  const handleFounderPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFounderPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setFounderForm((prev) => ({ ...prev, founderPhotoUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 800, maxHeight: 800, quality: 0.85 });
+      if (optimized) {
+        setFounderForm((prev) => ({ ...prev, founderPhotoUrl: optimized }));
+        updateVendorLabSettings({ founderPhotoUrl: optimized });
+        triggerToast('Founder photo uploaded & saved successfully!');
+      }
+    } catch (err) {
+      console.error('Error optimizing founder photo:', err);
+    }
+    if (e.target) e.target.value = '';
   };
 
   const handleAddCredential = () => {
@@ -614,33 +623,36 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
     });
   };
 
-  const handleTeamPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTeamPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setTeamForm((prev) => ({ ...prev, imageUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+      if (optimized) {
+        setTeamForm((prev) => ({ ...prev, imageUrl: optimized }));
+      }
+    } catch (err) {
+      console.error('Error optimizing team photo:', err);
+    }
+    if (e.target) e.target.value = '';
   };
 
 
-  const handleQuickDoctorPhotoUpload = (docId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQuickDoctorPhotoUpload = async (docId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
+    try {
+      const optimized = await optimizeImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+      if (optimized) {
         const targetDoc = vendorDoctors.find((d) => d.id === docId);
         if (targetDoc) {
-          updateVendorDoctor(docId, { ...targetDoc, imageUrl: dataUrl });
+          updateVendorDoctor(docId, { ...targetDoc, imageUrl: optimized });
           triggerToast(`Photo updated for ${targetDoc.name}!`);
         }
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error optimizing doctor photo:', err);
+    }
     if (e.target) e.target.value = '';
   };
 
