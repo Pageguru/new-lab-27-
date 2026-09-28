@@ -1108,32 +1108,8 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
             </div>
           </div>
 
-          {/* Action Buttons: Vendor Home Website + Daily Cash Closing + Log Out */}
+          {/* Action Buttons: Lab Owner return (if admin) */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Day & Cash Earning Report & Closing Button */}
-            <button
-              type="button"
-              id="reception-btn-cash-closing"
-              onClick={() => setIsCashClosingOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer border border-emerald-500 whitespace-nowrap"
-              title="Day & Cash (Earning Report, Collections & Closing)"
-            >
-              <Calculator className="w-3.5 h-3.5 text-amber-300" />
-              <span>Day & Cash</span>
-            </button>
-
-            {/* Vendor Home Website Button */}
-            <button
-              type="button"
-              id="reception-btn-vendor-website"
-              onClick={() => onNavigateView('vendor_website')}
-              className="bg-white hover:bg-teal-50 text-[#0F766E] px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer border border-white/30 whitespace-nowrap"
-              title="Go to Vendor Home Website"
-            >
-              <Globe className="w-3.5 h-3.5 text-[#0F766E]" />
-              <span>Vendor Home Website</span>
-            </button>
-
             {/* If Admin is inspecting Reception Desk, provide quick return to Lab Owner CMS */}
             {currentUser?.role === 'admin' && (
               <button
@@ -1145,21 +1121,6 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                 <span>👑 Lab Owner</span>
               </button>
             )}
-
-            {/* Log Out Button */}
-            <button
-              type="button"
-              id="reception-btn-logout"
-              onClick={() => {
-                logout();
-                onNavigateView('vendor_website');
-              }}
-              className="bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap"
-              title="Log out from Reception Desk"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
-            </button>
           </div>
         </div>
       </header>
@@ -2623,9 +2584,6 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
           }}
         />
       )}
-
-      {/* Footer with Lab Copyright, indianlalaji.com link and Customer Care Helpline */}
-      <DashboardFooter />
     </div>
   );
 };

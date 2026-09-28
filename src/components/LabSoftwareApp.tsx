@@ -39,6 +39,8 @@ import {
   XCircle,
   AlertTriangle,
   CheckCircle2,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Patient, TestItem, LabReport, ReportItem, ReceptionPatientEntry } from '../types';
 import { CreateReportModal } from './CreateReportModal';
@@ -91,6 +93,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
   const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   // Payment Mode Filter
   const [paymentModeFilter, setPaymentModeFilter] = useState<'All' | 'UPI' | 'Cash' | 'Card'>('All');
+  // View Mode: Grid (3 in a row, next test in second row) or Table
+  const [worklistViewMode, setWorklistViewMode] = useState<'grid' | 'table'>('grid');
 
   // Toast notification for user actions (e.g. Send to Reception Desk, Start Testing)
   const [toastNotice, setToastNotice] = useState<string | null>(null);
@@ -849,44 +853,9 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
               <span className="font-extrabold text-sm sm:text-base tracking-tight text-white leading-tight truncate">
                 {labName}
               </span>
-              <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                <span className="bg-amber-400 text-slate-950 text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1">
-                  <span>🔬</span>
-                  <span>Technician Lab Workstation & Reports</span>
-                </span>
-              </div>
             </div>
           </div>
-
-          {/* Action Items: Vendor Home Website + Log Out Button */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            <button
-              type="button"
-              id="tech-btn-vendor-website"
-              onClick={onBackToWebsite}
-              className="bg-white hover:bg-slate-100 text-[#123B6D] px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer border border-white/30 whitespace-nowrap"
-              title="Go to Vendor Home Website"
-            >
-              <Globe className="w-3.5 h-3.5 text-[#123B6D]" />
-              <span>Vendor Home Website</span>
-            </button>
-
-            <button
-              type="button"
-              id="tech-btn-logout"
-              onClick={() => {
-                logout();
-                onBackToWebsite();
-              }}
-              className="bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap"
-              title="Log Out from Technician Dashboard"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
-            </button>
-          </div>
         </div>
-
       </header>
 
       {/* Offline Alert Banner if simulated offline */}
@@ -1012,377 +981,566 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
               </div>
             )}
 
-            {/* 4. Search & Filters (Independent) */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-                {/* Search by Token Number or Phone Number */}
-                <div className="relative flex-1 min-w-[260px]">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    id="tech-search-token-phone"
-                    value={searchTokenOrPhone}
-                    onChange={(e) => setSearchTokenOrPhone(e.target.value)}
-                    placeholder="Search by Token Number or Phone Number..."
-                    className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#123B6D]/30 focus:border-[#123B6D] transition"
-                  />
-                  {searchTokenOrPhone && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchTokenOrPhone('')}
-                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                      title="Clear search"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
+            {/* 4. Search & View Mode */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Search by Token Number or Phone Number */}
+              <div className="relative flex-1 min-w-[260px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  id="tech-search-token-phone"
+                  value={searchTokenOrPhone}
+                  onChange={(e) => setSearchTokenOrPhone(e.target.value)}
+                  placeholder="Search by Token Number or Phone Number..."
+                  className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#123B6D]/30 focus:border-[#123B6D] transition"
+                />
+                {searchTokenOrPhone && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTokenOrPhone('')}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-                {/* Independent Filter Group: Date Filter + Payment Mode Filter */}
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {/* Date Filter */}
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs">
-                    <Calendar className="w-3.5 h-3.5 text-[#123B6D] shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-600 shrink-0">Date Filter:</span>
-                    <select
-                      id="tech-date-filter"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value as any)}
-                      className="bg-transparent text-xs font-semibold text-slate-900 outline-none cursor-pointer pr-1"
-                    >
-                      <option value="All Dates">All Dates</option>
-                      <option value="Today">Today</option>
-                      <option value="Yesterday">Yesterday</option>
-                      <option value="Custom Date">Custom Date</option>
-                    </select>
-                    {dateFilter === 'Custom Date' && (
-                      <input
-                        type="date"
-                        value={customDate}
-                        onChange={(e) => setCustomDate(e.target.value)}
-                        className="text-xs bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-800 outline-none ml-1 cursor-pointer"
-                      />
-                    )}
+              {/* View Mode Switcher: Grid (3 in row) vs Table */}
+              <div className="flex items-center self-end sm:self-auto bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setWorklistViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${
+                    worklistViewMode === 'grid'
+                      ? 'bg-[#123B6D] text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Grid Cards View (3 in row, next test in second row)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorklistViewMode('table')}
+                  className={`p-1.5 rounded-lg transition cursor-pointer ${
+                    worklistViewMode === 'table'
+                      ? 'bg-[#123B6D] text-white shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Table View"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Live Queue Worklist: Grid Cards (3 in a row, next test in second row) or Table */}
+            {worklistViewMode === 'grid' ? (
+              filteredPatients.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500 shadow-2xs">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                    <Search className="w-6 h-6 text-slate-400" />
                   </div>
-
-                  {/* Payment Mode Filter */}
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs">
-                    <IndianRupee className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-600 shrink-0">Payment Mode:</span>
-                    <select
-                      id="tech-payment-mode-filter"
-                      value={paymentModeFilter}
-                      onChange={(e) => setPaymentModeFilter(e.target.value as any)}
-                      className="bg-transparent text-xs font-semibold text-slate-900 outline-none cursor-pointer pr-1"
-                    >
-                      <option value="All">All Payment Modes</option>
-                      <option value="UPI">UPI</option>
-                      <option value="Cash">Cash</option>
-                      <option value="Card">Card</option>
-                    </select>
-                  </div>
-
-                  {/* Clear All Filters Button */}
-                  {(searchTokenOrPhone || dateFilter !== 'All Dates' || paymentModeFilter !== 'All') && (
+                  <h4 className="font-bold text-slate-700 text-sm">No patient test records found</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    No records match your active search, tab, or filter criteria. Try adjusting or clearing your filters.
+                  </p>
+                  {(searchTokenOrPhone || dateFilter !== 'All Dates' || paymentModeFilter !== 'All' || patientTab !== 'all') && (
                     <button
                       type="button"
                       onClick={() => {
                         setSearchTokenOrPhone('');
                         setDateFilter('All Dates');
                         setPaymentModeFilter('All');
+                        setPatientTab('all');
                       }}
-                      className="text-xs font-bold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                      title="Reset all filters"
+                      className="mt-3 inline-flex items-center gap-1.5 bg-[#123B6D] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
                     >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Clear Filters</span>
+                      <span>Reset All Filters</span>
                     </button>
                   )}
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4.5">
+                  {filteredPatients.map((p) => {
+                    const isReportDone = p.status === 'Report Done' || Boolean(p.reportId);
+                    const isInTesting = p.status === 'In Testing';
+                    const isWaiting = p.status === 'Waiting';
 
-              {/* Informative Status Strip */}
-              <div className="text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
-                <div>
-                  Showing <strong className="text-slate-900">{filteredPatients.length}</strong> patient{filteredPatients.length === 1 ? '' : 's'}
-                  {patientTab !== 'all' && (
-                    <span className="ml-1 text-slate-700">
-                      in <strong className="capitalize">{patientTab.replace('_', ' ')}</strong>
-                    </span>
-                  )}
-                  {searchTokenOrPhone && <span className="ml-1 font-medium text-[#123B6D]">• Token/Phone: "{searchTokenOrPhone}"</span>}
-                  {dateFilter !== 'All Dates' && (
-                    <span className="ml-1 font-medium text-slate-700">• Date: {dateFilter === 'Custom Date' ? customDate : dateFilter}</span>
-                  )}
-                  {paymentModeFilter !== 'All' && <span className="ml-1 font-medium text-emerald-800">• Mode: {paymentModeFilter}</span>}
-                </div>
-                {patientTab === 'report_done' && (
-                  <div className="text-amber-800 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
-                    <Lock className="w-3 h-3 text-amber-700 shrink-0" />
-                    <span>Reports can be edited only before clicking Send to Reception Desk. Once sent, editing is disabled.</span>
-                  </div>
-                )}
-              </div>
-            </div>
+                    return (
+                      <div
+                        key={p.id}
+                        className={`bg-white rounded-2xl border transition-all p-5 shadow-xs hover:shadow-md hover:border-[#123B6D] flex flex-col justify-between space-y-4 ${
+                          isReportDone
+                            ? 'border-emerald-200 bg-emerald-50/10'
+                            : isInTesting
+                            ? 'border-teal-200 bg-teal-50/10'
+                            : 'border-amber-200 bg-amber-50/10'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          {/* Token & Status Header */}
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="inline-flex items-center gap-1.5 bg-[#123B6D]/10 text-[#123B6D] font-mono font-black text-xs px-2.5 py-1 rounded-lg border border-[#123B6D]/20">
+                              <span>{p.tokenNumber || p.tokenNo || 'TK-101'}</span>
+                              <span className="text-slate-400 font-normal">|</span>
+                              <span className="text-[11px] text-slate-600 font-mono font-bold">{p.uhid}</span>
+                            </div>
 
-            {/* Live Queue Table */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider">
-                      <th className="py-2.5 px-4 font-bold">Token & UHID</th>
-                      <th className="py-2.5 px-4 font-bold">Patient Details</th>
-                      <th className="py-2.5 px-4 font-bold">Doctor Reference</th>
-                      <th className="py-2.5 px-4 font-bold">Tests</th>
-                      <th className="py-2.5 px-4 font-bold">Bill & Payment</th>
-                      <th className="py-2.5 px-4 font-bold">Status</th>
-                      <th className="py-2.5 px-4 font-bold text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredPatients.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-500">
-                          <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                            <Search className="w-8 h-8 text-slate-300" />
-                            <p className="font-bold text-slate-700">No patients found</p>
-                            <p className="text-xs text-slate-500">
-                              No records match your active search, tab, or filter criteria. Try adjusting or clearing your filters.
-                            </p>
-                            {(searchTokenOrPhone || dateFilter !== 'All Dates' || paymentModeFilter !== 'All' || patientTab !== 'all') && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSearchTokenOrPhone('');
-                                  setDateFilter('All Dates');
-                                  setPaymentModeFilter('All');
-                                  setPatientTab('all');
-                                }}
-                                className="mt-2 text-xs font-bold text-[#123B6D] hover:underline cursor-pointer"
-                              >
-                                Reset all filters & show all patients
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredPatients.map((p) => {
-                        const isReportDone = p.status === 'Report Done' || Boolean(p.reportId);
-                        const isInTesting = p.status === 'In Testing';
-                        const isWaiting = p.status === 'Waiting';
-
-                        return (
-                          <tr key={p.id} className="hover:bg-slate-50/70 transition">
-                            {/* Token & UHID */}
-                            <td className="py-3 px-4">
-                              <div className="inline-block bg-[#123B6D]/10 text-[#123B6D] font-mono font-black text-xs px-2 py-0.5 rounded-md border border-[#123B6D]/20">
-                                {p.tokenNumber || p.tokenNo || 'TK-101'}
-                              </div>
-                              <div className="font-mono text-[11px] text-slate-600 mt-1">{p.uhid}</div>
-                              <div className="text-[10px] text-slate-400">{p.registeredAt}</div>
-                            </td>
-
-                            {/* Patient Details */}
-                            <td className="py-3 px-4">
-                              <div className="font-bold text-slate-900">{p.name}</div>
-                              <div className="text-[11px] text-slate-500">
-                                {p.age} Y / {p.gender}
-                              </div>
-                              <div className="text-[11px] font-mono font-medium text-slate-700 mt-0.5">
-                                +91 {p.mobile}
-                              </div>
-                            </td>
-
-                            {/* Doctor Reference */}
-                            <td className="py-3 px-4 text-slate-700">
-                              <div className="font-medium text-xs text-slate-800">{p.referringDoctor}</div>
-                              {p.reportId ? (
-                                <div className="text-[10px] font-mono text-slate-500 mt-0.5">
-                                  Report: <span className="font-semibold text-[#123B6D]">{p.reportId}</span>
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-slate-400 mt-0.5">No report yet</div>
-                              )}
-                            </td>
-
-                            {/* Tests */}
-                            <td className="py-3 px-4">
-                              <div className="max-w-xs truncate font-medium text-slate-800 text-xs">
-                                {Array.isArray(p.tests) ? p.tests.join(', ') : p.tests}
-                              </div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">
-                                {Array.isArray(p.tests) ? p.tests.length : 1} test{(Array.isArray(p.tests) ? p.tests.length : 1) === 1 ? '' : 's'}
-                              </div>
-                            </td>
-
-                            {/* Bill & Payment */}
-                            <td className="py-3 px-4">
-                              <div className="font-bold text-slate-900">₹{p.totalBill}</div>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                                  {p.paymentMode}
-                                </span>
-                                {p.dueAmount > 0 ? (
-                                  <span className="text-[10px] text-rose-600 font-bold">
-                                    Due: ₹{p.dueAmount}
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] text-emerald-600 font-bold">
-                                    Paid
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Status */}
-                            <td className="py-3 px-4">
+                            <div>
                               {isReportDone ? (
-                                <div className="space-y-1">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                                    <CheckCheck className="w-3 h-3 text-emerald-700" />
-                                    <span>Report Done</span>
-                                  </span>
-                                  {p.sentToReceptionDesk ? (
-                                    <div className="text-[10px] font-bold text-teal-700 flex items-center gap-1 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
-                                      <Check className="w-3 h-3 text-teal-600" />
-                                      <span>Sent to Reception</span>
-                                    </div>
-                                  ) : (
-                                    <div className="text-[10px] font-medium text-amber-700">
-                                      At Lab (Ready to send)
-                                    </div>
-                                  )}
-                                </div>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                  <CheckCheck className="w-3 h-3 text-emerald-700" />
+                                  <span>Report Done</span>
+                                </span>
                               ) : isInTesting ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-[#123B6D] border border-blue-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-[#123B6D] border border-blue-300">
                                   <FlaskConical className="w-3 h-3 text-[#123B6D]" />
                                   <span>In Testing</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">
                                   <Clock className="w-3 h-3 text-amber-700" />
                                   <span>Waiting</span>
                                 </span>
                               )}
-                            </td>
+                            </div>
+                          </div>
 
-                            {/* Actions */}
-                            <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                                {/* Common to all tabs: View Receipt */}
+                          {/* Patient Name & Details */}
+                          <div>
+                            <div className="flex items-center justify-between gap-1">
+                              <h3 className="font-extrabold text-slate-900 text-base leading-snug">{p.name}</h3>
+                              <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0 font-medium">
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>{p.registeredAt}</span>
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                              <span>{p.age} Y / {p.gender}</span>
+                              <span>•</span>
+                              <span className="font-mono text-slate-700 font-bold">+91 {p.mobile}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-600 mt-1 truncate">
+                              <span className="text-slate-400 font-medium">Dr:</span> <strong className="text-slate-700">{p.referringDoctor || 'Self / Direct'}</strong>
+                            </div>
+                          </div>
+
+                          {/* Prescribed Tests Box */}
+                          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              <span>Prescribed Tests</span>
+                              <span className="bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded text-[9px] font-black">
+                                {Array.isArray(p.tests) ? p.tests.length : 1} Test{(Array.isArray(p.tests) ? p.tests.length : 1) === 1 ? '' : 's'}
+                              </span>
+                            </div>
+                            <div className="font-bold text-slate-800 text-xs leading-snug line-clamp-2">
+                              {Array.isArray(p.tests) ? p.tests.join(', ') : p.tests}
+                            </div>
+                            {p.reportId && (
+                              <div className="text-[10px] font-mono text-slate-500 pt-0.5 flex items-center gap-1">
+                                <span>Report ID:</span>
+                                <strong className="text-[#123B6D]">{p.reportId}</strong>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Bill & Payment */}
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">Total:</span>
+                              <span className="font-black text-slate-900 text-sm">₹{p.totalBill}</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 ml-1">
+                                {p.paymentMode}
+                              </span>
+                            </div>
+                            <div>
+                              {p.dueAmount > 0 ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                                  Due: ₹{p.dueAmount}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  Paid
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {p.sentToReceptionDesk && (
+                            <div className="text-[10px] font-bold text-teal-800 flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 py-1 rounded-lg">
+                              <Check className="w-3 h-3 text-teal-600" />
+                              <span>Report Sent to Reception Desk</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Technician Actions */}
+                        <div className="pt-3 border-t border-slate-100">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {/* Common: View Receipt */}
+                            <button
+                              type="button"
+                              onClick={() => handleViewReceipt(p)}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer border border-slate-200"
+                              title="View registration and billing receipt"
+                            >
+                              <Receipt className="w-3.5 h-3.5 text-slate-600" />
+                              <span>Receipt</span>
+                            </button>
+
+                            {/* 1. Waiting Tab actions */}
+                            {isWaiting && (
+                              <>
                                 <button
                                   type="button"
-                                  onClick={() => handleViewReceipt(p)}
-                                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer border border-slate-300"
-                                  title="View registration and billing receipt"
+                                  onClick={() => handleStartTesting(p)}
+                                  className="flex-1 px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+                                  title="Accept specimen and move to In Testing"
                                 >
-                                  <Receipt className="w-3.5 h-3.5 text-slate-600" />
-                                  <span>View Receipt</span>
+                                  <FlaskConical className="w-3.5 h-3.5 text-teal-200" />
+                                  <span>Start Testing</span>
                                 </button>
 
-                                {/* 1. All Patients Tab: View Receipt ONLY (No Start Testing, No Make Report, No Edit, No Delete) */}
-                                {patientTab === 'all' && null}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCancelModal(p)}
+                                  className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition cursor-pointer active:scale-95"
+                                  title="Cancel and return entry to Reception Desk with reason"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                                </button>
+                              </>
+                            )}
 
-                                {/* 2. Waiting Tab: View Receipt, Start Testing, Cancel (No Edit, No Delete) */}
-                                {patientTab === 'waiting' && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleStartTesting(p)}
-                                      className="px-2.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                                      title="Accept specimen and move to In Testing"
-                                    >
-                                      <FlaskConical className="w-3.5 h-3.5 text-teal-200" />
-                                      <span>Start Testing</span>
-                                    </button>
+                            {/* 2. In Testing Tab actions */}
+                            {isInTesting && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCreateReportModal(p)}
+                                  className={`flex-1 px-3 py-1.5 rounded-lg ${
+                                    p.isDraft
+                                      ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                      : 'bg-[#123B6D] hover:bg-[#0e2c52] text-white'
+                                  } text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95`}
+                                  title={p.isDraft ? 'Continue editing draft report' : 'Enter test results and complete diagnostic report'}
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>{p.isDraft ? 'Make Report (Draft)' : 'Make Report'}</span>
+                                </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenCancelModal(p)}
-                                      className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                                      title="Cancel and return entry to Reception Desk with reason"
-                                    >
-                                      <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
-                                      <span>Cancel</span>
-                                    </button>
-                                  </>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCancelModal(p)}
+                                  className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition cursor-pointer active:scale-95"
+                                  title="Cancel test and return entry to Reception Desk with reason"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                                </button>
+                              </>
+                            )}
+
+                            {/* 3. Report Done Tab actions */}
+                            {isReportDone && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReportPreview(p.reportId, p.mobile)}
+                                  className="flex-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+                                  title="View verified diagnostic report"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-white" />
+                                  <span>View Report</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReportPreview(p.reportId, p.mobile)}
+                                  className="p-1.5 text-slate-600 hover:text-[#123B6D] hover:bg-slate-100 rounded-lg cursor-pointer border border-slate-200"
+                                  title="Print Report PDF"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleWhatsAppSend(p)}
+                                  className="p-1.5 text-[#0F766E] hover:text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer border border-teal-200"
+                                  title="Send Report via WhatsApp"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              /* Live Queue Table */
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider">
+                        <th className="py-2.5 px-4 font-bold">Token & UHID</th>
+                        <th className="py-2.5 px-4 font-bold">Patient Details</th>
+                        <th className="py-2.5 px-4 font-bold">Doctor Reference</th>
+                        <th className="py-2.5 px-4 font-bold">Tests</th>
+                        <th className="py-2.5 px-4 font-bold">Bill & Payment</th>
+                        <th className="py-2.5 px-4 font-bold">Status</th>
+                        <th className="py-2.5 px-4 font-bold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredPatients.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-slate-500">
+                            <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                              <Search className="w-8 h-8 text-slate-300" />
+                              <p className="font-bold text-slate-700">No patients found</p>
+                              <p className="text-xs text-slate-500">
+                                No records match your active search, tab, or filter criteria. Try adjusting or clearing your filters.
+                              </p>
+                              {(searchTokenOrPhone || dateFilter !== 'All Dates' || paymentModeFilter !== 'All' || patientTab !== 'all') && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSearchTokenOrPhone('');
+                                    setDateFilter('All Dates');
+                                    setPaymentModeFilter('All');
+                                    setPatientTab('all');
+                                  }}
+                                  className="mt-2 text-xs font-bold text-[#123B6D] hover:underline cursor-pointer"
+                                >
+                                  Reset all filters & show all patients
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredPatients.map((p) => {
+                          const isReportDone = p.status === 'Report Done' || Boolean(p.reportId);
+                          const isInTesting = p.status === 'In Testing';
+                          const isWaiting = p.status === 'Waiting';
+
+                          return (
+                            <tr key={p.id} className="hover:bg-slate-50/70 transition">
+                              {/* Token & UHID */}
+                              <td className="py-3 px-4">
+                                <div className="inline-block bg-[#123B6D]/10 text-[#123B6D] font-mono font-black text-xs px-2 py-0.5 rounded-md border border-[#123B6D]/20">
+                                  {p.tokenNumber || p.tokenNo || 'TK-101'}
+                                </div>
+                                <div className="font-mono text-[11px] text-slate-600 mt-1">{p.uhid}</div>
+                                <div className="text-[10px] text-slate-400">{p.registeredAt}</div>
+                              </td>
+
+                              {/* Patient Details */}
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-slate-900">{p.name}</div>
+                                <div className="text-[11px] text-slate-500">
+                                  {p.age} Y / {p.gender}
+                                </div>
+                                <div className="text-[11px] font-mono font-medium text-slate-700 mt-0.5">
+                                  +91 {p.mobile}
+                                </div>
+                              </td>
+
+                              {/* Doctor Reference */}
+                              <td className="py-3 px-4 text-slate-700">
+                                <div className="font-medium text-xs text-slate-800">{p.referringDoctor}</div>
+                                {p.reportId ? (
+                                  <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                                    Report: <span className="font-semibold text-[#123B6D]">{p.reportId}</span>
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] text-slate-400 mt-0.5">No report yet</div>
                                 )}
+                              </td>
 
-                                {/* 3. In Test Tab: View Receipt, Make Report, Cancel (No Edit, No Delete). After completing report, it is sent to Reception Desk */}
-                                {patientTab === 'in_testing' && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenCreateReportModal(p)}
-                                      className={`px-2.5 py-1.5 rounded-lg ${
-                                        p.isDraft
-                                          ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                                          : 'bg-[#123B6D] hover:bg-[#0e2c52] text-white'
-                                      } text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95`}
-                                      title={p.isDraft ? 'Continue editing draft report' : 'Enter test results and complete diagnostic report'}
-                                    >
-                                      <FileText className="w-3.5 h-3.5 text-amber-300" />
-                                      <span>{p.isDraft ? 'Make Report (Draft)' : 'Make Report'}</span>
-                                    </button>
+                              {/* Tests */}
+                              <td className="py-3 px-4">
+                                <div className="max-w-xs truncate font-medium text-slate-800 text-xs">
+                                  {Array.isArray(p.tests) ? p.tests.join(', ') : p.tests}
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                  {Array.isArray(p.tests) ? p.tests.length : 1} test{(Array.isArray(p.tests) ? p.tests.length : 1) === 1 ? '' : 's'}
+                                </div>
+                              </td>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenCancelModal(p)}
-                                      className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                                      title="Cancel test and return entry to Reception Desk with reason"
-                                    >
-                                      <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
-                                      <span>Cancel</span>
-                                    </button>
-                                  </>
+                              {/* Bill & Payment */}
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-slate-900">₹{p.totalBill}</div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                    {p.paymentMode}
+                                  </span>
+                                  {p.dueAmount > 0 ? (
+                                    <span className="text-[10px] text-rose-600 font-bold">
+                                      Due: ₹{p.dueAmount}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-emerald-600 font-bold">
+                                      Paid
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Status */}
+                              <td className="py-3 px-4">
+                                {isReportDone ? (
+                                  <div className="space-y-1">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                                      <CheckCheck className="w-3 h-3 text-emerald-700" />
+                                      <span>Report Done</span>
+                                    </span>
+                                    {p.sentToReceptionDesk ? (
+                                      <div className="text-[10px] font-bold text-teal-700 flex items-center gap-1 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
+                                        <Check className="w-3 h-3 text-teal-600" />
+                                        <span>Sent to Reception</span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-[10px] font-medium text-amber-700">
+                                        At Lab (Ready to send)
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : isInTesting ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-[#123B6D] border border-blue-200">
+                                    <FlaskConical className="w-3 h-3 text-[#123B6D]" />
+                                    <span>In Testing</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                                    <Clock className="w-3 h-3 text-amber-700" />
+                                    <span>Waiting</span>
+                                  </span>
                                 )}
+                              </td>
 
-                                {/* 4. Report Done Tab: View Receipt, View Report (No Edit, No Delete) */}
-                                {patientTab === 'report_done' && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenReportPreview(p.reportId, p.mobile)}
-                                      className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                                      title="View verified diagnostic report"
-                                    >
-                                      <Eye className="w-3.5 h-3.5 text-white" />
-                                      <span>View Report</span>
-                                    </button>
+                              {/* Actions */}
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                  {/* Common to all tabs: View Receipt */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleViewReceipt(p)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer border border-slate-300"
+                                    title="View registration and billing receipt"
+                                  >
+                                    <Receipt className="w-3.5 h-3.5 text-slate-600" />
+                                    <span>View Receipt</span>
+                                  </button>
 
-                                    {/* Quick Thermal / PDF print */}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenReportPreview(p.reportId, p.mobile)}
-                                      className="p-1.5 text-slate-600 hover:text-[#123B6D] hover:bg-slate-100 rounded-lg cursor-pointer"
-                                      title="Print Report PDF"
-                                    >
-                                      <Printer className="w-3.5 h-3.5" />
-                                    </button>
+                                  {/* 1. All Patients Tab: View Receipt ONLY */}
+                                  {patientTab === 'all' && null}
 
-                                    {/* WhatsApp Report Share */}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleWhatsAppSend(p)}
-                                      className="p-1.5 text-[#0F766E] hover:text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
-                                      title="Send Report via WhatsApp"
-                                    >
-                                      <MessageSquare className="w-3.5 h-3.5" />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                                  {/* 2. Waiting Tab: View Receipt, Start Testing, Cancel */}
+                                  {patientTab === 'waiting' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleStartTesting(p)}
+                                        className="px-2.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                                        title="Accept specimen and move to In Testing"
+                                      >
+                                        <FlaskConical className="w-3.5 h-3.5 text-teal-200" />
+                                        <span>Start Testing</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenCancelModal(p)}
+                                        className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                                        title="Cancel and return entry to Reception Desk with reason"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                                        <span>Cancel</span>
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* 3. In Test Tab: View Receipt, Make Report, Cancel */}
+                                  {patientTab === 'in_testing' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenCreateReportModal(p)}
+                                        className={`px-2.5 py-1.5 rounded-lg ${
+                                          p.isDraft
+                                            ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                            : 'bg-[#123B6D] hover:bg-[#0e2c52] text-white'
+                                        } text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95`}
+                                        title={p.isDraft ? 'Continue editing draft report' : 'Enter test results and complete diagnostic report'}
+                                      >
+                                        <FileText className="w-3.5 h-3.5 text-amber-300" />
+                                        <span>{p.isDraft ? 'Make Report (Draft)' : 'Make Report'}</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenCancelModal(p)}
+                                        className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                                        title="Cancel test and return entry to Reception Desk with reason"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                                        <span>Cancel</span>
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* 4. Report Done Tab: View Receipt, View Report */}
+                                  {patientTab === 'report_done' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenReportPreview(p.reportId, p.mobile)}
+                                        className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                                        title="View verified diagnostic report"
+                                      >
+                                        <Eye className="w-3.5 h-3.5 text-white" />
+                                        <span>View Report</span>
+                                      </button>
+
+                                      {/* Quick Thermal / PDF print */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenReportPreview(p.reportId, p.mobile)}
+                                        className="p-1.5 text-slate-600 hover:text-[#123B6D] hover:bg-slate-100 rounded-lg cursor-pointer"
+                                        title="Print Report PDF"
+                                      >
+                                        <Printer className="w-3.5 h-3.5" />
+                                      </button>
+
+                                      {/* WhatsApp Report Share */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleWhatsAppSend(p)}
+                                        className="p-1.5 text-[#0F766E] hover:text-emerald-700 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                        title="Send Report via WhatsApp"
+                                      >
+                                        <MessageSquare className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -2891,9 +3049,6 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
           </div>
         </div>
       )}
-
-      {/* Footer with Lab Copyright, indianlalaji.com link and Customer Care Helpline */}
-      <DashboardFooter />
     </div>
   );
 };
