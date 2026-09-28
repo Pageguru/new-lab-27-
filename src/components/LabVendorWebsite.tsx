@@ -101,6 +101,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     vendorPackages,
     vendorTests,
     vendorDoctors,
+    allVendorDoctors,
     addHomeCollectionBooking,
     openLoginModal,
     vendorLabsList,
@@ -127,6 +128,15 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     const tid = currentLabItem?.id || selectedVendorLabId;
     return (allReports || []).find((r) => isTenantMatch(r, tid));
   }, [allReports, currentLabItem?.id, selectedVendorLabId]);
+
+  // Dynamic team members for the currently displayed website laboratory
+  const currentWebsiteLabId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || 'lab-apex';
+  const effectiveTeamDoctors = React.useMemo(() => {
+    if (allVendorDoctors && allVendorDoctors.length > 0) {
+      return allVendorDoctors.filter((d) => isTenantMatch(d, currentWebsiteLabId));
+    }
+    return (vendorDoctors || []).filter((d) => isTenantMatch(d, currentWebsiteLabId));
+  }, [allVendorDoctors, vendorDoctors, currentWebsiteLabId]);
 
   const handleCheckReport = (reportId?: string, mobile?: string) => {
     if (!hasEnteredWebsite) {
@@ -2079,7 +2089,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               About
             </a>
 
-            {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+            {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
               <a
                 href="#doctors"
                 className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
@@ -2335,7 +2345,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   </a>
 
                   {/* 5. Team */}
-                  {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+                  {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
                     <a
                       href="#doctors"
                       onClick={() => setMobileMenuOpen(false)}
@@ -3352,7 +3362,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       </section>
 
       {/* SECTION 6: QUALIFIED TEAM SECTION (Pathologists, Biochemists & Senior Lab Technicians) */}
-      {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+      {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
         <section id="doctors" className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-20">
           <div className="max-w-4xl sm:max-w-6xl mx-auto px-4 sm:px-6">
             {/* Section Header */}
@@ -3421,7 +3431,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             )}
 
             {(() => {
-              const doctorsList = vendorDoctors;
+              const doctorsList = effectiveTeamDoctors;
               if (!doctorsList || doctorsList.length === 0) return null;
 
             const renderDoctorCard = (doc: any, idx: number, isMobile: boolean, isSingle: boolean) => {
@@ -4013,7 +4023,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     About Us
                   </a>
                 </li>
-                {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+                {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
                   <li>
                     <a
                       href="#doctors"

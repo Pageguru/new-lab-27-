@@ -1890,6 +1890,7 @@ interface CmsContextType {
   updateVendorTest: (id: string, test: Partial<TestItem>) => void;
   deleteVendorTest: (id: string) => void;
   vendorDoctors: VendorDoctor[];
+  allVendorDoctors: VendorDoctor[];
   addVendorDoctor: (doc: Omit<VendorDoctor, 'id'>) => void;
   updateVendorDoctor: (id: string, doc: Partial<VendorDoctor>) => void;
   deleteVendorDoctor: (id: string) => void;
@@ -5646,6 +5647,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateVendorTest,
         deleteVendorTest,
         vendorDoctors,
+        allVendorDoctors,
         addVendorDoctor,
         updateVendorDoctor,
         deleteVendorDoctor,

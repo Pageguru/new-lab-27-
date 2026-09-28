@@ -24,10 +24,13 @@ import {
   Square,
   Clock,
   Sparkles,
+  Download,
+  Smartphone,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { TestItem, ReceptionPatientEntry } from '../../types';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
+import { WebsiteTokenReceiptCard } from './WebsiteTokenReceiptCard';
 
 interface HeroBookingFormProps {
   onOpenReportPortal?: () => void;
@@ -88,6 +91,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
   // 4. Booking Receipt State
   const [createdReceipt, setCreatedReceipt] = useState<{
     receiptNo: string;
+    tokenNumber?: string;
     uhid: string;
     patientName: string;
     age: string;
@@ -196,14 +200,17 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
   const qrImage = vendorLabSettings.qrCode1Url;
 
   // Quick fallback dynamic UPI QR URL if admin hasn't uploaded a static QR photo
-  const dynamicQrUrl = useMemo(() => {
-    if (qrImage) return qrImage;
+  const dynamicUpiUri = useMemo(() => {
     const cleanUpi = encodeURIComponent(labUpiId);
     const cleanName = encodeURIComponent(labMerchantName);
     const note = encodeURIComponent(`Lab Booking ${patientName ? `for ${patientName}` : ''}`);
-    const upiUri = `upi://pay?pa=${cleanUpi}&pn=${cleanName}&am=${grandTotal}&cu=INR&tn=${note}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiUri)}`;
-  }, [qrImage, labUpiId, labMerchantName, grandTotal, patientName]);
+    return `upi://pay?pa=${cleanUpi}&pn=${cleanName}&am=${grandTotal}&cu=INR&tn=${note}`;
+  }, [labUpiId, labMerchantName, grandTotal, patientName]);
+
+  const dynamicQrUrl = useMemo(() => {
+    if (qrImage) return qrImage;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(dynamicUpiUri)}`;
+  }, [qrImage, dynamicUpiUri]);
 
   // Toggle Test Selection (Multi-select mark)
   const toggleTestSelection = (testId: string) => {
@@ -304,11 +311,12 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
       return;
     }
 
-    // Generate Unique Receipt / Booking Number: LAB-2026-XXXXXX
+    // Generate Unique Token & Receipt / Booking Number
     const currentYear = new Date().getFullYear();
     const randomSeq = Math.floor(100000 + Math.random() * 900000);
     const receiptNo = `LAB-${currentYear}-${randomSeq}`;
-    const uhid = `UHID-${Math.floor(10000 + Math.random() * 90000)}`;
+    const tokenNumber = `TK-${Math.floor(100 + Math.random() * 899)}`;
+    const uhid = `UHID-W-${Date.now().toString().slice(-6)}`;
     const nowStr = new Date().toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -334,8 +342,8 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
     // 1. Add to Reception Queue (for immediate staff visibility)
     const newReceptionEntry: Omit<ReceptionPatientEntry, 'id'> = {
       uhid,
-      tokenNumber: receiptNo,
-      tokenNo: receiptNo,
+      tokenNumber,
+      tokenNo: tokenNumber,
       receiptNumber: receiptNo,
       patientName: patientName.trim(),
       age: Number(age),
@@ -364,7 +372,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
       city: city.trim() || undefined,
       pincode: pincode.trim() || undefined,
       selectedTestsBreakdown,
-      notes: `Website Hero Booking | Receipt: ${receiptNo} | Method: ${paymentMethod} | Status: ${paymentStatus}${
+      notes: `Website Hero Booking | Token: ${tokenNumber} | Receipt: ${receiptNo} | Method: ${paymentMethod} | Status: ${paymentStatus}${
         utrNumber ? ` | UTR: ${utrNumber}` : ''
       }`,
     };
@@ -387,6 +395,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
     // Set confirmed receipt state
     setCreatedReceipt({
       receiptNo,
+      tokenNumber,
       uhid,
       patientName: patientName.trim(),
       age: age.trim(),
@@ -1076,38 +1085,38 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
                 <div className="flex items-center justify-between mb-0.5">
                   <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Pay on Spot</span>
+                    <span>Pay at Spot</span>
                   </span>
                   <span className="text-[9px] bg-amber-200 text-amber-900 font-bold px-1.5 py-0.2 rounded">
                     Cash / Card
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  Pay at lab branch or on sample pickup
+                  Pay at lab counter or during sample pickup
                 </p>
               </button>
 
-              {/* Pay Online (Second) */}
+              {/* Pay via QR (Second) */}
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Online')}
                 className={`p-2.5 rounded-xl border text-left transition cursor-pointer relative ${
                   paymentMethod === 'Online'
-                    ? 'bg-sky-50/90 border-[#123B6D] text-slate-950 ring-2 ring-[#123B6D]/30'
+                    ? 'bg-emerald-50/90 border-emerald-600 text-slate-950 ring-2 ring-emerald-600/30'
                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-bold text-xs text-[#123B6D] flex items-center gap-1.5">
-                    <QrCode className="w-3.5 h-3.5 text-[#123B6D]" />
-                    <span>Pay Online (UPI)</span>
+                  <span className="font-bold text-xs text-emerald-800 flex items-center gap-1.5">
+                    <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Pay via QR</span>
                   </span>
-                  <span className="text-[9px] bg-sky-200 text-sky-900 font-bold px-1.5 py-0.2 rounded">
-                    Instant
+                  <span className="text-[9px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.2 rounded">
+                    UPI Instant
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  Scan QR with GPay, PhonePe, Paytm
+                  Scan QR or Pay via UPI App (GPay/PhonePe)
                 </p>
               </button>
             </div>
@@ -1154,6 +1163,47 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
                 </div>
               </div>
 
+              {/* Mobile Direct Pay & Safe Download QR Buttons */}
+              <div className="flex items-center gap-2">
+                <a
+                  href={dynamicUpiUri}
+                  className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
+                  title="Open directly in GPay / PhonePe / Paytm without scanning"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Pay via UPI App</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const link = document.createElement('a');
+                    link.href = dynamicQrUrl;
+                    link.download = `UPI-QR-${labMerchantName.replace(/\s+/g, '-')}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="py-1.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  title="Download QR code to phone gallery"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Download QR</span>
+                </button>
+              </div>
+
+              {/* Mobile Helper Message */}
+              <div className="text-[10px] text-amber-900 bg-amber-50 p-2 rounded-lg border border-amber-200 space-y-0.5">
+                <div className="font-extrabold flex items-center gap-1 text-amber-950">
+                  <Smartphone className="w-3 h-3 text-amber-600" />
+                  <span>Mobile Payment Note:</span>
+                </div>
+                <p className="leading-snug text-amber-800">
+                  Tap <strong>"Pay via UPI App"</strong> above to pay directly via GPay/PhonePe (no self-scan needed). Then enter your 12-digit UTR below.
+                </p>
+              </div>
+
               {/* UTR Number Input */}
               <div>
                 <label className="block text-[10px] font-bold text-slate-700 mb-0.5">
@@ -1164,7 +1214,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
                   required
                   value={utrNumber}
                   onChange={(e) => setUtrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
-                  placeholder="e.g. 526371829102"
+                  placeholder="e.g. 526371829102 (From payment app)"
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white"
                   id="hero-utr-number-input"
                 />
@@ -1205,23 +1255,18 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
                   </div>
                 )}
               </div>
-
-              <div className="text-[10px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 flex items-center gap-1.5">
-                <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
-                <span>Booking will be submitted with status: <strong>Pending Verification</strong></span>
-              </div>
             </div>
           ) : (
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
               <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                 <Building2 className="w-4 h-4 text-[#123B6D]" />
-                <span>Pay on Spot / Cash or Card</span>
+                <span>Pay at Spot / Cash or Card</span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">
                 Zero prepayment needed. You can pay <strong>₹{grandTotal}</strong> in cash, card, or UPI directly at the branch counter or to the phlebotomist during home pickup.
               </p>
               <div className="text-[10px] text-slate-500 bg-slate-100 p-1.5 rounded border border-slate-200">
-                Queue status: <strong>Pay on Spot / Unpaid</strong>
+                Queue status: <strong>Pay at Spot / Unpaid</strong>
               </div>
             </div>
           )}
@@ -1245,8 +1290,8 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
               <CheckCircle2 className="w-4 h-4 text-amber-300" />
               <span>
                 {paymentMethod === 'Online'
-                  ? `Confirm Booking (Paid ₹${grandTotal} Online)`
-                  : `Confirm Booking (Pay ₹${grandTotal} on Spot)`}
+                  ? `Confirm Booking & Generate Token (Paid ₹${grandTotal} via QR)`
+                  : `Confirm Booking & Generate Token (Pay ₹${grandTotal} at Spot)`}
               </span>
             </button>
           </div>
@@ -1254,199 +1299,36 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
       )}
 
       {/* ========================================================= */}
-      {/* STEP 4: CONFIRMED BOOKING & PRINTABLE RECEIPT            */}
+      {/* STEP 4: CONFIRMED BOOKING & RECEPTION TOKEN RECEIPT       */}
       {/* ========================================================= */}
       {formStep === 4 && createdReceipt && (
-        <div className="p-4 space-y-3 text-xs">
-          {/* Success Banner */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center space-y-1">
-            <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-1">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-extrabold text-slate-900">
-              Lab Appointment Confirmed!
-            </h3>
-            <p className="text-slate-600 text-[11px]">
-              Appointment registered into the live lab reception queue.
-            </p>
-          </div>
-
-          {/* Official Printable Receipt Card */}
-          <div
-            id="lab-booking-receipt-card"
-            className="bg-white rounded-xl border-2 border-slate-300 p-3.5 shadow-xs space-y-2.5 text-slate-800 font-sans"
-          >
-            {/* Receipt Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 gap-2">
-              <div>
-                <div className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400">
-                  Official Booking Receipt
-                </div>
-                <div className="text-sm font-black text-[#123B6D] flex items-center gap-1 font-mono">
-                  <span>{createdReceipt.receiptNo}</span>
-                </div>
-                <div className="text-[10px] text-slate-500">
-                  UHID: {createdReceipt.uhid} • {createdReceipt.bookingDate}
-                </div>
-              </div>
-
-              <div className="text-right">
-                <span
-                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    createdReceipt.paymentStatus === 'Pending Verification'
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                      : 'bg-rose-100 text-rose-900 border border-rose-300'
-                  }`}
-                >
-                  {createdReceipt.paymentStatus}
-                </span>
-              </div>
-            </div>
-
-            {/* Patient Info Grid */}
-            <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-200">
-              <div>
-                <span className="text-[10px] text-slate-500 block">Patient:</span>
-                <strong className="text-slate-900">{createdReceipt.patientName}</strong>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 block">Age / Gender:</span>
-                <strong className="text-slate-900">
-                  {createdReceipt.age} yrs / {createdReceipt.gender}
-                </strong>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 block">Mobile:</span>
-                <strong className="text-slate-900">+91 {createdReceipt.mobile}</strong>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 block">Ref Doctor:</span>
-                <strong className="text-slate-900 truncate block">{createdReceipt.doctor}</strong>
-              </div>
-            </div>
-
-            {/* Selected Tests List */}
-            <div>
-              <div className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Selected Tests ({createdReceipt.selectedTests.length}):
-              </div>
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-[11px] text-left">
-                  <thead className="bg-slate-100 text-slate-600 text-[10px] font-bold border-b border-slate-200 uppercase">
-                    <tr>
-                      <th className="px-2.5 py-1">Test Name</th>
-                      <th className="px-2.5 py-1 text-right">Price</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {createdReceipt.selectedTests.map((t, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="px-2.5 py-1 font-medium text-slate-800">{t.name}</td>
-                        <td className="px-2.5 py-1 text-right font-bold text-slate-900">
-                          ₹{t.price}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Financial Breakdown */}
-            <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1 text-[11px]">
-              <div className="flex justify-between text-slate-600">
-                <span>Tests Total:</span>
-                <span className="font-bold text-slate-900">₹{createdReceipt.testsTotal}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>
-                  Home Collection (
-                  {createdReceipt.collectionType === 'Home' ? 'Doorstep' : 'Branch'}):
-                </span>
-                <span className="font-bold text-slate-900">
-                  ₹{createdReceipt.homeCollectionFee}
-                </span>
-              </div>
-              <div className="pt-1 border-t border-slate-200 flex justify-between text-xs font-black">
-                <span className="text-[#123B6D]">Grand Total:</span>
-                <span className="text-emerald-700 font-extrabold">
-                  ₹{createdReceipt.grandTotal}
-                </span>
-              </div>
-            </div>
-
-            {/* Collection & Payment Details */}
-            <div className="space-y-1 text-[11px]">
-              <div className="flex items-start gap-1">
-                <span className="text-slate-500 shrink-0 font-medium">Mode:</span>
-                <span className="font-bold text-slate-900">
-                  {createdReceipt.collectionType === 'Home'
-                    ? 'Home Sample Collection'
-                    : 'Visit Lab Branch'}
-                </span>
-              </div>
-
-              {createdReceipt.collectionType === 'Home' && (
-                <div className="text-slate-700 bg-amber-50/70 p-1.5 rounded border border-amber-200 text-[10px]">
-                  <span className="font-bold">Address: </span>
-                  <span>
-                    {createdReceipt.fullAddress}, {createdReceipt.areaLocality},{' '}
-                    {createdReceipt.city}
-                    {createdReceipt.pincode ? ` - ${createdReceipt.pincode}` : ''}
-                  </span>
-                  {createdReceipt.preferredTimeSlot && (
-                    <div className="text-amber-900 font-semibold mt-0.5">
-                      Slot: {createdReceipt.preferredTimeSlot}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center gap-1">
-                <span className="text-slate-500 font-medium">Payment:</span>
-                <span className="font-bold text-slate-900">{createdReceipt.paymentMethod}</span>
-                {createdReceipt.utrNumber && (
-                  <span className="text-slate-500 font-mono text-[10px]">
-                    (UTR: {createdReceipt.utrNumber})
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-2 pt-1">
-            <div className="grid grid-cols-2 gap-2">
-              {/* WhatsApp Share */}
-              <button
-                type="button"
-                onClick={handleShareOnWhatsApp}
-                className="bg-[#25D366] hover:bg-[#20bd5a] text-white py-2 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>WhatsApp Receipt</span>
-              </button>
-
-              {/* Print Receipt */}
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 py-2 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-600" />
-                <span>Print Receipt</span>
-              </button>
-            </div>
-
-            {/* Book Another Test Button */}
-            <button
-              type="button"
-              onClick={handleBookAnother}
-              className="w-full bg-[#123B6D] hover:bg-[#0c294d] text-white py-2 rounded-xl font-bold text-xs transition cursor-pointer"
-            >
-              Book Another Test / Patient
-            </button>
-          </div>
+        <div className="p-3 sm:p-4">
+          <WebsiteTokenReceiptCard
+            receipt={{
+              tokenNumber: createdReceipt.tokenNumber || createdReceipt.receiptNo,
+              uhid: createdReceipt.uhid,
+              patientName: createdReceipt.patientName,
+              age: createdReceipt.age,
+              gender: createdReceipt.gender,
+              mobile: createdReceipt.mobile,
+              referringDoctor: createdReceipt.doctor,
+              tests: createdReceipt.selectedTests.map((t) => ({ name: t.name, price: t.price })),
+              totalAmount: createdReceipt.grandTotal,
+              discountINR: 0,
+              paidAmount: createdReceipt.paymentMethod === 'Online' ? createdReceipt.grandTotal : 0,
+              dueAmount: createdReceipt.paymentMethod === 'Online' ? 0 : createdReceipt.grandTotal,
+              paymentMode: createdReceipt.paymentMethod === 'Online' ? 'UPI' : 'Cash',
+              paymentStatus: createdReceipt.paymentStatus,
+              registeredAt: createdReceipt.bookingDate,
+              visitType: createdReceipt.collectionType === 'Home' ? 'Home Collection' : 'Walk-in',
+              address: createdReceipt.fullAddress,
+              timeSlot: createdReceipt.preferredTimeSlot,
+              upiTransactionRef: createdReceipt.utrNumber,
+              labName: vendorLabSettings?.labName || 'Apex Diagnostic & Clinical Laboratory',
+              labPhone: vendorLabSettings?.phone || '7087033009',
+            }}
+            onBookAnother={handleBookAnother}
+          />
         </div>
       )}
     </div>

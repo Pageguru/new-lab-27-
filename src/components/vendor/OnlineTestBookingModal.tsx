@@ -22,9 +22,11 @@ import {
   Sparkles,
   Printer,
   Smartphone,
+  Download,
 } from 'lucide-react';
 import { TestItem, VendorPackage, ReceptionPatientEntry } from '../../types';
 import { useCms } from '../../context/CmsContext';
+import { WebsiteTokenReceiptCard } from './WebsiteTokenReceiptCard';
 
 interface OnlineTestBookingModalProps {
   isOpen: boolean;
@@ -77,6 +79,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
   const [paymentOption, setPaymentOption] = useState<'online_upi' | 'pay_at_branch'>('online_upi');
   const [upiRefNumber, setUpiRefNumber] = useState('');
   const [copiedUpi, setCopiedUpi] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State - Confirmed Result (Step 3)
@@ -198,6 +201,13 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
 
   // Step 2 Final Submission: Add entry to Reception Queue & Home Booking
   const handleConfirmBooking = () => {
+    setPaymentError('');
+
+    if (paymentOption === 'online_upi' && !upiRefNumber.trim()) {
+      setPaymentError('Please enter 12-digit UPI UTR / Transaction Reference Number to confirm your online payment.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     const now = new Date();
@@ -272,6 +282,47 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
     vendorLabSettings?.qrCode1Url ||
     `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(dynamicUpiUri)}`;
 
+  // When booking is submitted, display the exact Reception Dashboard Token & Invoice Modal
+  if (currentStep === 3 && confirmedEntry) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+        <WebsiteTokenReceiptCard
+          receipt={{
+            tokenNumber: confirmedEntry.tokenNumber || 'TK-101',
+            uhid: confirmedEntry.uhid || 'UHID-1001',
+            patientName: confirmedEntry.patientName,
+            age: confirmedEntry.age,
+            gender: confirmedEntry.gender,
+            mobile: confirmedEntry.mobile,
+            referringDoctor: confirmedEntry.referringDoctor,
+            tests: selectedTests.map((t) => ({ name: t.name, price: t.price })),
+            totalAmount: confirmedEntry.totalAmount,
+            discountINR: confirmedEntry.discountINR || 0,
+            paidAmount: confirmedEntry.paidAmount,
+            dueAmount: confirmedEntry.dueAmount,
+            paymentMode: confirmedEntry.paymentMode,
+            paymentStatus: confirmedEntry.paymentStatus,
+            registeredAt: confirmedEntry.registeredAt,
+            visitType: confirmedEntry.visitType,
+            address: confirmedEntry.address,
+            timeSlot: confirmedEntry.preferredTimeSlot,
+            upiTransactionRef: confirmedEntry.upiTransactionRef,
+            labName: labName,
+            labPhone: labPhone,
+            notes: confirmedEntry.notes,
+          }}
+          onClose={onClose}
+          onBookAnother={() => {
+            setCurrentStep(1);
+            setConfirmedEntry(null);
+            setUpiRefNumber('');
+            setPaymentError('');
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden relative">
@@ -301,45 +352,43 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
         </div>
 
         {/* 2-Step Progress Stepper Bar */}
-        {currentStep !== 3 && (
-          <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs font-bold">
+        <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs font-bold">
+          <div
+            className={`flex items-center gap-2 ${
+              currentStep === 1 ? 'text-[#123B6D]' : 'text-emerald-700'
+            }`}
+          >
             <div
-              className={`flex items-center gap-2 ${
-                currentStep === 1 ? 'text-[#123B6D]' : 'text-emerald-700'
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
+                currentStep === 1
+                  ? 'bg-[#123B6D] text-white shadow-xs'
+                  : 'bg-emerald-600 text-white'
               }`}
             >
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                  currentStep === 1
-                    ? 'bg-[#123B6D] text-white shadow-xs'
-                    : 'bg-emerald-600 text-white'
-                }`}
-              >
-                {currentStep > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
-              </div>
-              <span>1. Tests & Patient Info</span>
+              {currentStep > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
             </div>
-
-            <div className="w-8 sm:w-16 h-0.5 bg-slate-200" />
-
-            <div
-              className={`flex items-center gap-2 ${
-                currentStep === 2 ? 'text-[#123B6D]' : 'text-slate-400'
-              }`}
-            >
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                  currentStep === 2
-                    ? 'bg-[#123B6D] text-white shadow-xs'
-                    : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                2
-              </div>
-              <span>2. Payment (UPI / Counter)</span>
-            </div>
+            <span>1. Tests & Patient Info</span>
           </div>
-        )}
+
+          <div className="w-8 sm:w-16 h-0.5 bg-slate-200" />
+
+          <div
+            className={`flex items-center gap-2 ${
+              currentStep === 2 ? 'text-[#123B6D]' : 'text-slate-400'
+            }`}
+          >
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
+                currentStep === 2
+                  ? 'bg-[#123B6D] text-white shadow-xs'
+                  : 'bg-slate-200 text-slate-600'
+              }`}
+            >
+              2
+            </div>
+            <span>2. Payment (Pay at Spot / Pay via QR)</span>
+          </div>
+        </div>
 
         {/* Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs">
@@ -681,55 +730,57 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                 </div>
               </div>
 
-              {/* Choice of Payment: Option A (UPI QR) vs Option B (Pay at Branch) */}
+              {/* Choice of Payment: Option A (Pay at Spot) vs Option B (Pay via QR) */}
               <div className="space-y-2">
                 <label className="block text-[11px] font-bold text-slate-700">
                   Select Payment Option:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentOption('online_upi')}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                      paymentOption === 'online_upi'
-                        ? 'border-emerald-600 bg-emerald-50/40 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
-                        <QrCode className="w-4 h-4 text-emerald-600" />
-                        <span>Pay Online (UPI)</span>
-                      </span>
-                      {paymentOption === 'online_upi' && (
-                        <Check className="w-4 h-4 text-emerald-600" />
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-500">
-                      Scan QR Code via GPay, PhonePe, Paytm or BHIM
-                    </span>
-                  </button>
-
+                  {/* Option 1: Pay at Spot */}
                   <button
                     type="button"
                     onClick={() => setPaymentOption('pay_at_branch')}
                     className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                       paymentOption === 'pay_at_branch'
-                        ? 'border-[#123B6D] bg-blue-50/50 shadow-xs'
+                        ? 'border-[#123B6D] bg-blue-50/70 ring-2 ring-[#123B6D]/20 shadow-xs'
                         : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
                         <Building2 className="w-4 h-4 text-[#123B6D]" />
-                        <span>Pay at Branch</span>
+                        <span>Pay at Spot</span>
                       </span>
                       {paymentOption === 'pay_at_branch' && (
                         <Check className="w-4 h-4 text-[#123B6D]" />
                       )}
                     </div>
                     <span className="text-[10px] text-slate-500">
-                      Pay with Cash, Card, or UPI at reception counter
+                      Pay with Cash, Card, or UPI upon visit / counter
+                    </span>
+                  </button>
+
+                  {/* Option 2: Pay via QR */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentOption('online_upi')}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      paymentOption === 'online_upi'
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/20 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+                        <QrCode className="w-4 h-4 text-emerald-600" />
+                        <span>Pay via QR</span>
+                      </span>
+                      {paymentOption === 'online_upi' && (
+                        <Check className="w-4 h-4 text-emerald-600" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-500">
+                      Scan QR or Pay via UPI App (GPay/PhonePe/Paytm)
                     </span>
                   </button>
                 </div>
@@ -757,6 +808,47 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                       alt="UPI Payment QR Code"
                       className="w-44 h-44 sm:w-48 sm:h-48 object-contain rounded-lg"
                     />
+                  </div>
+
+                  {/* Mobile Direct Pay Button & Download QR Button */}
+                  <div className="flex items-center gap-2 w-full">
+                    <a
+                      href={dynamicUpiUri}
+                      className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
+                      title="Open UPI App directly (GPay/PhonePe/Paytm)"
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>Pay via UPI App</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const link = document.createElement('a');
+                        link.href = qrCodeUrl;
+                        link.download = `UPI-QR-${merchantName.replace(/\s+/g, '-')}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      className="py-2 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      title="Download QR code to phone gallery"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Download QR</span>
+                    </button>
+                  </div>
+
+                  {/* Mobile Instruction Note */}
+                  <div className="w-full bg-amber-50/90 border border-amber-200/90 p-2 rounded-xl text-left text-[11px] text-amber-950 space-y-0.5">
+                    <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
+                      <Smartphone className="w-3 h-3 text-amber-700" />
+                      <span>Mobile Payment Help:</span>
+                    </div>
+                    <p className="text-[10px] text-amber-800 leading-snug">
+                      Tap <strong>"Pay via UPI App"</strong> to launch GPay/PhonePe directly without scanning, or copy the UPI ID below. Once paid, paste the 12-digit UTR to get your token.
+                    </p>
                   </div>
 
                   {/* 1-Click Copy UPI Bar */}
@@ -800,23 +892,37 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                     <span className="bg-white px-2 py-0.5 rounded border border-slate-200">Any UPI</span>
                   </div>
 
-                  {/* Optional UTR Input */}
+                  {/* 12-Digit UTR Input */}
                   <div className="w-full text-left pt-1">
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      UPI Reference / UTR No. (Optional)
+                      12-Digit UPI Reference / UTR Number <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={upiRefNumber}
-                      onChange={(e) => setUpiRefNumber(e.target.value)}
-                      placeholder="e.g. 423987123456 (After payment)"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-emerald-500 outline-none bg-white font-mono"
+                      onChange={(e) => {
+                        setUpiRefNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''));
+                        if (paymentError) setPaymentError('');
+                      }}
+                      placeholder="e.g. 523412345678 (From Payment App Screen)"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-mono font-bold text-slate-900"
                     />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Pay using any UPI app and enter the 12-digit UTR/Ref number from your payment confirmation screen.
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* OPTION 2: Pay at Branch Note */}
+              {/* Error Message Display if any */}
+              {paymentError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{paymentError}</span>
+                </div>
+              )}
+
+              {/* OPTION 2: Pay at Spot Note */}
               {paymentOption === 'pay_at_branch' && (
                 <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-3">
                   <div className="flex items-start gap-3">
@@ -825,10 +931,10 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                     </div>
                     <div>
                       <h4 className="font-extrabold text-[#123B6D] text-sm">
-                        Pay ₹{totalAmount} at Lab Reception Counter
+                        Pay ₹{totalAmount} at Lab Reception Counter / Spot
                       </h4>
                       <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                        No advance online payment required. You can pay via Cash, Card, or UPI directly at the laboratory counter upon arrival.
+                        No advance online payment required. You can pay via Cash, Card, or UPI directly at the laboratory counter or during sample pickup upon arrival.
                       </p>
                     </div>
                   </div>
@@ -876,155 +982,14 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                   ) : paymentOption === 'online_upi' ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-amber-300" />
-                      <span>Confirm Booking (Paid ₹{totalAmount} via UPI)</span>
+                      <span>Confirm Booking &amp; Generate Token (Paid ₹{totalAmount} via QR)</span>
                     </>
                   ) : (
                     <>
                       <Building2 className="w-4 h-4 text-amber-300" />
-                      <span>Confirm Booking (Pay ₹{totalAmount} at Counter)</span>
+                      <span>Confirm Booking &amp; Generate Token (Pay ₹{totalAmount} at Spot)</span>
                     </>
                   )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: Instant Booking Confirmation Screen */}
-          {currentStep === 3 && confirmedEntry && (
-            <div className="space-y-4 text-center py-2">
-              {/* Success Badge */}
-              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto border-4 border-emerald-50">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  🎉 Booking Confirmed &amp; Queue Token Generated
-                </span>
-                <h3 className="text-xl font-black text-[#123B6D] mt-2">
-                  Booking Confirmed Successfully!
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  Your entry has been dispatched live to the laboratory reception queue.
-                </p>
-              </div>
-
-              {/* Big Token Number & Slip Card */}
-              <div className="bg-slate-50 border-2 border-dashed border-teal-300 rounded-2xl p-4 text-left space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">
-                      Patient Token Number
-                    </span>
-                    <span className="text-2xl font-black text-[#123B6D] tracking-tight">
-                      {confirmedEntry.tokenNumber}
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">UHID</span>
-                    <span className="font-mono font-bold text-xs text-slate-700">
-                      {confirmedEntry.uhid}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-slate-400 text-[10px] block">Patient Name</span>
-                    <span className="font-bold text-slate-800">{confirmedEntry.patientName}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] block">Registered Mobile</span>
-                    <span className="font-bold text-slate-800">+91 {confirmedEntry.mobile}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] block">Visit Mode</span>
-                    <span className="font-bold text-slate-800">
-                      {confirmedEntry.visitType === 'Home Collection'
-                        ? '🏠 Home Sample Collection'
-                        : '🏢 Lab Reception Walk-in'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-[10px] block">Payment Status</span>
-                    {confirmedEntry.paymentStatus === 'Full Payment' ? (
-                      <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200 inline-block">
-                        ✅ Paid ₹{confirmedEntry.paidAmount} (UPI)
-                      </span>
-                    ) : (
-                      <span className="font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded text-[11px] border border-amber-200 inline-block">
-                        ⚠️ ₹{confirmedEntry.dueAmount} (Pay at Branch)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200">
-                  <span className="text-slate-400 text-[10px] block mb-1">Booked Tests:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {confirmedEntry.tests.map((test, idx) => (
-                      <span
-                        key={idx}
-                        className="bg-white border border-slate-200 px-2 py-0.5 rounded text-[11px] font-medium text-slate-700"
-                      >
-                        {test}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Next Steps Guide */}
-              <div className="bg-blue-50/70 p-3 rounded-xl border border-blue-200 text-left text-xs text-slate-700 space-y-1">
-                <div className="font-bold text-[#123B6D]">Important Next Steps:</div>
-                <div className="text-[11px] text-slate-600 space-y-0.5">
-                  {confirmedEntry.visitType === 'Home Collection' ? (
-                    <p>
-                      • A certified laboratory phlebotomist will visit your specified address at the scheduled time slot.
-                    </p>
-                  ) : (
-                    <p>
-                      • When you visit the laboratory, present Token Number <strong>{confirmedEntry.tokenNumber}</strong> at the reception counter. Your entry is pre-registered in the queue.
-                    </p>
-                  )}
-                  <p>• As soon as your report is ready, you will receive an instant notification on WhatsApp with your digital download link.</p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-2 pt-2">
-                <a
-                  href={`https://wa.me/91${confirmedEntry.mobile}?text=${encodeURIComponent(
-                    `*${labName} - Test Booking Confirmation*\n\nToken No: ${confirmedEntry.tokenNumber}\nUHID: ${confirmedEntry.uhid}\nPatient: ${confirmedEntry.patientName}\nTests: ${confirmedEntry.tests.join(', ')}\nTotal: ₹${confirmedEntry.totalAmount}\nPayment: ${confirmedEntry.paymentStatus === 'Full Payment' ? 'Paid via Online UPI' : 'Pay at Lab Counter'}\n\nPlease show this token at the reception desk.`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 bg-[#25D366] hover:bg-[#20bd5a] text-white py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>Share on WhatsApp</span>
-                </a>
-
-                {onOpenReportPortal && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenReportPortal('', confirmedEntry.mobile);
-                    }}
-                    className="flex-1 bg-white hover:bg-slate-50 border border-slate-300 text-[#123B6D] py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                  >
-                    <span>Track in Patient Portal</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition"
-                >
-                  Close
                 </button>
               </div>
             </div>

@@ -937,7 +937,15 @@ export async function buildReceiptInvoicePdf(
   doc.setLineDashPattern([1, 1], 0);
   doc.line(8, curY, 97, curY);
   doc.setLineDashPattern([], 0);
-  curY += 4;
+  curY += 3.5;
+
+  if (entry?.bookingSource === 'Website') {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.setTextColor(180, 83, 9); // Amber-700
+    doc.text('Booking submitted. Final confirmation after Lab Owner approval.', 52.5, curY, { align: 'center' });
+    curY += 3.5;
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.8);
