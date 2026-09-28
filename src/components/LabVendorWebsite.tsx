@@ -489,6 +489,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     branchName?: string;
   } | null>(null);
   const [inlineSearchNotFound, setInlineSearchNotFound] = useState(false);
+  const [hasSubmittedSearch, setHasSubmittedSearch] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const performInlineReportSearch = (rawQuery?: string, explicitTab?: 'mobile' | 'report_id') => {
@@ -502,6 +503,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     const val = (rawQuery !== undefined ? rawQuery : quickReportInput).trim();
 
     if (!val) {
+      setHasSubmittedSearch(false);
       setQuickReportError(
         activeTab === 'mobile'
           ? 'Please enter your 10-digit registered mobile number.'
@@ -509,6 +511,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       );
       return;
     }
+
+    setHasSubmittedSearch(true);
 
     const currentLabId = currentLabItem?.id || selectedVendorLabId;
 
@@ -1931,6 +1935,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     onClick={() => {
                       setQuickReportTab('mobile');
                       setQuickReportError('');
+                      setHasSubmittedSearch(false);
+                      setInlineSearchedReport(null);
+                      setInlinePendingSample(null);
+                      setInlineSearchNotFound(false);
                     }}
                     className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
                       quickReportTab === 'mobile'
@@ -1947,6 +1955,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     onClick={() => {
                       setQuickReportTab('report_id');
                       setQuickReportError('');
+                      setHasSubmittedSearch(false);
+                      setInlineSearchedReport(null);
+                      setInlinePendingSample(null);
+                      setInlineSearchNotFound(false);
                     }}
                     className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
                       quickReportTab === 'report_id'
@@ -2001,6 +2013,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                             onChange={(e) => {
                               setQuickReportInput(e.target.value.replace(/\D/g, '').slice(0, 10));
                               if (quickReportError) setQuickReportError('');
+                              if (hasSubmittedSearch) setHasSubmittedSearch(false);
                             }}
                             placeholder="Enter 10-digit registered mobile"
                             className="w-full pl-11 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
@@ -2017,6 +2030,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                             onChange={(e) => {
                               setQuickReportInput(e.target.value);
                               if (quickReportError) setQuickReportError('');
+                              if (hasSubmittedSearch) setHasSubmittedSearch(false);
                             }}
                             placeholder="Enter Token Number (e.g. 101, TK-101 or Report ID)"
                             className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
@@ -2031,6 +2045,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           onClick={() => {
                             setQuickReportInput('');
                             setQuickReportError('');
+                            setHasSubmittedSearch(false);
+                            setInlineSearchedReport(null);
+                            setInlinePendingSample(null);
+                            setInlineSearchNotFound(false);
                           }}
                           className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                         >
@@ -2052,40 +2070,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   </button>
                 </form>
 
-                {/* REPORT STATUS ACTIONS BELOW FORM */}
+                {/* REPORT STATUS ACTIONS BELOW FORM (Appears strictly according to search result) */}
                 <div className="pt-3 border-t border-slate-100">
-                  {!inlineSearchedReport ? (
-                    /* If report is unavailable: display "Report is Under Process" button */
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
-                        id="btn-report-under-process"
-                      >
-                        <span className="relative flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                        </span>
-                        <Clock className="w-4 h-4 text-amber-700" />
-                        <span>Report is Under Process</span>
-                      </button>
-                      {inlinePendingSample ? (
-                        <p className="text-xs text-amber-800 text-center font-medium leading-normal">
-                          Sample for <strong>{inlinePendingSample.patientName}</strong> (Token #{inlinePendingSample.tokenNumber}) is currently being tested in lab.
-                        </p>
-                      ) : inlineSearchNotFound ? (
-                        <p className="text-xs text-rose-600 text-center font-medium leading-normal">
-                          Report not yet published for this entry. Testing may be in progress.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-400 text-center font-medium">
-                          Enter registered mobile or Token No. above to check live report status.
-                        </p>
-                      )}
+                  {!hasSubmittedSearch ? (
+                    /* Initial state before user searches: Clean helper info, no under process button */
+                    <div className="flex items-center justify-center gap-2 text-xs text-slate-400 py-1.5 font-medium text-center">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Enter mobile number or token above and click search to view report</span>
                     </div>
-                  ) : (
-                    /* Once the report becomes available: automatically replace "Report is Under Process" with View Report and Download Report buttons (inline, side by side) */
+                  ) : inlineSearchedReport ? (
+                    /* Result Case 1: Report is ready & published -> View Report & Download Report buttons */
                     <div className="space-y-2.5 animate-in fade-in duration-200">
                       <div className="p-2.5 px-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 font-bold truncate">
@@ -2096,6 +2090,27 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           {inlineSearchedReport.reportId}
                         </span>
                       </div>
+
+                      {/* Multiple reports selector if patient has more than 1 report */}
+                      {inlineMultipleReports.length > 1 && (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          <span className="text-[10px] text-slate-500 font-bold self-center">Other Reports:</span>
+                          {inlineMultipleReports.map((rpt, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setInlineSearchedReport(rpt)}
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${
+                                inlineSearchedReport.reportId === rpt.reportId
+                                  ? 'bg-[#123B6D] text-white shadow-2xs'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              {rpt.reportId}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Inline Side-by-Side: View Report & Download Report */}
                       <div className="flex items-center gap-2 sm:gap-3">
@@ -2120,6 +2135,46 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           <span>{isDownloadingPdf ? 'Preparing...' : 'Download Report'}</span>
                         </button>
                       </div>
+                    </div>
+                  ) : inlinePendingSample ? (
+                    /* Result Case 2: Sample under testing in lab -> "Report is Under Process" */
+                    <div className="space-y-2 animate-in fade-in duration-200">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
+                        id="btn-report-under-process"
+                      >
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                        </span>
+                        <Clock className="w-4 h-4 text-amber-700" />
+                        <span>Report is Under Process</span>
+                      </button>
+                      <p className="text-xs text-amber-800 text-center font-medium leading-normal">
+                        Sample for <strong>{inlinePendingSample.patientName}</strong> (Token #{inlinePendingSample.tokenNumber}) is currently being tested in lab.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Result Case 3: Searched, but no published report found yet */
+                    <div className="space-y-2 animate-in fade-in duration-200">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
+                        id="btn-report-under-process"
+                      >
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                        </span>
+                        <Clock className="w-4 h-4 text-amber-700" />
+                        <span>Report is Under Process</span>
+                      </button>
+                      <p className="text-xs text-amber-800 text-center font-medium leading-normal">
+                        Report not yet published for this entry. Testing may be in progress.
+                      </p>
                     </div>
                   )}
                 </div>
