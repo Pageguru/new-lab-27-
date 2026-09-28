@@ -130,7 +130,7 @@ export const LabWelcomeFirstScreen: React.FC<LabWelcomeFirstScreenProps> = ({
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none animate-shimmer-sweep" />
             <FileText className="w-4.5 h-4.5 text-emerald-200 group-hover:scale-110 transition-transform duration-200 shrink-0 relative z-10" />
-            <span className="tracking-tight relative z-10">View Report</span>
+            <span className="tracking-tight relative z-10">Check &amp; Download Report</span>
             <ArrowRight className="w-4 h-4 text-emerald-200/80 group-hover:translate-x-1.5 transition-transform duration-200 ml-auto relative z-10" />
           </motion.button>
         </motion.div>

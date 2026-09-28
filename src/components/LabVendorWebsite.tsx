@@ -128,9 +128,38 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   }, [allReports, currentLabItem?.id, selectedVendorLabId]);
 
   const handleCheckReport = (reportId?: string, mobile?: string) => {
-    const rId = reportId || '';
-    const mob = mobile || '';
-    onOpenReportPortal(rId, mob, currentLabItem?.id || selectedVendorLabId);
+    if (!hasEnteredWebsite) {
+      setIsWelcomeReportModalOpen(true);
+      if (reportId) {
+        setQuickReportTab('report_id');
+        setQuickReportInput(reportId);
+        performInlineReportSearch(reportId, 'report_id');
+      } else if (mobile) {
+        setQuickReportTab('mobile');
+        setQuickReportInput(mobile.replace(/\D/g, '').slice(0, 10));
+        performInlineReportSearch(mobile, 'mobile');
+      }
+      return;
+    }
+    if (reportId) {
+      setQuickReportTab('report_id');
+      setQuickReportInput(reportId);
+    } else if (mobile) {
+      setQuickReportTab('mobile');
+      setQuickReportInput(mobile.replace(/\D/g, '').slice(0, 10));
+    }
+    setTimeout(() => {
+      const el = document.getElementById('check-report-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+      const inputEl = document.getElementById(
+        reportId ? 'check-report-token-input' : 'check-report-mobile-input'
+      );
+      if (inputEl) {
+        inputEl.focus();
+      }
+    }, 120);
   };
 
   const dedicatedDomain = currentLabItem?.domainPreview || `${currentLabItem?.id || 'apexdiagnostics'}.${SUPER_ADMIN_DOMAIN}`;
@@ -490,6 +519,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   } | null>(null);
   const [inlineSearchNotFound, setInlineSearchNotFound] = useState(false);
   const [hasSubmittedSearch, setHasSubmittedSearch] = useState(false);
+  const [isWelcomeReportModalOpen, setIsWelcomeReportModalOpen] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const performInlineReportSearch = (rawQuery?: string, explicitTab?: 'mobile' | 'report_id') => {
@@ -1203,6 +1233,577 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     );
   }
 
+  // Shared Reusable Component: Check & Download Patient Lab Report Card
+  const renderCheckReportCard = (isModal = false, onCloseModal?: () => void) => (
+    <div
+      id={isModal ? 'welcome-check-report-container' : 'inline-report-display-container'}
+      className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl overflow-hidden relative"
+    >
+      {/* Card Top Header */}
+      <div className="bg-gradient-to-r from-[#123B6D] via-[#1a4a85] to-[#0F766E] p-4 sm:p-5 text-white">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-white/10 text-amber-300 backdrop-blur-xs">
+              <FileText className="w-4 h-4" />
+            </span>
+            <div>
+              <h3 className="text-sm sm:text-base font-black tracking-tight leading-tight">
+                Check &amp; Download Report
+              </h3>
+              <p className="text-[11px] text-slate-200 font-medium">
+                Instant 10-Second Digital Report Download
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 text-[10px] font-bold text-amber-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+              <span>256-Bit Encrypted</span>
+            </div>
+            {isModal && onCloseModal && (
+              <button
+                type="button"
+                onClick={onCloseModal}
+                className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Search Mode Pill Tabs */}
+        <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => {
+              setQuickReportTab('mobile');
+              setQuickReportError('');
+              setHasSubmittedSearch(false);
+              setInlineSearchedReport(null);
+              setInlinePendingSample(null);
+              setInlineSearchNotFound(false);
+            }}
+            className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              quickReportTab === 'mobile'
+                ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>Search by Mobile</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setQuickReportTab('report_id');
+              setQuickReportError('');
+              setHasSubmittedSearch(false);
+              setInlineSearchedReport(null);
+              setInlinePendingSample(null);
+              setInlineSearchNotFound(false);
+            }}
+            className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              quickReportTab === 'report_id'
+                ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            <Hash className="w-3.5 h-3.5" />
+            <span>Search by Token</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Card Body */}
+      <div className="p-5 sm:p-6 space-y-4 text-xs bg-white">
+        {/* Error Alert Banner */}
+        {quickReportError && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="font-semibold flex-1">{quickReportError}</span>
+            <button
+              type="button"
+              onClick={() => setQuickReportError('')}
+              className="text-rose-500 hover:text-rose-800 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Fast Form Input Box */}
+        <form onSubmit={handleQuickReportSearch} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              {quickReportTab === 'mobile'
+                ? '10-Digit Registered Mobile Number'
+                : 'Token Number / Report ID'} <span className="text-rose-500">*</span>
+            </label>
+
+            <div className="relative">
+              {quickReportTab === 'mobile' ? (
+                <>
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-bold select-none">
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    required
+                    pattern="[0-9]{10}"
+                    maxLength={10}
+                    value={quickReportInput}
+                    onChange={(e) => {
+                      setQuickReportInput(e.target.value.replace(/\D/g, '').slice(0, 10));
+                      if (quickReportError) setQuickReportError('');
+                      if (hasSubmittedSearch) setHasSubmittedSearch(false);
+                    }}
+                    placeholder="Enter 10-digit registered mobile"
+                    className="w-full pl-11 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
+                    id={isModal ? 'welcome-check-report-mobile-input' : 'check-report-mobile-input'}
+                    autoFocus={isModal}
+                  />
+                </>
+              ) : (
+                <>
+                  <Hash className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    required
+                    value={quickReportInput}
+                    onChange={(e) => {
+                      setQuickReportInput(e.target.value);
+                      if (quickReportError) setQuickReportError('');
+                      if (hasSubmittedSearch) setHasSubmittedSearch(false);
+                    }}
+                    placeholder="Enter Token Number (e.g. 101, TK-101 or Report ID)"
+                    className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
+                    id={isModal ? 'welcome-check-report-token-input' : 'check-report-token-input'}
+                    autoFocus={isModal}
+                  />
+                </>
+              )}
+
+              {quickReportInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickReportInput('');
+                    setQuickReportError('');
+                    setHasSubmittedSearch(false);
+                    setInlineSearchedReport(null);
+                    setInlinePendingSample(null);
+                    setInlineSearchNotFound(false);
+                  }}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Submit Search Button */}
+          <button
+            type="submit"
+            className="w-full bg-[#123B6D] hover:bg-[#0c294d] text-white py-3 rounded-xl font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            id={isModal ? 'welcome-check-report-submit-btn' : 'check-report-submit-btn'}
+          >
+            <Search className="w-4 h-4 text-amber-300" />
+            <span>Search Patient Report</span>
+            <ArrowRight className="w-4 h-4 text-amber-300" />
+          </button>
+        </form>
+
+        {/* REPORT STATUS ACTIONS BELOW FORM (Appears strictly according to search result) */}
+        <div className="pt-3 border-t border-slate-100">
+          {!hasSubmittedSearch ? (
+            /* Initial state before user searches: Clean helper info, no under process button */
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400 py-1.5 font-medium text-center">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Enter mobile number or token above and click search to view report</span>
+            </div>
+          ) : inlineSearchedReport ? (
+            /* Result Case 1: Report is ready & published -> View Report & Download Report buttons */
+            <div className="space-y-2.5 animate-in fade-in duration-200">
+              <div className="p-2.5 px-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 font-bold truncate">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="truncate">{inlineSearchedReport.patientName}</span>
+                </div>
+                <span className="text-[11px] bg-emerald-100 text-emerald-900 font-mono px-2 py-0.5 rounded font-bold shrink-0">
+                  {inlineSearchedReport.reportId}
+                </span>
+              </div>
+
+              {/* Multiple reports selector if patient has more than 1 report */}
+              {inlineMultipleReports.length > 1 && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-slate-500 font-bold self-center">Other Reports:</span>
+                  {inlineMultipleReports.map((rpt, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setInlineSearchedReport(rpt)}
+                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${
+                        inlineSearchedReport.reportId === rpt.reportId
+                          ? 'bg-[#123B6D] text-white shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {rpt.reportId}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Inline Side-by-Side: View Report & Download Report */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="flex-1 py-3 px-3 rounded-xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98"
+                  id={isModal ? 'welcome-btn-view-report' : 'btn-view-report'}
+                >
+                  <Eye className="w-4 h-4 text-amber-300" />
+                  <span>View Report</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadInlinePdf}
+                  disabled={isDownloadingPdf}
+                  className="flex-1 py-3 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98 disabled:opacity-50"
+                  id={isModal ? 'welcome-btn-download-report' : 'btn-download-report'}
+                >
+                  <Download className="w-4 h-4 text-white" />
+                  <span>{isDownloadingPdf ? 'Preparing...' : 'Download Report'}</span>
+                </button>
+              </div>
+            </div>
+          ) : inlinePendingSample ? (
+            /* Result Case 2: Sample under testing in lab -> "Report is Under Process" */
+            <div className="space-y-2 animate-in fade-in duration-200">
+              <button
+                type="button"
+                disabled
+                className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
+                id="btn-report-under-process"
+              >
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <Clock className="w-4 h-4 text-amber-700" />
+                <span>Report is Under Process</span>
+              </button>
+              <p className="text-xs text-amber-800 text-center font-medium leading-normal">
+                Sample for <strong>{inlinePendingSample.patientName}</strong> (Token #{inlinePendingSample.tokenNumber}) is currently being tested in lab.
+              </p>
+            </div>
+          ) : (
+            /* Result Case 3: Searched, but no published report found yet */
+            <div className="space-y-2 animate-in fade-in duration-200">
+              <button
+                type="button"
+                disabled
+                className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
+                id="btn-report-under-process"
+              >
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <Clock className="w-4 h-4 text-amber-700" />
+                <span>Report is Under Process</span>
+              </button>
+              <p className="text-xs text-amber-800 text-center font-medium leading-normal">
+                Report not yet published for this entry. Testing may be in progress.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {isModal && (
+          <div className="pt-2 flex items-center justify-between text-xs text-slate-500">
+            <span>Explore tests or book online?</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (onCloseModal) onCloseModal();
+                setHasEnteredWebsite(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-[#123B6D] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+            >
+              <span>Visit Full Website</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Full-Screen Diagnostic Report Preview Modal (Reusable)
+  const renderReportPreviewModal = () => {
+    if (!isReportModalOpen || !inlineSearchedReport) return null;
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
+        onClick={() => setIsReportModalOpen(false)}
+      >
+        <div
+          className="relative max-w-5xl w-full h-[95vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* 1. Modal Top Bar */}
+          <div className="bg-[#123B6D] text-white px-4 py-3 sm:px-6 flex items-center justify-between shrink-0 shadow-md">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-300 font-bold shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-extrabold tracking-tight flex items-center gap-2">
+                  <span>Diagnostic Report Preview</span>
+                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                    ✓ Verified &amp; Signed
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  {inlineSearchedReport.labName || labName} • ID: {inlineSearchedReport.reportId}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Download Official PDF */}
+              <button
+                type="button"
+                onClick={handleDownloadInlinePdf}
+                disabled={isDownloadingPdf}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                id="modal-btn-download-pdf"
+              >
+                <Download className="w-3.5 h-3.5 text-white" />
+                <span className="hidden sm:inline">{isDownloadingPdf ? 'Preparing...' : 'Download PDF'}</span>
+              </button>
+
+              {/* Print Report */}
+              <button
+                type="button"
+                onClick={handlePrintInlineReport}
+                className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-white/20"
+                id="modal-btn-print-report"
+              >
+                <Printer className="w-3.5 h-3.5 text-white" />
+                <span className="hidden sm:inline">Print</span>
+              </button>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(false)}
+                className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition cursor-pointer"
+                title="Close Report"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Paper Sheet Report Container */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/80 flex justify-center">
+            <div className="max-w-4xl w-full bg-white shadow-xl rounded-xl p-6 sm:p-10 border border-slate-200/90 text-slate-900 space-y-6">
+              {/* Report Header */}
+              <div className="border-b-2 border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#123B6D] to-[#0F766E] flex items-center justify-center text-white font-black text-xl shadow-md shrink-0">
+                    {labName.charAt(0)}
+                  </div>
+                  <div>
+                    <h1 className="text-lg sm:text-xl font-black text-[#123B6D] tracking-tight">
+                      {inlineSearchedReport.labName || labName}
+                    </h1>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {labAddress} • Phone: +91 {cleanPhone}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        {vendorLabSettings?.nablAccreditationNo || 'NABL Accredited'}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                        ISO 15189:2022 Certified
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-left sm:text-right shrink-0">
+                  <div className="inline-block px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black uppercase tracking-wider mb-1">
+                    ✓ Verified Final Report
+                  </div>
+                  <p className="text-xs font-mono text-slate-600 font-bold">
+                    Report ID: <span className="text-[#123B6D]">{inlineSearchedReport.reportId}</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Sample Date: {inlineSearchedReport.sampleCollectedAt || inlineSearchedReport.reportedAt || 'Today'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Patient Demographic Details Card */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Patient Name</span>
+                  <span className="font-black text-slate-900 text-sm">{inlineSearchedReport.patientName}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Age / Gender</span>
+                  <span className="font-bold text-slate-800">{inlineSearchedReport.ageGender || `${inlineSearchedReport.mobile ? 'Adult' : '-'}`}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Referring Doctor</span>
+                  <span className="font-bold text-slate-800">{inlineSearchedReport.doctor || 'Self / Walk-in'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">UHID / Barcode</span>
+                  <span className="font-mono font-bold text-[#123B6D]">{inlineSearchedReport.uhid || inlineSearchedReport.tokenNumber || inlineSearchedReport.reportId}</span>
+                </div>
+              </div>
+
+              {/* Test Investigation Table */}
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#123B6D] text-white uppercase text-[10px] font-black tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">Investigation / Parameter</th>
+                      <th className="py-3 px-4 text-center">Result</th>
+                      <th className="py-3 px-4">Unit</th>
+                      <th className="py-3 px-4">Biological Ref. Range</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {inlineSearchedReport.items.map((item, idx) => {
+                      const isAbnormal = Boolean(item.isAbnormal);
+                      return (
+                        <tr
+                          key={idx}
+                          className={isAbnormal ? 'bg-amber-50/60 font-medium' : 'hover:bg-slate-50/80 transition'}
+                        >
+                          <td className="py-2.5 px-4 font-bold text-slate-900">
+                            <div>{item.testName}</div>
+                            {item.parameter && item.parameter !== item.testName && (
+                              <div className="text-[11px] font-normal text-slate-500">{item.parameter}</div>
+                            )}
+                          </td>
+                          <td className={`py-2.5 px-4 text-center font-black text-sm ${isAbnormal ? 'text-amber-700' : 'text-emerald-700'}`}>
+                            {item.result}
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-500 font-medium">
+                            {item.unit || '-'}
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-600 font-mono text-[11px]">
+                            {item.referenceRange || 'Standard'}
+                          </td>
+                          <td className="py-2.5 px-4 text-center">
+                            {isAbnormal ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                                ATTENTION
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                NORMAL
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Clinical Impression & Notes */}
+              {inlineSearchedReport.clinicalImpression && (
+                <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 text-xs text-slate-800 space-y-1">
+                  <span className="font-bold text-[#123B6D] text-xs uppercase tracking-wider block">Clinical Impression / Note:</span>
+                  <p className="leading-relaxed text-slate-700">{inlineSearchedReport.clinicalImpression}</p>
+                </div>
+              )}
+
+              {/* Pathologist Verification & Signature */}
+              <div className="pt-6 border-t-2 border-slate-200 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div className="space-y-1.5 text-xs text-slate-500">
+                  <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Digitally Verified &amp; Signed</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    This is an authenticated electronic clinical pathology report.
+                  </p>
+                </div>
+
+                <div className="text-left sm:text-right">
+                  <div className="inline-block p-2 rounded-lg bg-slate-50 border border-slate-200 mb-1">
+                    <span className="font-serif italic font-black text-slate-800 text-sm tracking-wide">
+                      {inlineSearchedReport.pathologist || 'Dr. Rohit Sharma, MD'}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-800">
+                    {inlineSearchedReport.pathologist || 'Consultant Pathologist'}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Reg No: DMC/R/18429 • MD Pathology
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* 3. Modal Bottom Action Bar */}
+          <div className="p-3 sm:p-4 bg-white border-t border-slate-200 flex items-center justify-between shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(false)}
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+            >
+              Close Preview
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePrintInlineReport}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-4 h-4 text-slate-600" />
+                <span>Print Report</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadInlinePdf}
+                disabled={isDownloadingPdf}
+                className="px-5 py-2 rounded-xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-bold text-xs transition flex items-center gap-2 shadow-md cursor-pointer active:scale-98 disabled:opacity-50"
+              >
+                <Download className="w-4 h-4 text-amber-300" />
+                <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download Official PDF'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // 1. ISOLATED FIRST SCREEN GATEWAY (Pure Welcome Screen - No Scrolling into Website)
   // Shown exclusively until user clicks "Visit Website", "Book Test", or "Check Report"
   if (!hasEnteredWebsite) {
@@ -1229,11 +1830,30 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onCheckReport={() => {
-            handleCheckReport();
+            setIsWelcomeReportModalOpen(true);
           }}
           onStaffLogin={() => openLoginModal('vendor')}
           onOpenSoftwareWebsite={onOpenSoftwareWebsite}
         />
+
+        {/* Check Report Modal for Welcome Page: Exact Same Design as Website Check Report Section */}
+        {isWelcomeReportModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsWelcomeReportModalOpen(false);
+            }}
+          >
+            <div className="w-full max-w-xl sm:max-w-2xl my-auto animate-in zoom-in-95 duration-200">
+              {renderCheckReportCard(true, () => setIsWelcomeReportModalOpen(false))}
+            </div>
+          </div>
+        )}
+
+        {/* Full-Screen Diagnostic Report Preview Modal */}
+        {renderReportPreviewModal()}
       </div>
     );
   }
@@ -1899,288 +2519,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </p>
           </div>
 
-          {/* Centered Form Card */}
+          {/* Centered Form Card (Exact Same Unified Design) */}
           <div className="max-w-xl sm:max-w-2xl mx-auto">
-            <div
-              id="inline-report-display-container"
-              className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden relative"
-            >
-              {/* Card Top Header */}
-              <div className="bg-gradient-to-r from-[#123B6D] via-[#1a4a85] to-[#0F766E] p-4 sm:p-5 text-white">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-1.5 rounded-lg bg-white/10 text-amber-300 backdrop-blur-xs">
-                      <FileText className="w-4 h-4" />
-                    </span>
-                    <div>
-                      <h3 className="text-sm sm:text-base font-black tracking-tight leading-tight">
-                        Check &amp; Download Report
-                      </h3>
-                      <p className="text-[11px] text-slate-200 font-medium">
-                        Instant 10-Second Digital Report Download
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 text-[10px] font-bold text-amber-300">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-                    <span>256-Bit Encrypted</span>
-                  </div>
-                </div>
-
-                {/* Search Mode Pill Tabs */}
-                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuickReportTab('mobile');
-                      setQuickReportError('');
-                      setHasSubmittedSearch(false);
-                      setInlineSearchedReport(null);
-                      setInlinePendingSample(null);
-                      setInlineSearchNotFound(false);
-                    }}
-                    className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                      quickReportTab === 'mobile'
-                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                    }`}
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>Search by Mobile</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuickReportTab('report_id');
-                      setQuickReportError('');
-                      setHasSubmittedSearch(false);
-                      setInlineSearchedReport(null);
-                      setInlinePendingSample(null);
-                      setInlineSearchNotFound(false);
-                    }}
-                    className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                      quickReportTab === 'report_id'
-                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                    }`}
-                  >
-                    <Hash className="w-3.5 h-3.5" />
-                    <span>Search by Token</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-5 sm:p-6 space-y-4 text-xs bg-white">
-                {/* Error Alert Banner */}
-                {quickReportError && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span className="font-semibold flex-1">{quickReportError}</span>
-                    <button
-                      type="button"
-                      onClick={() => setQuickReportError('')}
-                      className="text-rose-500 hover:text-rose-800 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Fast Form Input Box */}
-                <form onSubmit={handleQuickReportSearch} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      {quickReportTab === 'mobile'
-                        ? '10-Digit Registered Mobile Number'
-                        : 'Token Number / Report ID'} <span className="text-rose-500">*</span>
-                    </label>
-
-                    <div className="relative">
-                      {quickReportTab === 'mobile' ? (
-                        <>
-                          <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-bold select-none">
-                            +91
-                          </span>
-                          <input
-                            type="tel"
-                            required
-                            pattern="[0-9]{10}"
-                            maxLength={10}
-                            value={quickReportInput}
-                            onChange={(e) => {
-                              setQuickReportInput(e.target.value.replace(/\D/g, '').slice(0, 10));
-                              if (quickReportError) setQuickReportError('');
-                              if (hasSubmittedSearch) setHasSubmittedSearch(false);
-                            }}
-                            placeholder="Enter 10-digit registered mobile"
-                            className="w-full pl-11 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
-                            id="check-report-mobile-input"
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <Hash className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                          <input
-                            type="text"
-                            required
-                            value={quickReportInput}
-                            onChange={(e) => {
-                              setQuickReportInput(e.target.value);
-                              if (quickReportError) setQuickReportError('');
-                              if (hasSubmittedSearch) setHasSubmittedSearch(false);
-                            }}
-                            placeholder="Enter Token Number (e.g. 101, TK-101 or Report ID)"
-                            className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
-                            id="check-report-token-input"
-                          />
-                        </>
-                      )}
-
-                      {quickReportInput && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQuickReportInput('');
-                            setQuickReportError('');
-                            setHasSubmittedSearch(false);
-                            setInlineSearchedReport(null);
-                            setInlinePendingSample(null);
-                            setInlineSearchNotFound(false);
-                          }}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Submit Search Button */}
-                  <button
-                    type="submit"
-                    className="w-full bg-[#123B6D] hover:bg-[#0c294d] text-white py-3 rounded-xl font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                    id="check-report-submit-btn"
-                  >
-                    <Search className="w-4 h-4 text-amber-300" />
-                    <span>Search Patient Report</span>
-                    <ArrowRight className="w-4 h-4 text-amber-300" />
-                  </button>
-                </form>
-
-                {/* REPORT STATUS ACTIONS BELOW FORM (Appears strictly according to search result) */}
-                <div className="pt-3 border-t border-slate-100">
-                  {!hasSubmittedSearch ? (
-                    /* Initial state before user searches: Clean helper info, no under process button */
-                    <div className="flex items-center justify-center gap-2 text-xs text-slate-400 py-1.5 font-medium text-center">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Enter mobile number or token above and click search to view report</span>
-                    </div>
-                  ) : inlineSearchedReport ? (
-                    /* Result Case 1: Report is ready & published -> View Report & Download Report buttons */
-                    <div className="space-y-2.5 animate-in fade-in duration-200">
-                      <div className="p-2.5 px-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 font-bold truncate">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="truncate">{inlineSearchedReport.patientName}</span>
-                        </div>
-                        <span className="text-[11px] bg-emerald-100 text-emerald-900 font-mono px-2 py-0.5 rounded font-bold shrink-0">
-                          {inlineSearchedReport.reportId}
-                        </span>
-                      </div>
-
-                      {/* Multiple reports selector if patient has more than 1 report */}
-                      {inlineMultipleReports.length > 1 && (
-                        <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          <span className="text-[10px] text-slate-500 font-bold self-center">Other Reports:</span>
-                          {inlineMultipleReports.map((rpt, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setInlineSearchedReport(rpt)}
-                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${
-                                inlineSearchedReport.reportId === rpt.reportId
-                                  ? 'bg-[#123B6D] text-white shadow-2xs'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                              }`}
-                            >
-                              {rpt.reportId}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Inline Side-by-Side: View Report & Download Report */}
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setIsReportModalOpen(true)}
-                          className="flex-1 py-3 px-3 rounded-xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98"
-                          id="btn-view-report"
-                        >
-                          <Eye className="w-4 h-4 text-amber-300" />
-                          <span>View Report</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleDownloadInlinePdf}
-                          disabled={isDownloadingPdf}
-                          className="flex-1 py-3 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98 disabled:opacity-50"
-                          id="btn-download-report"
-                        >
-                          <Download className="w-4 h-4 text-white" />
-                          <span>{isDownloadingPdf ? 'Preparing...' : 'Download Report'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : inlinePendingSample ? (
-                    /* Result Case 2: Sample under testing in lab -> "Report is Under Process" */
-                    <div className="space-y-2 animate-in fade-in duration-200">
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
-                        id="btn-report-under-process"
-                      >
-                        <span className="relative flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                        </span>
-                        <Clock className="w-4 h-4 text-amber-700" />
-                        <span>Report is Under Process</span>
-                      </button>
-                      <p className="text-xs text-amber-800 text-center font-medium leading-normal">
-                        Sample for <strong>{inlinePendingSample.patientName}</strong> (Token #{inlinePendingSample.tokenNumber}) is currently being tested in lab.
-                      </p>
-                    </div>
-                  ) : (
-                    /* Result Case 3: Searched, but no published report found yet */
-                    <div className="space-y-2 animate-in fade-in duration-200">
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
-                        id="btn-report-under-process"
-                      >
-                        <span className="relative flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                        </span>
-                        <Clock className="w-4 h-4 text-amber-700" />
-                        <span>Report is Under Process</span>
-                      </button>
-                      <p className="text-xs text-amber-800 text-center font-medium leading-normal">
-                        Report not yet published for this entry. Testing may be in progress.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            </div>
+            {renderCheckReportCard(false)}
           </div>
         </div>
       </section>
