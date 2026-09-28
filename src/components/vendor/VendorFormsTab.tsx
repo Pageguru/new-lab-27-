@@ -250,144 +250,14 @@ export const VendorFormsTab: React.FC<VendorFormsTabProps> = ({
         </div>
       )}
 
-      {/* Top Header Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-7 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#123B6D] border border-blue-200 text-xs font-black">
-              <FileText className="w-3.5 h-3.5 text-blue-600" />
-              <span>Section 4: Forms &amp; Patient Inquiries</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>Patient Booking Submissions &amp; Contact Inquiries</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-              Manage patient test bookings submitted from your public website, transfer entries directly to your Reception Desk queue, and review contact messages.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => onNavigateView('reception_dashboard')}
-              className="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <Building2 className="w-3.5 h-3.5 text-teal-600" />
-              <span>🖥️ Go to Reception Desk</span>
-              <ArrowRight className="w-3 h-3 text-teal-600" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateView('vendor_website')}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-              <span>Live Website Preview</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 2 Sub-Tabs Header Navigation: 1. Booking submission list, 2. Contact form */}
-        <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center gap-2">
-          {/* SubTab 1: Booking Submission List */}
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('bookings')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-xs ${
-              currentSubTab === 'bookings'
-                ? 'bg-[#123B6D] text-white shadow-blue-900/10'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
-            }`}
-          >
-            <CalendarCheck className={`w-4 h-4 ${currentSubTab === 'bookings' ? 'text-amber-400' : 'text-slate-500'}`} />
-            <span>1. Booking Submission List</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                currentSubTab === 'bookings'
-                  ? 'bg-amber-400 text-slate-950 font-black'
-                  : 'bg-white text-slate-700 border border-slate-200'
-              }`}
-            >
-              {vendorBookings.length}
-            </span>
-            {pendingBookingsCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Pending bookings" />
-            )}
-          </button>
-
-          {/* SubTab 2: Contact Form */}
-          <button
-            type="button"
-            onClick={() => handleSubTabChange('contacts')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-xs ${
-              currentSubTab === 'contacts'
-                ? 'bg-[#123B6D] text-white shadow-blue-900/10'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
-            }`}
-          >
-            <MessageSquare className={`w-4 h-4 ${currentSubTab === 'contacts' ? 'text-amber-400' : 'text-slate-500'}`} />
-            <span>2. Contact Form</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                currentSubTab === 'contacts'
-                  ? 'bg-amber-400 text-slate-950 font-black'
-                  : 'bg-white text-slate-700 border border-slate-200'
-              }`}
-            >
-              {contactSubmissions.length}
-            </span>
-            {unreadContactsCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-600 text-white animate-pulse">
-                {unreadContactsCount} New
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
       {/* ======================================================== */}
       {/* SUB-TAB 1: BOOKING SUBMISSION LIST                      */}
       {/* 1. booking submission list > delete /transfer to Reception desk */}
       {/* ======================================================== */}
       {currentSubTab === 'bookings' && (
         <div className="space-y-4">
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Total Bookings</span>
-              <div className="text-2xl font-black text-[#123B6D] mt-1">{totalBookingsCount}</div>
-              <span className="text-[10px] text-slate-500">Website &amp; portal submissions</span>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-amber-200 bg-amber-50/30 shadow-2xs">
-              <span className="text-[11px] font-bold text-amber-800 block uppercase tracking-wider">Pending Action</span>
-              <div className="text-2xl font-black text-amber-700 mt-1">{pendingBookingsCount}</div>
-              <span className="text-[10px] text-amber-600">Awaiting sample pickup / desk</span>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-teal-200 bg-teal-50/30 shadow-2xs">
-              <span className="text-[11px] font-bold text-teal-800 block uppercase tracking-wider">Transferred to Reception</span>
-              <div className="text-2xl font-black text-teal-700 mt-1">{transferredBookingsCount}</div>
-              <span className="text-[10px] text-teal-600">Tokens created at counter</span>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Quick Actions</span>
-                <button
-                  type="button"
-                  onClick={() => setIsNewBookingModalOpen(true)}
-                  className="mt-1 w-full bg-[#123B6D] hover:bg-[#0e2c52] text-white py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 text-amber-400" />
-                  <span>+ Add Booking</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Search, Filter, and Action Strip */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="relative flex-1 min-w-[220px]">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -401,241 +271,251 @@ export const VendorFormsTab: React.FC<VendorFormsTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setBookingSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs font-bold">
+            {/* Filter Tabs & Quick Add Action */}
+            <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
+              <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setBookingStatusFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer ${
+                    bookingStatusFilter === 'all'
+                      ? 'bg-[#123B6D] text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  All ({vendorBookings.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookingStatusFilter('pending')}
+                  className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer ${
+                    bookingStatusFilter === 'pending'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-2xs'
+                      : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60'
+                  }`}
+                >
+                  Pending ({pendingBookingsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookingStatusFilter('transferred')}
+                  className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer ${
+                    bookingStatusFilter === 'transferred'
+                      ? 'bg-teal-700 text-white font-black shadow-2xs'
+                      : 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200/60'
+                  }`}
+                >
+                  Transferred ({transferredBookingsCount})
+                </button>
+              </div>
+
+              {/* Add Booking Button */}
               <button
                 type="button"
-                onClick={() => setBookingStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer ${
-                  bookingStatusFilter === 'all'
-                    ? 'bg-[#123B6D] text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                onClick={() => setIsNewBookingModalOpen(true)}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white py-1.5 px-3.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
               >
-                All ({vendorBookings.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingStatusFilter('pending')}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer ${
-                  bookingStatusFilter === 'pending'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-2xs'
-                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60'
-                }`}
-              >
-                Pending ({pendingBookingsCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingStatusFilter('transferred')}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer ${
-                  bookingStatusFilter === 'transferred'
-                    ? 'bg-teal-700 text-white font-black shadow-2xs'
-                    : 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200/60'
-                }`}
-              >
-                Transferred to Reception ({transferredBookingsCount})
+                <Plus className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Add Booking</span>
               </button>
             </div>
           </div>
 
-          {/* Bookings Table / Cards */}
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="p-3.5">Booking ID &amp; Time</th>
-                    <th className="p-3.5">Patient Details</th>
-                    <th className="p-3.5">Test / Package Booked</th>
-                    <th className="p-3.5">Preferred Slot &amp; Address</th>
-                    <th className="p-3.5">Status</th>
-                    <th className="p-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredBookings.map((b) => {
-                    const cleanPhone = b.mobile.replace(/\D/g, '');
-                    const isTransferred = !!b.transferredToReception;
+          {/* Bookings Grid Cards View: 3 in a row */}
+          {filteredBookings.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-400 shadow-2xs">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                <CalendarCheck className="w-6 h-6" />
+              </div>
+              <h4 className="font-bold text-slate-700 text-sm">No booking submissions found</h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {bookingSearch ? 'Try a different search keyword.' : 'Patients who book tests on your website will appear here automatically.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsNewBookingModalOpen(true)}
+                className="mt-3.5 inline-flex items-center gap-1.5 bg-[#123B6D] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Add Booking</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4.5">
+              {filteredBookings.map((b) => {
+                const cleanPhone = b.mobile.replace(/\D/g, '');
+                const isTransferred = !!b.transferredToReception;
 
-                    return (
-                      <tr key={b.id} className="hover:bg-slate-50/80 transition">
-                        {/* 1. ID & Timestamp */}
-                        <td className="p-3.5 align-top">
-                          <div className="font-mono font-bold text-[#123B6D] text-xs flex items-center gap-1.5">
-                            <span>{b.id}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(b.id, b.id)}
-                              className="text-slate-400 hover:text-slate-700 p-0.5"
-                              title="Copy booking ID"
-                            >
-                              {copiedId === b.id ? (
-                                <Check className="w-3 h-3 text-emerald-600" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </button>
-                          </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{b.createdAt}</span>
-                          </div>
-                        </td>
-
-                        {/* 2. Patient Details */}
-                        <td className="p-3.5 align-top">
-                          <div className="font-extrabold text-slate-900 text-sm">{b.patientName}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <a
-                              href={`tel:+91${cleanPhone}`}
-                              className="font-mono text-xs text-slate-700 font-bold hover:text-[#123B6D] flex items-center gap-1"
-                            >
-                              <Phone className="w-3 h-3 text-slate-400" />
-                              <span>+91 {b.mobile}</span>
-                            </a>
-                            <a
-                              href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(
-                                `Hello ${b.patientName}, greetings from ${labName}. We received your test booking [${b.id}] for: ${b.packageOrTest}. Our team will collect the sample as requested.`
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                              title="Chat on WhatsApp"
-                            >
-                              <MessageSquare className="w-2.5 h-2.5" />
-                              <span>WhatsApp</span>
-                            </a>
-                          </div>
-                        </td>
-
-                        {/* 3. Test / Package Booked */}
-                        <td className="p-3.5 align-top">
-                          <div className="font-bold text-slate-800 text-xs">{b.packageOrTest}</div>
-                          <div className="flex items-center gap-1.5 mt-1 text-[11px]">
-                            {b.amountINR && (
-                              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                ₹{b.amountINR}
-                              </span>
-                            )}
-                            <span className="text-slate-500 text-[10px]">
-                              {b.paymentMode || 'Pay at Home Collection'}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* 4. Slot & Address */}
-                        <td className="p-3.5 align-top max-w-xs">
-                          <div className="font-semibold text-slate-700 text-xs flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-amber-500 shrink-0" />
-                            <span>{b.timeSlot}</span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-1 flex items-start gap-1 leading-snug">
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
-                            <span className="line-clamp-2">{b.address || 'Address provided at booking'}</span>
-                          </div>
-                        </td>
-
-                        {/* 5. Status Badge */}
-                        <td className="p-3.5 align-top">
-                          <div className="space-y-1">
-                            {isTransferred ? (
-                              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-teal-100 text-teal-800 border border-teal-300 shadow-2xs">
-                                <Building2 className="w-3 h-3 text-teal-600" />
-                                <span>At Reception ({b.receptionToken || 'Transferred'})</span>
-                              </div>
+                return (
+                  <div
+                    key={b.id}
+                    className={`bg-white rounded-2xl border transition-all p-5 shadow-xs hover:shadow-md hover:border-[#123B6D] flex flex-col justify-between space-y-4 ${
+                      isTransferred
+                        ? 'border-teal-300 bg-teal-50/15'
+                        : b.status === 'Pending'
+                        ? 'border-amber-300/80 bg-amber-50/15'
+                        : 'border-slate-200'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      {/* Top Header: ID & Status */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="font-mono font-bold text-[#123B6D] text-xs flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                          <span>{b.id}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(b.id, b.id)}
+                            className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
+                            title="Copy booking ID"
+                          >
+                            {copiedId === b.id ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
                             ) : (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                  b.status === 'Pending'
-                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                    : b.status === 'Phlebotomist Assigned'
-                                    ? 'bg-blue-100 text-blue-900 border border-blue-300'
-                                    : b.status === 'Sample Collected'
-                                    ? 'bg-indigo-100 text-indigo-900 border border-indigo-300'
-                                    : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                }`}
-                              >
-                                <span>{b.status}</span>
-                              </span>
+                              <Copy className="w-3 h-3" />
                             )}
-
-                            {/* Status dropdown selector */}
-                            <div>
-                              <select
-                                value={b.status}
-                                onChange={(e) =>
-                                  updateBookingStatus(b.id, e.target.value as HomeCollectionBooking['status'])
-                                }
-                                className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none"
-                              >
-                                <option value="Pending">Pending</option>
-                                <option value="Phlebotomist Assigned">Phlebotomist Assigned</option>
-                                <option value="Sample Collected">Sample Collected</option>
-                                <option value="Report Delivered">Report Delivered</option>
-                                <option value="Cancelled">Cancelled</option>
-                              </select>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* 6. Action Buttons: Transfer to Reception Desk & Delete */}
-                        <td className="p-3.5 align-top text-right">
-                          <div className="inline-flex flex-col sm:flex-row items-end sm:items-center gap-1.5">
-                            {/* Transfer to Reception Button */}
-                            <button
-                              type="button"
-                              onClick={() => setBookingToTransfer(b)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
-                                isTransferred
-                                  ? 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100'
-                                  : 'bg-teal-700 hover:bg-teal-800 text-white font-black'
-                              }`}
-                              title="Transfer patient directly to Reception Desk queue"
-                            >
-                              <Building2 className={`w-3.5 h-3.5 ${isTransferred ? 'text-teal-600' : 'text-amber-300'}`} />
-                              <span>{isTransferred ? 'Re-Transfer' : 'Transfer to Reception'}</span>
-                            </button>
-
-                            {/* Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => setBookingToDelete(b)}
-                              className="p-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                              title="Delete booking submission"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-
-                  {filteredBookings.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-10 text-center text-slate-400">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
-                          <CalendarCheck className="w-6 h-6" />
+                          </button>
                         </div>
-                        <h4 className="font-bold text-slate-700 text-sm">No booking submissions found</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {bookingSearch ? 'Try a different search keyword.' : 'Patients who book tests on your website will appear here automatically.'}
-                        </p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+
+                        {isTransferred ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800 border border-teal-300 shadow-2xs">
+                            <Building2 className="w-2.5 h-2.5 text-teal-600" />
+                            <span>At Reception ({b.receptionToken || 'Transferred'})</span>
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              b.status === 'Pending'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : b.status === 'Phlebotomist Assigned'
+                                ? 'bg-blue-100 text-blue-900 border border-blue-300'
+                                : b.status === 'Sample Collected'
+                                ? 'bg-indigo-100 text-indigo-900 border border-indigo-300'
+                                : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                            }`}
+                          >
+                            <span>{b.status}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Patient Name & Mobile */}
+                      <div>
+                        <div className="flex items-center justify-between gap-1">
+                          <h3 className="font-extrabold text-slate-900 text-base leading-snug">{b.patientName}</h3>
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>{b.createdAt}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <a
+                            href={`tel:+91${cleanPhone}`}
+                            className="font-mono text-xs text-slate-700 font-bold hover:text-[#123B6D] flex items-center gap-1"
+                          >
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>+91 {b.mobile}</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(
+                              `Hello ${b.patientName}, greetings from ${labName}. We received your test booking [${b.id}] for: ${b.packageOrTest}. Our team will collect the sample as requested.`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageSquare className="w-2.5 h-2.5" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Test / Package Booked */}
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Diagnostic Test</div>
+                        <div className="font-bold text-slate-800 text-xs leading-snug">{b.packageOrTest}</div>
+                        <div className="flex items-center justify-between pt-1 text-xs">
+                          {b.amountINR ? (
+                            <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
+                              ₹{b.amountINR}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">Standard rate</span>
+                          )}
+                          <span className="text-slate-500 text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200">
+                            {b.paymentMode || 'Pay at Home Collection'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Slot & Address */}
+                      <div className="space-y-1 text-xs text-slate-600">
+                        <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-700">
+                          <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                          <span>{b.timeSlot}</span>
+                        </div>
+                        <div className="flex items-start gap-1.5 text-[11px] text-slate-500">
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                          <span className="line-clamp-2 leading-relaxed">{b.address || 'Address provided at booking'}</span>
+                        </div>
+                      </div>
+
+                      {/* Status Selector */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Status:</span>
+                        <select
+                          value={b.status}
+                          onChange={(e) =>
+                            updateBookingStatus(b.id, e.target.value as HomeCollectionBooking['status'])
+                          }
+                          className="text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#123B6D] cursor-pointer"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Phlebotomist Assigned">Phlebotomist Assigned</option>
+                          <option value="Sample Collected">Sample Collected</option>
+                          <option value="Report Delivered">Report Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Actions: Transfer to Reception & Delete */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBookingToTransfer(b)}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                          isTransferred
+                            ? 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100'
+                            : 'bg-teal-700 hover:bg-teal-800 text-white font-black'
+                        }`}
+                        title="Transfer patient directly to Reception Desk queue"
+                      >
+                        <Building2 className={`w-3.5 h-3.5 ${isTransferred ? 'text-teal-600' : 'text-amber-300'}`} />
+                        <span>{isTransferred ? 'Re-Transfer' : 'Transfer to Reception'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBookingToDelete(b)}
+                        className="p-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        title="Delete booking submission"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -645,27 +525,6 @@ export const VendorFormsTab: React.FC<VendorFormsTabProps> = ({
       {/* ======================================================== */}
       {currentSubTab === 'contacts' && (
         <div className="space-y-4">
-          {/* Metrics bar for Contact Inquiries */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Total Inquiries</span>
-              <div className="text-2xl font-black text-[#123B6D] mt-1">{totalContactsCount}</div>
-              <span className="text-[10px] text-slate-500">From website contact form</span>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-rose-200 bg-rose-50/40 shadow-2xs">
-              <span className="text-[11px] font-bold text-rose-800 block uppercase tracking-wider">Unread Messages</span>
-              <div className="text-2xl font-black text-rose-700 mt-1">{unreadContactsCount}</div>
-              <span className="text-[10px] text-rose-600">Requires response</span>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-emerald-200 bg-emerald-50/30 shadow-2xs">
-              <span className="text-[11px] font-bold text-emerald-800 block uppercase tracking-wider">Read / Addressed</span>
-              <div className="text-2xl font-black text-emerald-700 mt-1">{totalContactsCount - unreadContactsCount}</div>
-              <span className="text-[10px] text-emerald-600">Reviewed inquiries</span>
-            </div>
-          </div>
-
           {/* Search & Filter Bar */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1 min-w-[220px]">
@@ -681,7 +540,7 @@ export const VendorFormsTab: React.FC<VendorFormsTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setContactSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -726,129 +585,141 @@ export const VendorFormsTab: React.FC<VendorFormsTabProps> = ({
             </div>
           </div>
 
-          {/* Contact Submissions List */}
-          <div className="grid grid-cols-1 gap-3.5">
-            {filteredContacts.map((c) => {
-              const isUnread = c.status === 'unread';
-              const cleanPhone = c.phone.replace(/\D/g, '');
-
-              return (
-                <div
-                  key={c.id}
-                  className={`bg-white rounded-2xl border transition-all p-4 sm:p-5 shadow-2xs hover:shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-                    isUnread
-                      ? 'border-amber-300 bg-amber-50/20 ring-1 ring-amber-300/40'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {/* Left: Sender info & message snippet */}
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-extrabold text-sm text-slate-900">{c.name}</h3>
-                      {c.referenceToken && (
-                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                          {c.referenceToken}
-                        </span>
-                      )}
-                      {isUnread ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
-                          ● Unread
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
-                          Read
-                        </span>
-                      )}
-                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{c.createdAt}</span>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
-                      <a
-                        href={`tel:+91${cleanPhone}`}
-                        className="font-bold text-[#123B6D] hover:underline flex items-center gap-1"
-                      >
-                        <Phone className="w-3 h-3 text-slate-400" />
-                        <span>+91 {c.phone}</span>
-                      </a>
-                      {c.email && (
-                        <a
-                          href={`mailto:${c.email}`}
-                          className="text-slate-500 hover:text-slate-800 flex items-center gap-1"
-                        >
-                          <Mail className="w-3 h-3 text-slate-400" />
-                          <span>{c.email}</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {c.subject && (
-                      <div className="text-xs font-bold text-slate-800">
-                        Subject: <span className="text-[#123B6D]">{c.subject}</span>
-                      </div>
-                    )}
-
-                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                      "{c.message}"
-                    </p>
-                  </div>
-
-                  {/* Right: Actions (Read / Toggle / Delete) */}
-                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                    {/* Read Full Message button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedContactToRead(c);
-                        if (c.status === 'unread') {
-                          markContactAsRead(c.id);
-                        }
-                      }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#123B6D] hover:bg-[#0e2c52] text-white flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                      title="Read full message inquiry"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Read Message</span>
-                    </button>
-
-                    {/* Toggle Read/Unread */}
-                    <button
-                      type="button"
-                      onClick={() => toggleContactReadStatus(c.id)}
-                      className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                      title={isUnread ? 'Mark as read' : 'Mark as unread'}
-                    >
-                      {isUnread ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5 text-slate-400" />}
-                    </button>
-
-                    {/* Delete Inquiry */}
-                    <button
-                      type="button"
-                      onClick={() => setContactToDelete(c)}
-                      className="p-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                      title="Delete contact submission"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {filteredContacts.length === 0 && (
-              <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-400">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
-                  <MessageSquare className="w-6 h-6" />
-                </div>
-                <h4 className="font-bold text-slate-700 text-sm">No contact inquiries found</h4>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {contactSearch ? 'Try a different search keyword.' : 'Patient messages sent from the Contact Us form will appear here.'}
-                </p>
+          {/* Contact Submissions Grid: 3 in a row */}
+          {filteredContacts.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-400 shadow-2xs">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                <MessageSquare className="w-6 h-6" />
               </div>
-            )}
-          </div>
+              <h4 className="font-bold text-slate-700 text-sm">No contact messages found</h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {contactSearch ? 'Try adjusting your search criteria.' : 'Inquiries submitted from your website contact form will appear here.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4.5">
+              {filteredContacts.map((c) => {
+                const isUnread = c.status === 'unread';
+                const cleanPhone = c.phone.replace(/\D/g, '');
+
+                return (
+                  <div
+                    key={c.id}
+                    className={`bg-white rounded-2xl border transition-all p-5 shadow-xs hover:shadow-md hover:border-[#123B6D] flex flex-col justify-between space-y-4 ${
+                      isUnread
+                        ? 'border-amber-300 bg-amber-50/20 ring-1 ring-amber-300/40'
+                        : 'border-slate-200'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      {/* Header: Sender Name, Token & Status */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        {c.referenceToken ? (
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            {c.referenceToken}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 font-mono">MSG-PORTAL</span>
+                        )}
+
+                        <div className="flex items-center gap-1.5">
+                          {isUnread ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                              ● Unread
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
+                              Read
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>{c.createdAt}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Name & Contact */}
+                      <div>
+                        <h3 className="font-black text-base text-slate-900 leading-snug">{c.name}</h3>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs text-slate-600">
+                          <a
+                            href={`tel:+91${cleanPhone}`}
+                            className="font-bold text-[#123B6D] hover:underline flex items-center gap-1"
+                          >
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>+91 {c.phone}</span>
+                          </a>
+                          {c.email && (
+                            <a
+                              href={`mailto:${c.email}`}
+                              className="text-slate-500 hover:text-slate-800 flex items-center gap-1 truncate max-w-[150px]"
+                              title={c.email}
+                            >
+                              <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{c.email}</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Subject */}
+                      {c.subject && (
+                        <div className="p-2.5 bg-blue-50/60 rounded-xl border border-blue-100 text-xs">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Subject:</span>
+                          <span className="font-bold text-[#123B6D]">{c.subject}</span>
+                        </div>
+                      )}
+
+                      {/* Message Preview */}
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Message:</span>
+                        <p className="line-clamp-3 leading-relaxed italic">
+                          "{c.message}"
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedContactToRead(c);
+                          if (c.status === 'unread') {
+                            markContactAsRead(c.id);
+                          }
+                        }}
+                        className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-[#123B6D] hover:bg-[#0e2c52] text-white flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        title="Read full message inquiry"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Read Message</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleContactReadStatus(c.id)}
+                        className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                        title={isUnread ? 'Mark as read' : 'Mark as unread'}
+                      >
+                        {isUnread ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Clock className="w-3.5 h-3.5 text-slate-400" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setContactToDelete(c)}
+                        className="p-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        title="Delete inquiry"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
