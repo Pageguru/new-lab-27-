@@ -310,6 +310,90 @@ export const LabSearchSection: React.FC<LabSearchSectionProps> = ({
             </div>
           )}
         </div>
+
+        {/* Verified Partner Laboratories Cards Grid (Visible by default for instant 1-click access) */}
+        {!hasSearched && vendorLabsList.length > 0 && (
+          <div className="mt-12 sm:mt-16">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-black text-[#123B6D] tracking-tight flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-teal-600" />
+                  <span>Verified Partner Diagnostic Laboratories</span>
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                  Certified clinical laboratories powered by {displayBrand}. Direct online test booking, home collection &amp; instant WhatsApp reports.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-slate-700 bg-white px-3.5 py-1.5 rounded-full border border-slate-200 shadow-2xs shrink-0 self-start sm:self-auto flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{vendorLabsList.filter((l) => l.status === 'Active').length} Live Laboratories</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+              {vendorLabsList
+                .filter((l) => l.status === 'Active')
+                .map((lab) => (
+                  <div
+                    key={lab.id}
+                    className="bg-white rounded-2xl border border-slate-200 hover:border-[#123B6D]/50 p-5 shadow-xs hover:shadow-xl transition-all duration-200 flex flex-col justify-between group"
+                  >
+                    <div>
+                      {/* Top Badges */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Verified Lab</span>
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {lab.id}
+                        </span>
+                      </div>
+
+                      {/* Lab Name & Tagline */}
+                      <h4 className="font-black text-base text-slate-900 group-hover:text-[#123B6D] transition line-clamp-1 mb-1">
+                        {lab.name}
+                      </h4>
+                      {lab.tagline && (
+                        <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
+                          &ldquo;{lab.tagline}&rdquo;
+                        </p>
+                      )}
+
+                      {/* City, Phone, and NABL */}
+                      <div className="space-y-1.5 text-xs text-slate-600 mb-4 pt-2.5 border-t border-slate-100">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span className="truncate">{lab.city}, {lab.state || 'India'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 font-mono text-slate-700">
+                          <Phone className="w-3.5 h-3.5 text-[#123B6D] shrink-0" />
+                          <span>{lab.phone}</span>
+                        </div>
+                        {lab.nablCode && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>Accreditation: {lab.nablCode}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Visit Website Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleVisitWebsite(lab)}
+                      className="w-full bg-[#123B6D] hover:bg-[#0e2c52] text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs group-hover:shadow-md"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-teal-300" />
+                      <span>Visit Laboratory Website</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-300 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -596,12 +596,10 @@ export default function App() {
         {portalSections.features !== false && <FeaturesSection />}
 
         {/* 3. Lab Search Section (Premium Styling, Under Features) */}
-        {portalSections.vendorWebsitesShowcase !== false && (
-          <LabSearchSection
-            onSelectView={setCurrentView}
-            onOpenDemo={handleOpenDemo}
-          />
-        )}
+        <LabSearchSection
+          onSelectView={setCurrentView}
+          onOpenDemo={handleOpenDemo}
+        />
 
         {/* 4. Pricing Section */}
         {portalSections.pricing !== false && (

@@ -3042,48 +3042,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </div>
           </div>
 
-          {/* Category Filter Tabs - Hidden on Mobile (as requested: remove category in mobile view), visible on desktop */}
-          <div className="hidden md:flex items-center justify-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
-            {BOOK_TEST_CATEGORY_TABS.map((cat) => {
-              const isSelected = selectedBookTestCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => {
-                    setSelectedBookTestCategory(cat);
-                    setVisibleTestsCount(isMobileScreen ? 20 : 40);
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                    isSelected
-                      ? 'bg-[#123B6D] text-white ring-2 ring-[#123B6D]/20 shadow-xs'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span>{cat}</span>
-                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Active Filter & Test Count Status (Badge hidden on mobile view) */}
-          <div className={`flex items-center justify-between px-1 text-xs font-semibold text-slate-500 ${searchTerm ? 'mb-4' : 'hidden md:flex mb-5'}`}>
-            <span>
-              {searchTerm ? (
-                <span>
-                  Search results for &ldquo;<strong className="text-[#123B6D]">{searchTerm}</strong>&rdquo;
-                </span>
-              ) : (
-                <span className="hidden md:inline">
-                  Category: <strong className="text-[#123B6D]">{selectedBookTestCategory}</strong>
-                </span>
-              )}
-            </span>
-            <span className="hidden md:inline-block text-[11px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs ml-auto">
-              Showing {displayedTests.length} of {filteredTests.length} Tests
-            </span>
-          </div>
+          {/* Search Results Summary (only shown when user types in search bar) */}
+          {searchTerm && (
+            <div className="flex items-center justify-between px-1 mb-4 text-xs font-semibold text-slate-500">
+              <span>
+                Search results for &ldquo;<strong className="text-[#123B6D]">{searchTerm}</strong>&rdquo;
+              </span>
+              <span className="text-[11px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                {displayedTests.length} tests found
+              </span>
+            </div>
+          )}
 
           {/* 2. RESPONSIVE GRID (Mobile: 2 tests per row | Desktop: 4 per row) */}
           {displayedTests.length > 0 ? (
@@ -4005,93 +3974,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   {labName}
                 </span>
 
-                {/* Uske Niche Lab ID Number & Badges */}
+                {/* Uske Niche Lab ID Number */}
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   <span className="font-mono text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-bold border border-slate-200 shadow-2xs">
                     Lab ID: {labShopId}
                   </span>
-                  {labNabl && (
-                    <span className="text-[10px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md font-bold border border-emerald-200 shadow-2xs">
-                      NABL: {labNabl}
-                    </span>
-                  )}
                 </div>
 
                 <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                  ISO 15189:2022 compliant automated diagnostic clinical pathology laboratory.
+                  Advanced automated laboratory offering reliable diagnostic testing and comprehensive clinical pathology services, supported by modern technology, efficient processes, and quality-focused laboratory practices.
                 </p>
-
-                {/* Social media icons in footer: only channels where link has been provided */}
-                {vendorLabSettings?.socialMedia?.enabled !== false && hasAnySocialLinks && (
-                  <div className="flex items-center gap-1.5 pt-3 flex-wrap">
-                    {socialWhatsappUrl && (
-                      <a
-                        href={socialWhatsappUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="WhatsApp"
-                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    {socialFacebookUrl && (
-                      <a
-                        href={socialFacebookUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Facebook"
-                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-blue-50 text-[#1877F2] border border-slate-200 hover:border-blue-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
-                      >
-                        <Facebook className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    {socialInstagramUrl && (
-                      <a
-                        href={socialInstagramUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Instagram"
-                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
-                      >
-                        <Instagram className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    {socialTwitterUrl && (
-                      <a
-                        href={socialTwitterUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Twitter / X"
-                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 hover:border-slate-400 flex items-center justify-center transition shadow-2xs hover:scale-105"
-                      >
-                        <Twitter className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    {socialYoutubeUrl && (
-                      <a
-                        href={socialYoutubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="YouTube"
-                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-red-50 text-red-600 border border-slate-200 hover:border-red-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
-                      >
-                        <Youtube className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    {socialLinkedinUrl && (
-                      <a
-                        href={socialLinkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="LinkedIn"
-                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-sky-50 text-[#0A66C2] border border-slate-200 hover:border-sky-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
-                      >
-                        <Linkedin className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 

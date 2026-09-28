@@ -2075,7 +2075,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem('cms_portal_sections_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return { ...DEFAULT_PORTAL_SECTIONS, ...parsed, vendorWebsitesShowcase: false, faq: false };
+        return { ...DEFAULT_PORTAL_SECTIONS, ...parsed, vendorWebsitesShowcase: parsed.vendorWebsitesShowcase !== false, faq: false };
       }
       return DEFAULT_PORTAL_SECTIONS;
     } catch {
