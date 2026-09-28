@@ -342,45 +342,6 @@ export const VendorStaffManagementTab: React.FC<VendorStaffManagementTabProps> =
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="p-2.5 rounded-xl bg-teal-50 text-teal-700">
-            <Users className="w-5 h-5" />
-          </span>
-          <div>
-            <h1 className="text-lg font-black text-[#123B6D]">
-              Staff Management (Technician &amp; Reception)
-            </h1>
-            <p className="text-xs text-slate-500">
-              Add new staff, edit name and password, and delete accounts. Minimum Staff Policy: At least 1 Technician and 1 Reception must always exist. If only one staff member remains, the Delete option is disabled. Before deletion, all assigned data must be transferred to another staff member of the same role (Technician → Technician, Reception → Reception).
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {subTab === 'list' ? (
-            <button
-              type="button"
-              onClick={() => setSubTab('add')}
-              className="px-4 py-2 rounded-xl text-xs font-black bg-[#123B6D] hover:bg-[#0e2c52] text-white flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4 text-amber-400" />
-              <span>+ Add New Staff</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSubTab('list')}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Users className="w-3.5 h-3.5 text-blue-600" />
-              <span>View Staff List ({staffAccounts.length})</span>
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-in slide-in-from-bottom-5">
@@ -388,86 +349,6 @@ export const VendorStaffManagementTab: React.FC<VendorStaffManagementTabProps> =
           <span>{toastMessage}</span>
         </div>
       )}
-
-      {/* Navigation Pills & Quick Stats */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setSubTab('list')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-              subTab === 'list'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Staff List</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                subTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {staffAccounts.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSubTab('add')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-              subTab === 'add'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <UserPlus className="w-3.5 h-3.5 text-amber-500" />
-            <span>Add New Staff</span>
-          </button>
-        </div>
-
-        {/* Quick Role Badges & Minimum Policy */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-bold px-2">
-          <span className={`px-2.5 py-1 rounded-lg border flex items-center gap-1.5 ${
-            receptionCount <= 1
-              ? 'bg-amber-50 text-amber-900 border-amber-300'
-              : 'bg-teal-50 text-teal-800 border-teal-200'
-          }`}>
-            <span>🖥️ Receptionists:</span>
-            <strong>{receptionCount}</strong>
-            <span className="text-[10px] opacity-75">
-              (Min: 1 {receptionCount <= 1 ? '• Delete Locked' : ''})
-            </span>
-          </span>
-          <span className={`px-2.5 py-1 rounded-lg border flex items-center gap-1.5 ${
-            techCount <= 1
-              ? 'bg-amber-50 text-amber-900 border-amber-300'
-              : 'bg-purple-50 text-purple-800 border-purple-200'
-          }`}>
-            <span>🔬 Technicians:</span>
-            <strong>{techCount}</strong>
-            <span className="text-[10px] opacity-75">
-              (Min: 1 {techCount <= 1 ? '• Delete Locked' : ''})
-            </span>
-          </span>
-        </div>
-      </div>
-
-      {/* Minimum Staff Requirement Policy Notice */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-700 shadow-2xs">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-[#123B6D] shrink-0" />
-          <span>
-            <strong>Minimum Staff Policy:</strong> At least <strong>1 Lab Technician</strong> and <strong>1 Receptionist</strong> must always exist. If only one remains, the delete option is disabled.
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-          <span>Data Transfer Rule:</span>
-          <span className="font-bold text-teal-700">Reception → Reception</span>
-          <span>•</span>
-          <span className="font-bold text-purple-700">Technician → Technician</span>
-        </div>
-      </div>
 
       {/* ======================================================== */}
       {/* 1. ADD NEW STAFF FORM (subTab === 'add') */}
@@ -783,6 +664,15 @@ export const VendorStaffManagementTab: React.FC<VendorStaffManagementTabProps> =
                 }`}
               >
                 🔬 Technicians ({techCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTab('add')}
+                className="ml-2 px-3.5 py-1.5 rounded-xl text-xs font-black bg-[#123B6D] hover:bg-[#0e2c52] text-white flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Add New Staff</span>
               </button>
             </div>
           </div>
