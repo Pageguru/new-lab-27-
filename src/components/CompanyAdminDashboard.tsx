@@ -184,9 +184,11 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
   // In-app Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
-    title: string;
+    title?: string;
     message: string;
+    itemDetails?: string;
     confirmText?: string;
+    cancelText?: string;
     onConfirm: () => void;
   } | null>(null);
 
@@ -299,8 +301,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     setDeleteConfirm({
       isOpen: true,
       title: 'Delete Subscription Plan',
-      message: `Are you sure you want to delete the plan "${name}"?`,
-      confirmText: 'Yes, Delete Plan',
+      message: 'Are you sure you want to delete this?',
+      itemDetails: `Plan: "${name}"`,
+      confirmText: 'Yes',
+      cancelText: 'No',
       onConfirm: () => {
         deletePricingPlan(id);
         showToast('Plan deleted.');
@@ -350,8 +354,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     setDeleteConfirm({
       isOpen: true,
       title: 'Delete Software Feature',
-      message: `Are you sure you want to delete feature "${title}"?`,
-      confirmText: 'Yes, Delete Feature',
+      message: 'Are you sure you want to delete this?',
+      itemDetails: `Feature: "${title}"`,
+      confirmText: 'Yes',
+      cancelText: 'No',
       onConfirm: () => {
         deleteCompanyFeature(id);
         showToast('Feature deleted.');
@@ -400,9 +406,11 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
   const handleDeleteLabFeature = (id: string, title: string) => {
     setDeleteConfirm({
       isOpen: true,
-      title: 'Delete Laboratory Feature Module',
-      message: `Are you sure you want to delete module "${title}" from the Complete Laboratory Management section?`,
-      confirmText: 'Yes, Delete Module',
+      title: 'Delete Laboratory Module',
+      message: 'Are you sure you want to delete this?',
+      itemDetails: `Module: "${title}"`,
+      confirmText: 'Yes',
+      cancelText: 'No',
       onConfirm: () => {
         deleteLabManagementFeature(id);
         showToast('Module deleted.');
@@ -415,8 +423,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     setDeleteConfirm({
       isOpen: true,
       title: 'Reset to Standard 18 Laboratory Modules',
-      message: 'Are you sure you want to restore the default 18 Complete Laboratory Management modules?',
-      confirmText: 'Yes, Reset Modules',
+      message: 'Are you sure you want to delete this?',
+      itemDetails: 'Reset all modules back to standard 18 default laboratory features',
+      confirmText: 'Yes',
+      cancelText: 'No',
       onConfirm: () => {
         resetLabManagementFeatures();
         showToast('Restored standard 18 laboratory modules!');
@@ -461,11 +471,14 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
   };
 
   const handleDeleteFaq = (id: string) => {
+    const faqItem = companyFaqs.find((f) => f.id === id);
     setDeleteConfirm({
       isOpen: true,
       title: 'Delete FAQ',
-      message: 'Are you sure you want to delete this FAQ question and answer?',
-      confirmText: 'Yes, Delete FAQ',
+      message: 'Are you sure you want to delete this?',
+      itemDetails: faqItem?.question ? `Question: "${faqItem.question}"` : 'Selected FAQ Item',
+      confirmText: 'Yes',
+      cancelText: 'No',
       onConfirm: () => {
         deleteCompanyFaq(id);
         showToast('FAQ deleted.');
@@ -969,8 +982,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                   setDeleteConfirm({
                     isOpen: true,
                     title: 'Reset Factory Demo Defaults',
-                    message: 'Reset all Company & Vendor data back to initial demo defaults?',
-                    confirmText: 'Yes, Reset Defaults',
+                    message: 'Are you sure you want to delete this?',
+                    itemDetails: 'Reset all Company & Vendor data back to initial demo defaults',
+                    confirmText: 'Yes',
+                    cancelText: 'No',
                     onConfirm: () => {
                       resetAllToDefaults();
                       showToast('Reset back to factory demo defaults.');
@@ -2030,8 +2045,19 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                     <button
                       type="button"
                       onClick={() => {
-                        deleteDomainRequest(req.id);
-                        showToast(`Deleted domain request "${req.requestedDomain}".`);
+                        setDeleteConfirm({
+                          isOpen: true,
+                          title: 'Delete Domain Request',
+                          message: 'Are you sure you want to delete this?',
+                          itemDetails: `Domain Request: "${req.requestedDomain}" (${req.labName})`,
+                          confirmText: 'Yes',
+                          cancelText: 'No',
+                          onConfirm: () => {
+                            deleteDomainRequest(req.id);
+                            showToast(`Deleted domain request "${req.requestedDomain}".`);
+                            setDeleteConfirm(null);
+                          },
+                        });
                       }}
                       className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition cursor-pointer"
                       title="Delete this request"
@@ -2472,36 +2498,37 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
       {/* IN-APP DELETE / ACTION CONFIRMATION MODAL */}
       {deleteConfirm && deleteConfirm.isOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-rose-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5 text-rose-600" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-sm text-slate-900">{deleteConfirm.title}</h3>
-                <p className="text-[11px] text-slate-500 font-medium">Confirmation Required</p>
-              </div>
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3.5">
+              <Trash2 className="w-6 h-6" />
             </div>
 
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-              {deleteConfirm.message}
-            </p>
+            <div className="text-center mb-5">
+              <h3 className="font-extrabold text-base text-slate-900 leading-snug">
+                Are you sure you want to delete this?
+              </h3>
+              {deleteConfirm.itemDetails && (
+                <p className="text-xs text-slate-600 mt-2 bg-slate-50 py-2 px-3 rounded-xl border border-slate-200 font-medium break-words">
+                  {deleteConfirm.itemDetails}
+                </p>
+              )}
+            </div>
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(null)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition cursor-pointer text-center"
               >
-                Cancel
+                No
               </button>
               <button
                 type="button"
                 onClick={deleteConfirm.onConfirm}
-                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>{deleteConfirm.confirmText || 'Yes, Delete'}</span>
+                <span>Yes</span>
               </button>
             </div>
           </div>
