@@ -2403,32 +2403,34 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
       {/* 5. In-App Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-slate-200 space-y-4">
-            <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-slate-200 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <Trash2 className="w-6 h-6" />
             </div>
-            <div className="text-center">
-              <h3 className="text-sm font-black text-slate-900">Remove Patient Entry?</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Remove token <strong>{deleteTarget.tokenNumber} ({deleteTarget.patientName})</strong> from today's reception queue?
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base font-black text-slate-900">Are you sure you want to delete this?</h3>
+              <p className="text-xs text-slate-500">
+                Patient entry <strong>{deleteTarget.patientName}</strong> (Token #{deleteTarget.tokenNumber}) will be permanently removed from today's reception queue.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-100 transition cursor-pointer"
               >
-                Cancel
+                No
               </button>
               <button
+                type="button"
                 onClick={() => {
                   deleteReceptionEntry(deleteTarget.id);
                   setDeleteTarget(null);
                   showToast('🗑️ Entry removed from queue');
                 }}
-                className="bg-rose-600 hover:bg-rose-700 text-white py-2 rounded-xl text-xs font-bold cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm hover:shadow transition cursor-pointer"
               >
-                Yes, Remove
+                Yes
               </button>
             </div>
           </div>
