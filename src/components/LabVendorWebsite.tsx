@@ -3329,6 +3329,34 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </div>
           </div>
 
+          {/* Laboratory Diagnostic Team Group Photo Banner */}
+          {vendorLabSettings?.teamGroupPhotoUrl && (
+            <div className="mt-4 mb-8 max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 relative group">
+              <img
+                src={vendorLabSettings.teamGroupPhotoUrl}
+                alt={`${vendorLabSettings.labName || 'Laboratory'} Diagnostic Team`}
+                referrerPolicy="no-referrer"
+                className="w-full h-48 sm:h-64 md:h-72 object-cover object-center group-hover:scale-102 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-4 sm:p-6 text-white">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
+                    Clinical Diagnostic Team
+                  </span>
+                  <span className="text-xs text-white/90 font-medium">
+                    100% NABL Quality Assured
+                  </span>
+                </div>
+                <h3 className="text-sm sm:text-base md:text-lg font-black text-white">
+                  {vendorLabSettings.labName} Diagnostic Medical Team
+                </h3>
+                <p className="text-xs text-slate-200 line-clamp-1 sm:line-clamp-none mt-0.5">
+                  Pathologists, Biochemists, Microbiologists &amp; Senior Technologists dedicated to accurate patient testing.
+                </p>
+              </div>
+            </div>
+          )}
+
           {(() => {
             const doctorsList = ((vendorDoctors && vendorDoctors.length > 0)
               ? vendorDoctors

@@ -241,6 +241,9 @@ export interface VendorLabSettings {
   founderPhotoUrl?: string;
   founderMessage?: string;
   founderCredentials?: string[];
+  // Team Section
+  teamGroupPhotoUrl?: string;
+  teamBannerUrl?: string;
   // Contact Us Map
   contactGoogleMapUrl?: string;
   // Social Media

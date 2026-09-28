@@ -325,6 +325,7 @@ const DEFAULT_VENDOR_LAB_SETTINGS: VendorLabSettings = {
     'Fellow of Indian College of Pathologists (FICP)',
     'Lead Auditor for NABL / ISO 15189 Quality Systems',
   ],
+  teamGroupPhotoUrl: '/src/assets/images/medical_lab_team_1790603478312.jpg',
   contactGoogleMapUrl: '',
   socialMedia: {
     enabled: true,
@@ -1009,6 +1010,7 @@ export function buildDefaultSettingsForLab(dirItem: any): VendorLabSettings {
       'Quality Manager for ISO 15189 Quality Systems',
       'Committed to Ethical Diagnostic Healthcare',
     ],
+    teamGroupPhotoUrl: '/src/assets/images/medical_lab_team_1790603478312.jpg',
     contactGoogleMapUrl: '',
     socialMedia: {
       enabled: true,
