@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FlaskConical,
   Plus,
@@ -58,6 +58,10 @@ import {
   Truck,
   Headphones,
   Database,
+  ChevronsUpDown,
+  Maximize2,
+  Minimize2,
+  ClipboardList,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { DashboardFooter } from './DashboardFooter';
@@ -83,6 +87,7 @@ import { VendorBookingSettingsTab } from './vendor/VendorBookingSettingsTab';
 import { VendorStaffManagementTab } from './vendor/VendorStaffManagementTab';
 import { VendorBackupReportsTab } from './vendor/VendorBackupReportsTab';
 import { VendorTechSupportTab } from './vendor/VendorTechSupportTab';
+import { VendorAllTabsAccordion } from './vendor/VendorAllTabsAccordion';
 import { DoctorCommissionModal } from './vendor/DoctorCommissionModal';
 
 interface LabVendorDashboardProps {
@@ -157,6 +162,105 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const [staffSubTab, setStaffSubTab] = useState<'list' | 'add'>('list');
   const [isStaffMenuOpen, setIsStaffMenuOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Right-Side All Tabs Accordion State
+  const [expandedTabs, setExpandedTabs] = useState<Record<string, boolean>>({
+    website: true,
+    tests: false,
+    packages: false,
+    forms: false,
+    dashboard: false,
+    domain: false,
+    settings: false,
+    admin_settings: false,
+    booking_settings: false,
+    staff: false,
+    backup: false,
+    support: false,
+  });
+
+  // Automatically expand the corresponding accordion item when activeTab changes (e.g. from sidebar clicks)
+  useEffect(() => {
+    if (activeTab) {
+      setExpandedTabs((prev) => {
+        if (!prev[activeTab]) {
+          return { ...prev, [activeTab]: true };
+        }
+        return prev;
+      });
+      // Gently scroll to the accordion item
+      const el = document.getElementById(`accordion-panel-${activeTab}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [activeTab]);
+
+  const toggleAccordionTab = (tabKey: string) => {
+    setExpandedTabs((prev) => {
+      const willOpen = !prev[tabKey];
+      if (willOpen) {
+        setActiveTab(tabKey as any);
+      }
+      return {
+        ...prev,
+        [tabKey]: willOpen,
+      };
+    });
+  };
+
+  const handleExpandAll = () => {
+    setExpandedTabs({
+      website: true,
+      tests: true,
+      packages: true,
+      forms: true,
+      dashboard: true,
+      domain: true,
+      settings: true,
+      admin_settings: true,
+      booking_settings: true,
+      staff: true,
+      backup: true,
+      support: true,
+    });
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedTabs({
+      website: false,
+      tests: false,
+      packages: false,
+      forms: false,
+      dashboard: false,
+      domain: false,
+      settings: false,
+      admin_settings: false,
+      booking_settings: false,
+      staff: false,
+      backup: false,
+      support: false,
+    });
+  };
+
+  const handleOpenActiveOnly = () => {
+    const next: Record<string, boolean> = {
+      website: false,
+      tests: false,
+      packages: false,
+      forms: false,
+      dashboard: false,
+      domain: false,
+      settings: false,
+      admin_settings: false,
+      booking_settings: false,
+      staff: false,
+      backup: false,
+      support: false,
+    };
+    next[activeTab] = true;
+    setExpandedTabs(next);
+  };
 
   const [isDoctorCommissionModalOpen, setIsDoctorCommissionModalOpen] = useState(false);
   const [selectedDoctorForCommission, setSelectedDoctorForCommission] = useState<VendorDoctor | null>(null);
@@ -1584,6 +1688,9 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                     setActiveTab('settings');
                     if (activeTab !== 'settings') {
                       setIsSettingsMenuOpen(true);
+                      if (!settingsSubTab || settingsSubTab === 'all') {
+                        setSettingsSubTab('logo');
+                      }
                     } else {
                       setIsSettingsMenuOpen(!isSettingsMenuOpen);
                     }
@@ -1602,7 +1709,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                       activeTab === 'settings' ? 'bg-white/20 text-white' : 'bg-white/80 text-slate-800'
                     }`}>
-                      6 Items
+                      6 Tools
                     </span>
                     {isSettingsMenuOpen ? (
                       <ChevronDown className={`w-4 h-4 ${activeTab === 'settings' ? 'text-white' : 'text-slate-800'}`} />
@@ -1615,7 +1722,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 {/* Sub-Items: Logo, Site Name, Site Description, Feature Image, Payment QR, Plan & Pricing */}
                 {isSettingsMenuOpen && (
                   <div className="p-1.5 space-y-1 bg-white/95 border-t border-indigo-200/70">
-                    {/* Logo */}
+                    {/* 1. Logo */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1623,7 +1730,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         setSettingsSubTab('logo');
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between gap-1 transition text-left cursor-pointer ${
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
                         activeTab === 'settings' && settingsSubTab === 'logo'
                           ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                           : 'text-slate-700 hover:bg-indigo-50'
@@ -1633,16 +1740,16 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         <ImageIcon className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && settingsSubTab === 'logo' ? 'text-amber-400' : 'text-indigo-600'}`} />
                         <span className="truncate">Logo</span>
                       </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         activeTab === 'settings' && settingsSubTab === 'logo'
-                          ? 'bg-amber-400 text-slate-950 font-black'
+                          ? 'bg-white/20 text-white'
                           : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                       }`}>
                         Upload
                       </span>
                     </button>
 
-                    {/* Site Name */}
+                    {/* 2. Site Name */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1650,7 +1757,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         setSettingsSubTab('name');
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between gap-1 transition text-left cursor-pointer ${
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
                         activeTab === 'settings' && settingsSubTab === 'name'
                           ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                           : 'text-slate-700 hover:bg-indigo-50'
@@ -1660,16 +1767,16 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         <Type className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && settingsSubTab === 'name' ? 'text-amber-400' : 'text-blue-600'}`} />
                         <span className="truncate">Site Name</span>
                       </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         activeTab === 'settings' && settingsSubTab === 'name'
-                          ? 'bg-amber-400 text-slate-950 font-black'
+                          ? 'bg-white/20 text-white'
                           : 'bg-blue-50 text-blue-700 border border-blue-200'
                       }`}>
                         Edit
                       </span>
                     </button>
 
-                    {/* Site Description */}
+                    {/* 3. Site Description */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1677,7 +1784,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         setSettingsSubTab('description');
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between gap-1 transition text-left cursor-pointer ${
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
                         activeTab === 'settings' && settingsSubTab === 'description'
                           ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                           : 'text-slate-700 hover:bg-indigo-50'
@@ -1687,16 +1794,16 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         <FileText className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && settingsSubTab === 'description' ? 'text-amber-400' : 'text-emerald-600'}`} />
                         <span className="truncate">Site Description</span>
                       </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         activeTab === 'settings' && settingsSubTab === 'description'
-                          ? 'bg-amber-400 text-slate-950 font-black'
+                          ? 'bg-white/20 text-white'
                           : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                       }`}>
                         Summary
                       </span>
                     </button>
 
-                    {/* Feature Image */}
+                    {/* 4. Feature Image */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1704,7 +1811,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         setSettingsSubTab('feature');
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between gap-1 transition text-left cursor-pointer ${
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
                         activeTab === 'settings' && settingsSubTab === 'feature'
                           ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                           : 'text-slate-700 hover:bg-indigo-50'
@@ -1714,16 +1821,16 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         <Sparkles className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && settingsSubTab === 'feature' ? 'text-amber-400' : 'text-amber-600'}`} />
                         <span className="truncate">Feature Image</span>
                       </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         activeTab === 'settings' && settingsSubTab === 'feature'
-                          ? 'bg-amber-400 text-slate-950 font-black'
+                          ? 'bg-white/20 text-white'
                           : 'bg-amber-50 text-amber-800 border border-amber-200'
                       }`}>
                         Banner
                       </span>
                     </button>
 
-                    {/* Payment QR */}
+                    {/* 5. Payment QR */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1731,7 +1838,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         setSettingsSubTab('payment_qr');
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between gap-1 transition text-left cursor-pointer ${
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
                         activeTab === 'settings' && settingsSubTab === 'payment_qr'
                           ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                           : 'text-slate-700 hover:bg-indigo-50'
@@ -1741,16 +1848,16 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         <QrCode className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && settingsSubTab === 'payment_qr' ? 'text-amber-400' : 'text-purple-600'}`} />
                         <span className="truncate">Payment QR</span>
                       </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         activeTab === 'settings' && settingsSubTab === 'payment_qr'
-                          ? 'bg-amber-400 text-slate-950 font-black'
+                          ? 'bg-white/20 text-white'
                           : 'bg-purple-50 text-purple-700 border border-purple-200'
                       }`}>
                         UPI
                       </span>
                     </button>
 
-                    {/* Plan & Pricing (Remaining Visibility Days) */}
+                    {/* 6. Plan & Pricing (Remaining Visibility Days) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1758,7 +1865,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         setSettingsSubTab('plan');
                         setIsMobileSidebarOpen(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between gap-1 transition text-left cursor-pointer ${
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
                         activeTab === 'settings' && settingsSubTab === 'plan'
                           ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                           : 'text-amber-900 bg-amber-50/70 hover:bg-amber-100 border border-amber-200/60'
@@ -1768,9 +1875,9 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                         <Zap className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && settingsSubTab === 'plan' ? 'text-amber-400' : 'text-amber-600 fill-amber-500'}`} />
                         <span className="truncate">Plan &amp; Pricing</span>
                       </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         activeTab === 'settings' && settingsSubTab === 'plan'
-                          ? 'bg-amber-400 text-slate-950 font-black'
+                          ? 'bg-white/20 text-white'
                           : 'bg-amber-100 text-amber-900 font-extrabold'
                       }`}>
                         {vendorLabSettings.remainingVisibilityDays ?? 24}d left
@@ -2058,28 +2165,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 </button>
               </div>
 
-              {/* SECTION 12: LOGOUT (REDIRECT TO HOME PAGE) */}
-              <div className="rounded-xl border border-rose-200/80 bg-rose-50/40 overflow-hidden shadow-2xs">
-                <button
-                  type="button"
-                  id="tab-btn-logout-redirect"
-                  onClick={() => {
-                    logout();
-                    onNavigateView('vendor_website');
-                  }}
-                  className="w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer bg-rose-100/70 hover:bg-rose-200/80 text-rose-900 font-bold active:scale-[0.98]"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span className="text-xs font-black truncate">12. Logout (Home Page)</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-200 text-rose-800">
-                    Exit ➔
-                  </span>
-                </button>
-              </div>
-
-              {/* SECTION 13: TECH SUPPORT */}
+              {/* SECTION 12: TECH SUPPORT */}
               <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 overflow-hidden shadow-2xs">
                 <button
                   type="button"
@@ -2096,12 +2182,12 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Headphones className={`w-4 h-4 shrink-0 ${activeTab === 'support' ? 'text-amber-300' : 'text-emerald-700'}`} />
-                    <span className="text-xs font-black truncate">13. Tech Support</span>
+                    <span className="text-xs font-black truncate">12. Tech Support</span>
                   </div>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                     activeTab === 'support' ? 'bg-white/20 text-white' : 'bg-emerald-200 text-emerald-900'
                   }`}>
-                    Helpdesk
+                    Help Desk
                   </span>
                 </button>
               </div>
@@ -2109,848 +2195,41 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
           </aside>
 
           {/* ======================================================== */}
-          {/* MAIN CONTENT PANEL */}
+          {/* MAIN CONTENT PANEL: ALL TABS ACCORDION VIEW */}
           {/* ======================================================== */}
-          <main className="flex-1 w-full min-w-0 space-y-6">
-            {/* 1. VENDOR'S OWN WEBSITE CMS & SECTIONS ON/OFF TAB */}
-            {(activeTab === 'website' || activeTab === 'profile') && (
-              <VendorWebsiteCmsTab
-                onPreviewWebsite={() => onNavigateView('vendor_website')}
-                activeSubTab={websiteSubTab}
-                onSubTabChange={(sub) => setWebsiteSubTab(sub)}
-              />
-            )}
-
-        {/* 2. PAYMENT & BILLING (1 or 2 QR CODES & LEDGER) TAB */}
-        {activeTab === 'billing' && (
-          <VendorBillingTab />
-        )}
-
-        {/* 2. ONLINE TEST (1. ADD, 2. LIST > EDIT / DELETE) TAB */}
-        {activeTab === 'tests' && (
-          <VendorTestsTab
-            activeSubTab={testSubTab}
-            onSubTabChange={(tab) => setTestSubTab(tab)}
-            onPreviewWebsite={() => onNavigateView('vendor_website')}
-          />
-        )}
-
-        {/* 3. TEST PACKAGE (ADD / LIST > EDIT & DELETE) TAB */}
-        {activeTab === 'packages' && (
-          <VendorPackagesTab
-            activeSubTab={packageSubTab}
-            onSubTabChange={(tab) => setPackageSubTab(tab)}
-            onPreviewWebsite={() => onNavigateView('website')}
-          />
-        )}
-
-        {/* 4. FORM (1. BOOKING SUBMISSION LIST, 2. CONTACT FORM) TAB */}
-        {activeTab === 'forms' && (
-          <VendorFormsTab
-            activeSubTab={formSubTab}
-            onSubTabChange={(tab) => setFormSubTab(tab)}
-            onNavigateView={onNavigateView}
-          />
-        )}
-
-        {/* 5. DEPARTMENT DASHBOARDS (RECEPTION & TECHNICIAN DASHBOARDS) */}
-        {activeTab === 'dashboard' && (
-          <VendorDashboardsTab
-            activeSubTab={dashboardSubTab}
-            onSubTabChange={(tab) => setDashboardSubTab(tab)}
-            onNavigateView={onNavigateView}
-          />
-        )}
-
-        {/* 6. DOMAIN REQUEST (ADD - REQUEST TO SUPER ADMIN) */}
-        {activeTab === 'domain' && (
-          <VendorDomainRequestTab
-            initialSubTab={domainSubTab}
-            onNavigateSubTab={(tab) => setDomainSubTab(tab)}
-          />
-        )}
-
-        {/* 7. SITE SETTINGS & PLAN PRICING TAB */}
-        {activeTab === 'settings' && (
-          <VendorSiteSettingsTab
-            activeSubTab={settingsSubTab}
-            onSubTabChange={(sub) => setSettingsSubTab(sub)}
-            initialSection={settingsSubTab}
-            onNavigateView={onNavigateView}
-          />
-        )}
-
-        {/* 8. ADMIN SETTINGS (PIN CODE & PASSWORD — EDIT) TAB */}
-        {activeTab === 'admin_settings' && (
-          <VendorAdminSettingsTab
-            onNavigateView={onNavigateView}
-          />
-        )}
-
-        {/* 9. BOOKING FORM SETTINGS (HOME SAMPLE CHARGES & BOOKING TIMING) TAB */}
-        {activeTab === 'booking_settings' && (
-          <VendorBookingSettingsTab
-            initialSubTab={bookingSettingsSubTab}
-            onNavigateView={onNavigateView}
-          />
-        )}
-
-        {/* 10. BACKUP & REPORTS TAB */}
-        {activeTab === 'backup' && (
-          <VendorBackupReportsTab onNavigateView={onNavigateView} />
-        )}
-
-        {/* 12. TECH SUPPORT TAB */}
-        {activeTab === 'support' && (
-          <VendorTechSupportTab />
-        )}
-
-        {/* 2. TESTS CATALOG TAB (Replaced with VendorTestsTab above) */}
-        {false && activeTab === 'tests' && (
-          <div className="space-y-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-extrabold text-[#123B6D]">
-                  Diagnostic Pathology Tests Directory ({vendorTests.length} Tests)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Manage test names, rates (INR), specimen vials, and report turnaround times.
-                </p>
-              </div>
-              <button
-                onClick={handleOpenAddTest}
-                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-              >
-                <Plus className="w-4 h-4 text-amber-400" />
-                <span>Add New Test</span>
-              </button>
-            </div>
-
-            {/* Filter and Search */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search test by name or code (e.g. CBC, HbA1c, Thyroid)..."
-                  value={testSearch}
-                  onChange={(e) => setTestSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#123B6D]/30"
-                />
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-xl text-xs">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setTestCategoryFilter(cat)}
-                    className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition ${
-                      testCategoryFilter === cat
-                        ? 'bg-[#123B6D] text-white font-bold shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="p-3">Test Code</th>
-                      <th className="p-3">Test Name</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3">Sample Specimen</th>
-                      <th className="p-3">Turnaround (TAT)</th>
-                      <th className="p-3">Price (₹ INR)</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredTests.map((test) => (
-                      <tr key={test.id} className="hover:bg-slate-50 transition">
-                        <td className="p-3 font-mono font-bold text-[#123B6D]">{test.code}</td>
-                        <td className="p-3">
-                          <div className="font-bold text-slate-900">{test.name}</div>
-                          <div className="text-[10px] text-slate-400">Ref: {test.normalRange}</div>
-                        </td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-medium">
-                            {test.category}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-600">{test.sampleType}</td>
-                        <td className="p-3 text-slate-600">{test.turnaroundTime}</td>
-                        <td className="p-3 font-black text-slate-900">₹{test.priceINR}</td>
-                        <td className="p-3 text-right">
-                          <div className="inline-flex items-center gap-1.5">
-                            <button
-                              onClick={() => handleOpenEditTest(test)}
-                              className="p-1 rounded-md hover:bg-blue-50 text-blue-600"
-                              title="Edit Test"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTest(test.id, test.name)}
-                              className="p-1 rounded-md hover:bg-rose-50 text-rose-600"
-                              title="Delete Test"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredTests.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="p-6 text-center text-slate-400 italic">
-                          No diagnostic tests matched your search filter.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 4. DOCTORS / PATHOLOGISTS TAB */}
-        {activeTab === 'doctors' && (
-          <div className="space-y-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-extrabold text-[#123B6D]">
-                  Pathologist & Medical Specialist Panel
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Showcase qualified doctors with AIIMS/NABL credentials, track referral commissions, and tally monthly incentives.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  id="btn-doctor-commission-summary"
-                  onClick={() => {
-                    setSelectedDoctorForCommission(null);
-                    setIsDoctorCommissionModalOpen(true);
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                  title="Doctor Commission & Referral Business Summary"
-                >
-                  <BadgePercent className="w-4 h-4 text-emerald-200" />
-                  <span>Doctor Commission & Referral Tally</span>
-                </button>
-                <button
-                  onClick={handleOpenAddDoctor}
-                  className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 text-amber-400" />
-                  <span>Add Doctor</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {vendorDoctors.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-2xl">
-                        {doc.avatarEmoji}
-                      </div>
-                      <div>
-                        <h3 className="font-extrabold text-sm text-slate-900">{doc.name}</h3>
-                        <div className="text-xs text-[#123B6D] font-bold">{doc.degrees}</div>
-                        <div className="text-[10px] text-slate-400">{doc.specialization}</div>
-                      </div>
-                    </div>
-                    <div className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block mb-2">
-                      {doc.experience}
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed mb-3">{doc.bio}</p>
-
-                    {/* Referral & Incentive Track */}
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-[11px] space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 font-medium">Referral Incentive:</span>
-                        <span className="font-bold text-[#0F766E] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
-                          {doc.referralCommissionPct || 15}% Commission
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-slate-600 pt-1 border-t border-slate-200/60">
-                        <span>Referred: <strong>{doc.monthlyReferrals || 38} pts</strong></span>
-                        <span>Monthly Billing: <strong>₹{doc.totalReferredBilling?.toLocaleString('en-IN') || '54,200'}</strong></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedDoctorForCommission(doc);
-                        setIsDoctorCommissionModalOpen(true);
-                      }}
-                      className="p-1.5 px-2.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1 cursor-pointer transition"
-                      title="View Referral Tally & Settle Commission"
-                    >
-                      <BadgePercent className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Commission</span>
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleOpenEditDoctor(doc)}
-                        className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDoctor(doc.id, doc.name)}
-                        className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 5. STAFF PASSWORDS & ROLES TAB (RECEPTION & TECHNICIAN) */}
-        {activeTab === 'staff' && (
-          <VendorStaffManagementTab
-            initialSubTab={staffSubTab}
-            onNavigateView={onNavigateView}
-          />
-        )}
-        {false && (
-          <div className="space-y-6">
-            {/* Top Overview & Security RBAC Rule Card */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                    <ShieldCheck className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Lab Owner Administrative Privilege</span>
-                  </div>
-                  <h2 className="text-lg font-black text-[#123B6D] flex items-center gap-2">
-                    <span>Staff Passwords & User Accounts Control</span>
-                  </h2>
-                  <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
-                    You have master control to create staff profiles, change login passwords, and manage access for your <strong>Reception Desk (Billing & Tokens)</strong> and <strong>Lab Technician (Testing & Analyzer)</strong> teams.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={() => handleOpenAddStaff('reception')}
-                    className="bg-[#0F766E] hover:bg-[#0d645e] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                  >
-                    <UserPlus className="w-3.5 h-3.5 text-teal-200" />
-                    <span>+ Add Receptionist</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleOpenAddStaff('technician')}
-                    className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                  >
-                    <UserPlus className="w-3.5 h-3.5 text-amber-300" />
-                    <span>+ Add Lab Technician</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* RBAC Rules Visual Box */}
-              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-5 border-t border-slate-100">
-                <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3.5 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 font-black text-xs shadow-xs">
-                    🔑
-                  </div>
-                  <div className="text-xs">
-                    <div className="font-bold text-amber-950">Lab Admin Only Password Privilege</div>
-                    <p className="text-amber-900/80 text-[11px] mt-0.5 leading-relaxed">
-                      <strong>Only Lab Admin (You)</strong> can set or reset passwords for your own Receptionist & Lab Technician. Staff cannot reset passwords themselves.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-indigo-50/80 border border-indigo-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-[#123B6D] text-white flex items-center justify-center shrink-0 font-black text-sm shadow-xs">
-                      👑
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-xs">Lab Owner Credentials</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
-                          Primary Admin
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono">
-                        <span>Mobile/Login: <strong className="text-slate-900 font-bold">{currentLab?.phone || '9876543210'}</strong></span>
-                        <span className="flex items-center gap-1">
-                          Pass: <strong className="text-slate-900 font-bold">{showOwnerPassword ? currentLab?.password || 'owner123' : '••••••••'}</strong>
-                          <button
-                            type="button"
-                            onClick={() => setShowOwnerPassword((p) => !p)}
-                            className="text-slate-400 hover:text-slate-700 cursor-pointer ml-0.5"
-                            title={showOwnerPassword ? 'Hide password' : 'Show password'}
-                          >
-                            {showOwnerPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                          </button>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          PIN: <strong className="text-slate-900 font-bold">{showOwnerPin ? currentLab?.pin || '123456' : '••••••'}</strong>
-                          <button
-                            type="button"
-                            onClick={() => setShowOwnerPin((p) => !p)}
-                            className="text-slate-400 hover:text-slate-700 cursor-pointer ml-0.5"
-                            title={showOwnerPin ? 'Hide PIN' : 'Show PIN'}
-                          >
-                            {showOwnerPin ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                          </button>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenOwnerPasswordModal}
-                    className="shrink-0 px-3.5 py-1.5 bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold rounded-lg transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <KeyRound className="w-3.5 h-3.5" />
-                    <span>Change Owner Password</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Staff Accounts Cards Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {staffAccounts.map((staff) => {
-                const isReception = staff.role === 'reception';
-                const showPw = !!showPasswordMap[staff.id];
-                const isCopied = copiedStaffId === staff.id;
-
-                return (
-                  <div
-                    key={staff.id}
-                    className={`bg-white rounded-2xl border transition-all duration-200 p-5 shadow-2xs hover:shadow-xs flex flex-col justify-between ${
-                      isReception
-                        ? 'border-teal-200 hover:border-teal-300'
-                        : 'border-purple-200 hover:border-purple-300'
-                    }`}
-                  >
-                    <div>
-                      {/* Top Role Header */}
-                      <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${
-                              isReception
-                                ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                                : 'bg-purple-50 text-purple-700 border border-purple-200'
-                            }`}
-                          >
-                            {isReception ? '🖥️' : '🔬'}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-extrabold text-sm text-slate-900">{staff.name}</h3>
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                                  isReception
-                                    ? 'bg-teal-100 text-teal-800'
-                                    : 'bg-purple-100 text-purple-800'
-                                }`}
-                              >
-                                {isReception ? 'Reception Desk' : 'Lab Technician'}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
-                              <span>Shift: <strong>{staff.shift || 'General Working Shift'}</strong></span>
-                              <span>•</span>
-                              <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                {staff.status === 'active' ? 'Active' : 'Suspended'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleOpenEditStaff(staff)}
-                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold"
-                            title="Edit Staff Information"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-blue-600" />
-                          </button>
-                          {staffAccounts.length > 2 && (
-                            <button
-                              onClick={() => handleDeleteStaff(staff)}
-                              className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold"
-                              title="Delete Staff"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Credentials Display Box */}
-                      <div className="space-y-2.5 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                        {/* Login ID / Username */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500 font-medium">Username / Login ID:</span>
-                          <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 select-all">
-                            {staff.username}
-                          </span>
-                        </div>
-
-                        {/* Phone */}
-                        {staff.phone && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-500 font-medium">Contact Phone:</span>
-                            <span className="font-semibold text-slate-700">{staff.phone}</span>
-                          </div>
-                        )}
-
-                        {/* Password with Show/Hide & Reset button */}
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
-                          <span className="text-slate-500 font-medium flex items-center gap-1">
-                            <Lock className="w-3 h-3 text-slate-400" />
-                            <span>Staff Password:</span>
-                          </span>
-
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono font-bold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-900 text-xs">
-                              {showPw ? staff.password : '••••••••••••'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toggleShowPassword(staff.id)}
-                              className="p-1 rounded bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 cursor-pointer"
-                              title={showPw ? 'Hide Password' : 'Show Password'}
-                            >
-                              {showPw ? (
-                                <EyeOff className="w-3.5 h-3.5 text-slate-600" />
-                              ) : (
-                                <Eye className="w-3.5 h-3.5 text-slate-600" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Last Reset Timestamp */}
-                        {staff.lastPasswordReset && (
-                          <div className="text-[10px] text-slate-400 text-right pt-0.5">
-                            Last reset: {staff.lastPasswordReset}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Notes / Duties description */}
-                      {staff.notes && (
-                        <p className="text-[11px] text-slate-500 mt-2.5 italic">
-                          "{staff.notes}"
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Action Buttons Row */}
-                    <div className="pt-4 mt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {/* 1. Reset Password Button */}
-                        <button
-                          onClick={() => handleOpenResetPassword(staff)}
-                          className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          <span>Reset Password</span>
-                        </button>
-
-                        {/* 2. Copy Credentials Button */}
-                        <button
-                          onClick={() => handleCopyCredentials(staff)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
-                            isCopied
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-                          <span>{isCopied ? 'Copied!' : 'Copy Login Info'}</span>
-                        </button>
-                      </div>
-
-                      {/* 3. Launch View / Test Login */}
-                      <button
-                        onClick={() =>
-                          onNavigateView(
-                            isReception ? 'reception_dashboard' : 'technician_dashboard'
-                          )
-                        }
-                        className={`text-xs font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition cursor-pointer ${
-                          isReception
-                            ? 'text-teal-700 bg-teal-50 border-teal-200 hover:bg-teal-100'
-                            : 'text-purple-700 bg-purple-50 border-purple-200 hover:bg-purple-100'
-                        }`}
-                      >
-                        <span>Open {isReception ? 'Reception' : 'Technician'} View</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Practical instructions for staff distribution */}
-            <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-4.5 text-xs text-blue-900 space-y-2">
-              <div className="font-bold flex items-center gap-1.5 text-blue-950">
-                <Sparkles className="w-4 h-4 text-blue-600" />
-                <span>How to manage & share staff login access:</span>
-              </div>
-              <ul className="list-disc pl-5 space-y-1 text-blue-800/90 text-[11px] leading-relaxed">
-                <li>
-                  Click <strong>"Reset Password"</strong> on either the Receptionist or Technician card to set a simple or customized password whenever needed.
-                </li>
-                <li>
-                  Click <strong>"Copy Login Info"</strong> to copy the formatted username, password, and portal link directly to your clipboard to send to your staff via WhatsApp or SMS.
-                </li>
-                <li>
-                  When your receptionist or technician logs in from the login window, they can enter these credentials and directly access their respective dashboard.
-                </li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {/* 6. LAB PROFILE & BRANDING TAB (Replaced with VendorWebsiteCmsTab above) */}
-        {false && activeTab === 'profile' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
-            <h2 className="text-base font-extrabold text-[#123B6D] mb-1">
-              Lab Identity, NABL Accreditation & Contact Channels
-            </h2>
-            <p className="text-xs text-slate-500 mb-6">
-              Changes made here will be displayed instantly on the lab's public website header, hero, and footers.
-            </p>
-
-            <form onSubmit={handleSaveLabSettings} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Official Diagnostic Lab Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={labSettingsForm.labName}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, labName: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Lab Tagline / Subtitle</label>
-                  <input
-                    type="text"
-                    value={labSettingsForm.tagline}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, tagline: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Helpline Phone (Call)</label>
-                  <input
-                    type="text"
-                    required
-                    value={labSettingsForm.phone}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, phone: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">WhatsApp Booking Number</label>
-                  <input
-                    type="text"
-                    required
-                    value={labSettingsForm.whatsapp}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, whatsapp: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">NABL Accreditation No.</label>
-                  <input
-                    type="text"
-                    value={labSettingsForm.nablAccreditationNo}
-                    onChange={(e) =>
-                      setLabSettingsForm({ ...labSettingsForm, nablAccreditationNo: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">ISO Certification Tag</label>
-                  <input
-                    type="text"
-                    value={labSettingsForm.isoCert}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, isoCert: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Central Lab Full Address</label>
-                  <input
-                    type="text"
-                    value={labSettingsForm.address}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, address: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Regular Lab Timings</label>
-                  <input
-                    type="text"
-                    value={labSettingsForm.openingHours}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, openingHours: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Hero Home Collection Promotional Banner Text
-                </label>
-                <input
-                  type="text"
-                  value={labSettingsForm.heroPromoText}
-                  onChange={(e) => setLabSettingsForm({ ...labSettingsForm, heroPromoText: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-hidden"
-                />
-              </div>
-
-              {/* Statutory Registrations */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">GSTIN Number</label>
-                  <input
-                    type="text"
-                    value={labSettingsForm.gstin || '03AAACL1234F1Z8'}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, gstin: e.target.value })}
-                    placeholder="e.g. 03AAACL1234F1Z8"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-hidden font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">State Medical Council (PMC) Reg. No.</label>
-                  <input
-                    type="text"
-                    value={labSettingsForm.pmcRegistrationNo || 'PMC-PUNJAB-4921'}
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, pmcRegistrationNo: e.target.value })}
-                    placeholder="e.g. PMC-PUNJAB-4921"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-hidden font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* WhatsApp Automation & Report Customization */}
-              <div className="pt-4 border-t border-slate-200 space-y-3">
-                <div className="flex items-center gap-2 text-[#0F766E]">
-                  <MessageSquare className="w-4 h-4" />
-                  <h3 className="font-extrabold text-sm text-slate-900">
-                    Automated WhatsApp Report Notification Template
-                  </h3>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  This message is auto-sent to patient's WhatsApp when their NABL report is approved & signed.
-                </p>
-
-                <div>
-                  <textarea
-                    rows={3}
-                    value={
-                      labSettingsForm.whatsappTemplate ||
-                      'Namaste {patientName},\nYour diagnostic test report ({reportId}) from {labName} is ready. Click below to download your NABL signed digital PDF:\n{downloadLink}\nThank you for choosing {labName}!'
-                    }
-                    onChange={(e) => setLabSettingsForm({ ...labSettingsForm, whatsappTemplate: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-hidden"
-                  />
-                  <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
-                    <span>Available Tags:</span>
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">{`{patientName}`}</span>
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">{`{reportId}`}</span>
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">{`{labName}`}</span>
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">{`{downloadLink}`}</span>
-                  </div>
-                </div>
-
-                {/* Digital Stamp & Signatures */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <label className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
-                    <input
-                      type="checkbox"
-                      checked={labSettingsForm.enableDigitalSignature !== false}
-                      onChange={(e) =>
-                        setLabSettingsForm({ ...labSettingsForm, enableDigitalSignature: e.target.checked })
-                      }
-                      className="rounded text-[#123B6D] w-4 h-4"
-                    />
-                    <div>
-                      <span className="font-bold text-slate-900 block">MD Pathologist Digital Signature</span>
-                      <span className="text-[10px] text-slate-500">Auto-attach verified digital sign to PDF reports</span>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 transition">
-                    <input
-                      type="checkbox"
-                      checked={labSettingsForm.enableLabStamp !== false}
-                      onChange={(e) =>
-                        setLabSettingsForm({ ...labSettingsForm, enableLabStamp: e.target.checked })
-                      }
-                      className="rounded text-[#123B6D] w-4 h-4"
-                    />
-                    <div>
-                      <span className="font-bold text-slate-900 block">NABL & Lab Digital Seal / Stamp</span>
-                      <span className="text-[10px] text-slate-500">Embed official circular stamp with QR authentication</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <div className="pt-4 flex justify-end">
-                <button
-                  type="submit"
-                  className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
-                >
-                  <Save className="w-4 h-4 text-amber-400" />
-                  <span>Save Lab Profile & Settings</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+          <main className="flex-1 w-full min-w-0">
+            <VendorAllTabsAccordion
+              activeTab={activeTab}
+              onSelectTab={(tab) => setActiveTab(tab)}
+              expandedTabs={expandedTabs}
+              onToggleTab={toggleAccordionTab}
+              onExpandAll={handleExpandAll}
+              onCollapseAll={handleCollapseAll}
+              onOpenActiveOnly={handleOpenActiveOnly}
+              onNavigateView={onNavigateView}
+              websiteSubTab={websiteSubTab}
+              onWebsiteSubTabChange={(sub) => setWebsiteSubTab(sub)}
+              testSubTab={testSubTab}
+              onTestSubTabChange={(sub) => setTestSubTab(sub)}
+              packageSubTab={packageSubTab}
+              onPackageSubTabChange={(sub) => setPackageSubTab(sub)}
+              formSubTab={formSubTab}
+              onFormSubTabChange={(sub) => setFormSubTab(sub)}
+              dashboardSubTab={dashboardSubTab}
+              onDashboardSubTabChange={(sub) => setDashboardSubTab(sub)}
+              domainSubTab={domainSubTab}
+              onDomainSubTabChange={(sub) => setDomainSubTab(sub)}
+              settingsSubTab={settingsSubTab}
+              onSettingsSubTabChange={(sub) => setSettingsSubTab(sub)}
+              bookingSettingsSubTab={bookingSettingsSubTab}
+              staffSubTab={staffSubTab}
+              testsCount={vendorTests.length}
+              packagesCount={vendorPackages.length}
+              bookingsCount={vendorBookings.length}
+              contactsCount={contactSubmissions.length}
+              domainRequestsCount={domainRequests.length}
+              remainingPlanDays={vendorLabSettings.remainingVisibilityDays ?? 24}
+            />
           </main>
         </div>
       </div>
