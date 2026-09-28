@@ -3480,6 +3480,17 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
+    if (deletingStaff.role !== recipientStaff.role) {
+      console.warn('Cannot transfer data: roles do not match', { deletingRole: deletingStaff.role, recipientRole: recipientStaff.role });
+      return;
+    }
+
+    const sameRoleStaff = allStaffAccounts.filter((s) => s.role === deletingStaff.role);
+    if (sameRoleStaff.length <= 1) {
+      console.warn(`Cannot delete: Minimum 1 ${deletingStaff.role} must always exist.`);
+      return;
+    }
+
     const delNameLower = deletingStaff.name.trim().toLowerCase();
     const recipientName = recipientStaff.name.trim();
 

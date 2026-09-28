@@ -1986,7 +1986,101 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 )}
               </div>
 
-              {/* SECTION 10: BACKUP & REPORTS */}
+              {/* SECTION 10: STAFF MANAGEMENT (Reception & Technician) */}
+              <div className="rounded-xl border border-teal-300/80 bg-teal-50/50 overflow-hidden shadow-2xs">
+                {/* Accordion Header */}
+                <button
+                  type="button"
+                  id="tab-btn-staff-mgmt"
+                  onClick={() => {
+                    setActiveTab('staff');
+                    setIsStaffMenuOpen(!isStaffMenuOpen);
+                  }}
+                  className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
+                    activeTab === 'staff'
+                      ? 'bg-[#123B6D] text-white font-black shadow-xs'
+                      : 'bg-teal-100/70 text-slate-900 font-bold hover:bg-teal-200/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Users className={`w-4 h-4 shrink-0 ${activeTab === 'staff' ? 'text-amber-400' : 'text-teal-700'}`} />
+                    <span className="text-xs font-black truncate">10. Staff Management</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      activeTab === 'staff' ? 'bg-white/20 text-white' : 'bg-white/80 text-slate-800'
+                    }`}>
+                      {staffAccounts.length} Staff
+                    </span>
+                    {isStaffMenuOpen ? (
+                      <ChevronDown className={`w-4 h-4 ${activeTab === 'staff' ? 'text-white' : 'text-slate-800'}`} />
+                    ) : (
+                      <ChevronRight className={`w-4 h-4 ${activeTab === 'staff' ? 'text-white' : 'text-slate-800'}`} />
+                    )}
+                  </div>
+                </button>
+
+                {/* Sub-Items: Staff List (Edit / Delete), Add New Staff */}
+                {isStaffMenuOpen && (
+                  <div className="p-1.5 space-y-1 bg-white/95 border-t border-teal-200/70">
+                    {/* 1. Staff List (Edit Name & Password, Delete) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('staff');
+                        setStaffSubTab('list');
+                        setIsMobileSidebarOpen(false);
+                      }}
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
+                        activeTab === 'staff' && staffSubTab === 'list'
+                          ? 'bg-[#123B6D] text-white shadow-2xs font-black'
+                          : 'text-slate-700 hover:bg-teal-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Users className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'staff' && staffSubTab === 'list' ? 'text-amber-400' : 'text-teal-600'}`} />
+                        <span className="truncate">Staff List (Edit / Delete)</span>
+                      </div>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                        activeTab === 'staff' && staffSubTab === 'list'
+                          ? 'bg-amber-400 text-slate-950 font-black'
+                          : 'bg-teal-50 text-teal-800 border border-teal-200'
+                      }`}>
+                        {staffAccounts.length}
+                      </span>
+                    </button>
+
+                    {/* 2. Add New Staff */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('staff');
+                        setStaffSubTab('add');
+                        setIsMobileSidebarOpen(false);
+                      }}
+                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
+                        activeTab === 'staff' && staffSubTab === 'add'
+                          ? 'bg-[#123B6D] text-white shadow-2xs font-black'
+                          : 'text-slate-700 hover:bg-teal-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <UserPlus className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'staff' && staffSubTab === 'add' ? 'text-amber-400' : 'text-emerald-600'}`} />
+                        <span className="truncate">+ Add New Staff</span>
+                      </div>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                        activeTab === 'staff' && staffSubTab === 'add'
+                          ? 'bg-amber-400 text-slate-950 font-black'
+                          : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      }`}>
+                        Add &gt;
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 11: BACKUP & REPORTS */}
               <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/40 overflow-hidden shadow-2xs">
                 <button
                   type="button"
@@ -2003,7 +2097,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Database className={`w-4 h-4 shrink-0 ${activeTab === 'backup' ? 'text-amber-400' : 'text-indigo-700'}`} />
-                    <span className="text-xs font-black truncate">10. Backup & Reports</span>
+                    <span className="text-xs font-black truncate">11. Backup & Reports</span>
                   </div>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                     activeTab === 'backup' ? 'bg-white/20 text-white' : 'bg-white/80 text-slate-800'
@@ -2013,7 +2107,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 </button>
               </div>
 
-              {/* SECTION 11: LOGOUT (REDIRECT TO HOME PAGE) */}
+              {/* SECTION 12: LOGOUT (REDIRECT TO HOME PAGE) */}
               <div className="rounded-xl border border-rose-200/80 bg-rose-50/40 overflow-hidden shadow-2xs">
                 <button
                   type="button"
@@ -2026,7 +2120,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
-                    <span className="text-xs font-black truncate">11. Logout (Home Page)</span>
+                    <span className="text-xs font-black truncate">12. Logout (Home Page)</span>
                   </div>
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-200 text-rose-800">
                     Exit ➔
@@ -2034,7 +2128,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 </button>
               </div>
 
-              {/* SECTION 12: TECH SUPPORT */}
+              {/* SECTION 13: TECH SUPPORT */}
               <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 overflow-hidden shadow-2xs">
                 <button
                   type="button"
@@ -2051,7 +2145,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Headphones className={`w-4 h-4 shrink-0 ${activeTab === 'support' ? 'text-amber-300' : 'text-emerald-700'}`} />
-                    <span className="text-xs font-black truncate">12. Tech Support</span>
+                    <span className="text-xs font-black truncate">13. Tech Support</span>
                   </div>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                     activeTab === 'support' ? 'bg-white/20 text-white' : 'bg-emerald-200 text-emerald-900'
@@ -2217,7 +2311,27 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   <span>9. Booking</span>
                 </button>
 
-                {/* 10. Backup & Reports */}
+                {/* 10. Staff Management */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('staff');
+                    setStaffSubTab('list');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                    activeTab === 'staff'
+                      ? 'bg-teal-700 text-white shadow-xs font-black'
+                      : 'bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100'
+                  }`}
+                >
+                  <Users className={`w-3.5 h-3.5 ${activeTab === 'staff' ? 'text-amber-300' : 'text-teal-700'}`} />
+                  <span>10. Staff</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'staff' ? 'bg-white/20 text-white' : 'bg-teal-200/80 text-teal-950 font-bold'}`}>
+                    {staffAccounts.length}
+                  </span>
+                </button>
+
+                {/* 11. Backup & Reports */}
                 <button
                   type="button"
                   onClick={() => setActiveTab('backup')}
@@ -2228,10 +2342,10 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   }`}
                 >
                   <Database className="w-3.5 h-3.5 text-amber-400" />
-                  <span>10. Backup &amp; Reports</span>
+                  <span>11. Backup &amp; Reports</span>
                 </button>
 
-                {/* 12. Tech Support */}
+                {/* 13. Tech Support */}
                 <button
                   type="button"
                   onClick={() => setActiveTab('support')}
@@ -2242,7 +2356,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   }`}
                 >
                   <Headphones className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>12. Tech Support</span>
+                  <span>13. Tech Support</span>
                 </button>
               </div>
 
@@ -2581,6 +2695,12 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
 
         {/* 5. STAFF PASSWORDS & ROLES TAB (RECEPTION & TECHNICIAN) */}
         {activeTab === 'staff' && (
+          <VendorStaffManagementTab
+            initialSubTab={staffSubTab}
+            onNavigateView={onNavigateView}
+          />
+        )}
+        {false && (
           <div className="space-y-6">
             {/* Top Overview & Security RBAC Rule Card */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
