@@ -255,6 +255,7 @@ export const VendorDashboardsTab: React.FC<VendorDashboardsTabProps> = ({
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
           <ReceptionEntryDashboard
             onNavigateView={onNavigateView}
+            isEmbedded={true}
           />
         </div>
       )}
@@ -264,6 +265,7 @@ export const VendorDashboardsTab: React.FC<VendorDashboardsTabProps> = ({
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
           <TechnicianDepartmentDashboard
             onNavigateView={onNavigateView}
+            isEmbedded={true}
           />
         </div>
       )}

@@ -5,11 +5,13 @@ import { AppView } from '../../types';
 interface TechnicianDepartmentDashboardProps {
   onNavigateView?: (view: AppView) => void;
   onOpenReportPortal?: (reportId: string, mobile: string) => void;
+  isEmbedded?: boolean;
 }
 
 export const TechnicianDepartmentDashboard: React.FC<TechnicianDepartmentDashboardProps> = ({
   onNavigateView,
   onOpenReportPortal,
+  isEmbedded = false,
 }) => {
   return (
     <LabSoftwareApp
@@ -23,6 +25,7 @@ export const TechnicianDepartmentDashboard: React.FC<TechnicianDepartmentDashboa
           onOpenReportPortal(reportId, mobile);
         }
       }}
+      isEmbedded={isEmbedded}
     />
   );
 };

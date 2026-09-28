@@ -54,9 +54,14 @@ import { generateThermalReceiptPdf, buildReceiptInvoicePdf } from '../utils/pdfG
 interface LabSoftwareAppProps {
   onBackToWebsite: () => void;
   onViewReport: (reportId: string, mobile: string) => void;
+  isEmbedded?: boolean;
 }
 
-export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite, onViewReport }) => {
+export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
+  onBackToWebsite,
+  onViewReport,
+  isEmbedded = false,
+}) => {
   const {
     vendorLabSettings,
     addLabReport,
@@ -853,8 +858,33 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({ onBackToWebsite,
               <span className="font-extrabold text-sm sm:text-base tracking-tight text-white leading-tight truncate">
                 {labName}
               </span>
+              <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                <span className="bg-amber-400 text-slate-950 text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1">
+                  <span>🔬</span>
+                  <span>Technician Dashboard</span>
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Right Side Header Actions: Logout Option for Staff Side Login */}
+          {!isEmbedded && (
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <button
+                type="button"
+                id="tech-header-logout-btn"
+                onClick={() => {
+                  logout();
+                  if (onBackToWebsite) onBackToWebsite();
+                }}
+                className="bg-white/15 hover:bg-rose-600 active:scale-95 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm border border-white/20 hover:border-rose-400 cursor-pointer shrink-0"
+                title="Logout from Technician Console"
+              >
+                <LogOut className="w-3.5 h-3.5 text-amber-300" />
+                <span>Logout</span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

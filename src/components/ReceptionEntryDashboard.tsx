@@ -55,11 +55,13 @@ import { safePrint } from '../utils/printHelper';
 interface ReceptionEntryDashboardProps {
   onNavigateView: (view: AppView) => void;
   onOpenReportPortal?: (reportId?: string, mobile?: string) => void;
+  isEmbedded?: boolean;
 }
 
 export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = ({
   onNavigateView,
   onOpenReportPortal,
+  isEmbedded = false,
 }) => {
   const {
     currentUser,
@@ -1108,7 +1110,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
             </div>
           </div>
 
-          {/* Action Buttons: Lab Owner return (if admin) */}
+          {/* Action Buttons: Lab Owner return (if admin) + Staff Logout */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* If Admin is inspecting Reception Desk, provide quick return to Lab Owner CMS */}
             {currentUser?.role === 'admin' && (
@@ -1119,6 +1121,23 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                 title="Return to Lab Owner Dashboard"
               >
                 <span>👑 Lab Owner</span>
+              </button>
+            )}
+
+            {/* Logout Option for Staff Side Login on the right side of header */}
+            {!isEmbedded && (
+              <button
+                type="button"
+                id="reception-header-logout-btn"
+                onClick={() => {
+                  logout();
+                  onNavigateView('vendor_website');
+                }}
+                className="bg-white/15 hover:bg-rose-600 active:scale-95 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm border border-white/20 hover:border-rose-400 cursor-pointer shrink-0"
+                title="Logout from Reception Desk"
+              >
+                <LogOut className="w-3.5 h-3.5 text-amber-300" />
+                <span>Logout</span>
               </button>
             )}
           </div>
