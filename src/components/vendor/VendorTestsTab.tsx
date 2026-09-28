@@ -1156,11 +1156,11 @@ export const VendorTestsTab: React.FC<VendorTestsTabProps> = ({
             </div>
           )}
 
-          {/* GRID CARDS VIEW: 3 IN ROW, NEXT TEST IN 2 ROW */}
+          {/* GRID CARDS VIEW: 3 IN ROW, NEXT TEST IN SECOND ROW */}
           {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4.5">
               {filteredTests.length === 0 ? (
-                <div className="md:col-span-6 bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
+                <div className="col-span-full bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
                   <FlaskConical className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                   <p className="font-bold text-slate-600 text-sm">No matching online diagnostic tests found</p>
                   <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms or category filter</p>
@@ -1173,18 +1173,13 @@ export const VendorTestsTab: React.FC<VendorTestsTabProps> = ({
                   </button>
                 </div>
               ) : (
-                filteredTests.map((test, index) => {
+                filteredTests.map((test) => {
                   const isInactive = test.status === 'Inactive' || test.isActive === false;
-                  // 3 in row, next test in 2 row pattern:
-                  // Indices 0, 1, 2 take col-span-2 in a 6-col grid (3 cards in 6 cols)
-                  // Indices 3, 4 take col-span-3 in a 6-col grid (2 cards in 6 cols)
-                  const isRowOfThree = index % 5 < 3;
-                  const colSpanClass = isRowOfThree ? 'md:col-span-2' : 'md:col-span-3';
 
                   return (
                     <div
                       key={test.id}
-                      className={`${colSpanClass} bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-[#123B6D] hover:shadow-md transition flex flex-col justify-between space-y-4 ${
+                      className={`bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-[#123B6D] hover:shadow-md transition flex flex-col justify-between space-y-4 ${
                         isInactive ? 'opacity-60 bg-slate-50/50' : ''
                       }`}
                     >
