@@ -3947,28 +3947,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-8">
           {/* Footer — 5 Columns */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 text-xs text-slate-600">
-            {/* Column 1: Lab Brand Profile (Real Logo full view on top + Lab Name below + Lab ID Number) */}
+            {/* Column 1: Lab Brand Profile (Lab Name + Lab ID Number) */}
             <div className="space-y-3 sm:col-span-2 lg:col-span-1">
-              {/* Uper Logo (Taki real logo pura show ho) */}
-              <div className="inline-block">
-                {labLogoUrl ? (
-                  <div className="p-2 bg-white rounded-xl border border-slate-200/90 shadow-2xs inline-flex items-center justify-center">
-                    <img
-                      src={labLogoUrl}
-                      alt={labName}
-                      referrerPolicy="no-referrer"
-                      className="h-12 sm:h-14 max-w-[170px] w-auto object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-14 h-14 rounded-2xl bg-[#123B6D] text-white flex items-center justify-center font-black text-xl shadow-xs">
-                    <span className="text-amber-400">{labName.charAt(0) || 'A'}</span>
-                    {labName.split(' ')[1]?.charAt(0) || 'L'}
-                  </div>
-                )}
-              </div>
-
-              {/* Niche Lab ka Name */}
+              {/* Lab ka Name */}
               <div>
                 <span className="font-extrabold text-[#123B6D] text-sm sm:text-base block leading-snug">
                   {labName}
