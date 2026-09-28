@@ -63,12 +63,9 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showPin, setShowPin] = useState(false);
   const [showConfirmPin, setShowConfirmPin] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showCurrentPin, setShowCurrentPin] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successToast, setSuccessToast] = useState('');
-  const [copiedField, setCopiedField] = useState<'pass' | 'pin' | 'phone' | null>(null);
 
   // Sync if settings change externally
   useEffect(() => {
@@ -114,13 +111,6 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
     setNewPin(randomPin);
     setConfirmPin(randomPin);
     setErrorMessage('');
-  };
-
-  // Copy helper
-  const handleCopy = (text: string, type: 'pass' | 'pin' | 'phone') => {
-    navigator.clipboard?.writeText(text);
-    setCopiedField(type);
-    setTimeout(() => setCopiedField(null), 2000);
   };
 
   // Save handler
@@ -170,39 +160,6 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="p-2.5 rounded-xl bg-rose-50 text-rose-700">
-            <ShieldAlert className="w-6 h-6" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-[#123B6D]">
-                8. Admin Settings
-              </h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                PIN Code &amp; Password
-              </span>
-            </div>
-            <p className="text-xs text-slate-500">
-              Master credentials for Laboratory Owner login, elevation, and administrative control.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 hidden sm:inline-block">
-            Lab ID: <strong className="font-mono text-[#123B6D]">{currentLabId}</strong>
-          </span>
-          <span className="text-slate-300 hidden sm:inline-block">•</span>
-          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>256-Bit Encrypted</span>
-          </span>
-        </div>
-      </div>
-
       {/* Toast Notification */}
       {successToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-4 py-3 rounded-xl shadow-xl text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-5">
@@ -210,142 +167,6 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
           <span>{successToast}</span>
         </div>
       )}
-
-      {/* ======================================================== */}
-      {/* CURRENT CREDENTIALS OVERVIEW CARD */}
-      {/* ======================================================== */}
-      <div className="bg-gradient-to-br from-[#123B6D] to-[#0A2547] text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
-        {/* Subtle decorative circles */}
-        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute top-2 right-4 text-amber-400 opacity-20">
-          <KeyRound className="w-32 h-32" />
-        </div>
-
-        <div className="relative z-10 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <h2 className="text-sm font-black text-white">
-                Active Lab Owner Master Credentials
-              </h2>
-            </div>
-            <span className="text-[11px] font-bold text-amber-300 bg-white/10 px-2.5 py-0.5 rounded-full">
-              {vendorLabSettings.labName || currentLab?.name || 'Apex Diagnostic Central'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            {/* 1. Login Mobile / Username */}
-            <div className="bg-white/10 rounded-xl p-3.5 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
-                Registered Mobile (Login ID)
-              </span>
-              <div className="flex items-center justify-between font-mono font-bold text-sm">
-                <span>{currentLab?.phone || vendorLabSettings.phone || '9876543210'}</span>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(currentLab?.phone || vendorLabSettings.phone || '9876543210', 'phone')}
-                  className="p-1 hover:bg-white/20 rounded transition cursor-pointer"
-                  title="Copy Mobile Login ID"
-                >
-                  {copiedField === 'phone' ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5 text-slate-300" />
-                  )}
-                </button>
-              </div>
-              <span className="text-[10px] text-slate-300 block">Used to log in as Lab Owner</span>
-            </div>
-
-            {/* 2. Current Master Password */}
-            <div className="bg-white/10 rounded-xl p-3.5 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
-                Master Password
-              </span>
-              <div className="flex items-center justify-between font-mono font-bold text-sm">
-                <span>
-                  {showCurrentPassword
-                    ? vendorLabSettings.ownerPassword || currentLab?.password || 'owner123'
-                    : '••••••••••••'}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="p-1 hover:bg-white/20 rounded transition cursor-pointer"
-                    title={showCurrentPassword ? 'Hide Password' : 'Show Password'}
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="w-3.5 h-3.5 text-slate-300" />
-                    ) : (
-                      <Eye className="w-3.5 h-3.5 text-slate-300" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(vendorLabSettings.ownerPassword || currentLab?.password || 'owner123', 'pass')
-                    }
-                    className="p-1 hover:bg-white/20 rounded transition cursor-pointer"
-                    title="Copy Password"
-                  >
-                    {copiedField === 'pass' ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-slate-300" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <span className="text-[10px] text-emerald-300 font-bold block">● Active &amp; Synced to Cloud</span>
-            </div>
-
-            {/* 3. Security 6-Digit PIN */}
-            <div className="bg-white/10 rounded-xl p-3.5 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
-                Security PIN Code (6 Digits)
-              </span>
-              <div className="flex items-center justify-between font-mono font-bold text-sm tracking-wider">
-                <span>
-                  {showCurrentPin
-                    ? vendorLabSettings.ownerPin || currentLab?.pin || '123456'
-                    : '••••••'}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPin(!showCurrentPin)}
-                    className="p-1 hover:bg-white/20 rounded transition cursor-pointer"
-                    title={showCurrentPin ? 'Hide PIN' : 'Show PIN'}
-                  >
-                    {showCurrentPin ? (
-                      <EyeOff className="w-3.5 h-3.5 text-slate-300" />
-                    ) : (
-                      <Eye className="w-3.5 h-3.5 text-slate-300" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(vendorLabSettings.ownerPin || currentLab?.pin || '123456', 'pin')
-                    }
-                    className="p-1 hover:bg-white/20 rounded transition cursor-pointer"
-                    title="Copy PIN Code"
-                  >
-                    {copiedField === 'pin' ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-slate-300" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <span className="text-[10px] text-slate-300 block">Quick Authorization &amp; Report Approval</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ======================================================== */}
       {/* PIN CODE & PASSWORD — EDIT FORM */}
@@ -598,25 +419,6 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
             </div>
           </div>
 
-          {/* PART 3: SECURITY ADVISORY & STAFF NOTICE */}
-          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-950 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-900">
-              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Security Best Practices for Laboratory Owners</span>
-            </div>
-            <ul className="text-[11px] text-amber-900/90 list-disc list-inside space-y-1 leading-relaxed">
-              <li>
-                <strong>Master Admin Privileges:</strong> This PIN Code &amp; Password provides total control over financial accounts, doctor commissions, patient records, and website branding.
-              </li>
-              <li>
-                <strong>Do NOT share with Desk Staff:</strong> Create dedicated Reception Desk or Technician accounts via the <strong>Staff Passwords &amp; Access</strong> section so their activity is tracked separately.
-              </li>
-              <li>
-                <strong>Instant Effect:</strong> Once saved, you must use this new password and PIN code the next time you log into the Lab Owner portal.
-              </li>
-            </ul>
-          </div>
-
           {/* Form Actions */}
           <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div className="text-[11px] text-slate-400">
@@ -624,22 +426,6 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const pass = vendorLabSettings.ownerPassword || currentLab?.password || 'owner123';
-                  const pin = vendorLabSettings.ownerPin || currentLab?.pin || '123456';
-                  setNewPassword(pass);
-                  setConfirmPassword(pass);
-                  setNewPin(pin);
-                  setConfirmPin(pin);
-                  setErrorMessage('');
-                }}
-                className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-              >
-                Reset Changes
-              </button>
-
               <button
                 type="submit"
                 className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-5 py-2 rounded-xl text-xs font-black transition shadow-xs flex items-center gap-2 active:scale-95 cursor-pointer"

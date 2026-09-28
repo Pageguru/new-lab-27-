@@ -318,47 +318,6 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
-              <Settings className="w-5 h-5" />
-            </span>
-            <div>
-              <h1 className="text-lg font-black text-[#123B6D]">
-                7. Site Settings &amp; Plan Visibility
-              </h1>
-              <p className="text-xs text-slate-500">
-                Manage your diagnostic laboratory branding, payment QR, and active subscription visibility days.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {onNavigateView && (
-            <button
-              type="button"
-              onClick={() => onNavigateView('vendor_website')}
-              className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5 text-amber-500" />
-              <span>Preview Website</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-4 py-2 rounded-xl text-xs font-black bg-[#123B6D] hover:bg-[#0e2c52] text-white flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
-          >
-            <Save className="w-4 h-4 text-amber-400" />
-            <span>Save All Settings</span>
-          </button>
-        </div>
-      </div>
-
       {/* Toast Notification */}
       {isSavedToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 animate-in slide-in-from-bottom-5">
@@ -367,97 +326,121 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
         </div>
       )}
 
-      {/* Navigation Pills */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 flex items-center gap-1.5 overflow-x-auto shadow-2xs">
-        <button
-          type="button"
-          onClick={() => setActiveSection('all')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-            activeSection === 'all'
-              ? 'bg-[#123B6D] text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          All Settings
-        </button>
+      {/* Navigation Pills & Quick Action Buttons */}
+      <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+          <button
+            type="button"
+            onClick={() => setActiveSection('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+              activeSection === 'all'
+                ? 'bg-[#123B6D] text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            All Settings
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSection('logo')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
-            activeSection === 'logo'
-              ? 'bg-[#123B6D] text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
-          <span>Logo</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('logo')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
+              activeSection === 'logo'
+                ? 'bg-[#123B6D] text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Logo</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSection('name')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
-            activeSection === 'name'
-              ? 'bg-[#123B6D] text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <Type className="w-3.5 h-3.5 text-blue-500" />
-          <span>Site Name</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('name')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
+              activeSection === 'name'
+                ? 'bg-[#123B6D] text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Type className="w-3.5 h-3.5 text-blue-500" />
+            <span>Site Name</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSection('description')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
-            activeSection === 'description'
-              ? 'bg-[#123B6D] text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Site Description</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('description')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
+              activeSection === 'description'
+                ? 'bg-[#123B6D] text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Site Description</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSection('feature')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
-            activeSection === 'feature'
-              ? 'bg-[#123B6D] text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Feature Image</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('feature')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
+              activeSection === 'feature'
+                ? 'bg-[#123B6D] text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Feature Image</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSection('payment_qr')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
-            activeSection === 'payment_qr'
-              ? 'bg-[#123B6D] text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <QrCode className="w-3.5 h-3.5 text-purple-500" />
-          <span>Payment QR</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('payment_qr')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
+              activeSection === 'payment_qr'
+                ? 'bg-[#123B6D] text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <QrCode className="w-3.5 h-3.5 text-purple-500" />
+            <span>Payment QR</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSection('plan')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
-            activeSection === 'plan'
-              ? 'bg-amber-400 text-slate-950 font-black shadow-2xs'
-              : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
-          }`}
-        >
-          <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-          <span>Plan &amp; Pricing ({remainingDays} Days Left)</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('plan')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
+              activeSection === 'plan'
+                ? 'bg-amber-400 text-slate-950 font-black shadow-2xs'
+                : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+            <span>Plan &amp; Pricing ({remainingDays} Days Left)</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+          {onNavigateView && (
+            <button
+              type="button"
+              onClick={() => onNavigateView('vendor_website')}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5 text-amber-500" />
+              <span>Preview</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSave}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-[#123B6D] hover:bg-[#0e2c52] text-white flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5 text-amber-400" />
+            <span>Save All Settings</span>
+          </button>
+        </div>
       </div>
 
       {/* ======================================================== */}
