@@ -946,30 +946,31 @@ export const VendorFormsTab: React.FC<VendorFormsTabProps> = ({
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-black text-sm text-slate-900">Delete Booking Submission</h3>
+                <h3 className="font-black text-sm text-slate-900">Are you sure you want to delete this?</h3>
                 <p className="text-[11px] text-slate-500">This action cannot be undone.</p>
               </div>
             </div>
 
-            <p className="text-slate-600 leading-relaxed">
-              Are you sure you want to permanently delete the booking for{' '}
-              <strong>"{bookingToDelete.patientName}"</strong> (ID: <span className="font-mono">{bookingToDelete.id}</span>)?
+            <p className="text-slate-600 leading-relaxed text-xs">
+              Are you sure you want to delete this? Booking submission for{' '}
+              <strong>"{bookingToDelete.patientName}"</strong> (ID: <span className="font-mono">{bookingToDelete.id}</span>).
             </p>
 
             <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setBookingToDelete(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition cursor-pointer"
               >
-                Cancel
+                No
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDeleteBooking}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
               >
-                Delete Booking
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes</span>
               </button>
             </div>
           </div>
@@ -1115,30 +1116,31 @@ export const VendorFormsTab: React.FC<VendorFormsTabProps> = ({
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-black text-sm text-slate-900">Delete Contact Inquiry</h3>
+                <h3 className="font-black text-sm text-slate-900">Are you sure you want to delete this?</h3>
                 <p className="text-[11px] text-slate-500">Remove from customer records.</p>
               </div>
             </div>
 
-            <p className="text-slate-600 leading-relaxed">
-              Are you sure you want to permanently delete the message from{' '}
-              <strong>"{contactToDelete.name}"</strong>?
+            <p className="text-slate-600 leading-relaxed text-xs">
+              Are you sure you want to delete this? Contact inquiry message from{' '}
+              <strong>"{contactToDelete.name}"</strong>.
             </p>
 
             <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setContactToDelete(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition cursor-pointer"
               >
-                Cancel
+                No
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDeleteContact}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
               >
-                Delete Message
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes</span>
               </button>
             </div>
           </div>

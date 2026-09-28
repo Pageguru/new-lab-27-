@@ -329,9 +329,8 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const handleDeleteStaff = (staff: LabStaffAccount) => {
     setDeleteConfirm({
       isOpen: true,
-      title: `Delete Staff: ${staff.name}`,
-      message: `Are you sure you want to remove ${staff.name} (${staff.role.toUpperCase()})? They will no longer be able to log in to the dashboard.`,
-      confirmText: 'Yes, Remove Staff',
+      title: 'Are you sure you want to delete this?',
+      message: `Are you sure you want to delete this? Staff account: "${staff.name}" (${staff.role.toUpperCase()}). They will no longer be able to log in to the dashboard.`,
       onConfirm: () => {
         deleteStaffAccount(staff.id);
         setDeleteConfirm(null);
@@ -479,9 +478,8 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const handleDeletePackage = (id: string, name: string) => {
     setDeleteConfirm({
       isOpen: true,
-      title: 'Delete Health Package',
-      message: `Are you sure you want to delete package "${name}"? It will be removed from your website and catalog.`,
-      confirmText: 'Yes, Delete Package',
+      title: 'Are you sure you want to delete this?',
+      message: `Are you sure you want to delete this? Health package: "${name}". It will be removed from your website and catalog.`,
       onConfirm: () => {
         deleteVendorPackage(id);
         showToast(`Package "${name}" deleted successfully.`);
@@ -547,9 +545,8 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const handleDeleteTest = (id: string, name: string) => {
     setDeleteConfirm({
       isOpen: true,
-      title: 'Delete Diagnostic Test',
-      message: `Delete test "${name}" from your diagnostic catalog?`,
-      confirmText: 'Yes, Delete Test',
+      title: 'Are you sure you want to delete this?',
+      message: `Are you sure you want to delete this? Diagnostic test: "${name}".`,
       onConfirm: () => {
         deleteVendorTest(id);
         showToast(`Test "${name}" removed from catalog.`);
@@ -616,9 +613,8 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const handleDeleteDoctor = (id: string, name: string) => {
     setDeleteConfirm({
       isOpen: true,
-      title: 'Remove Doctor from Panel',
-      message: `Are you sure you want to remove "${name}" from your active medical panel?`,
-      confirmText: 'Yes, Remove Doctor',
+      title: 'Are you sure you want to delete this?',
+      message: `Are you sure you want to delete this? Doctor: "${name}".`,
       onConfirm: () => {
         deleteVendorDoctor(id);
         showToast(`Doctor "${name}" removed.`);
@@ -678,9 +674,8 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const handleDeleteBranch = (id: string, name: string) => {
     setDeleteConfirm({
       isOpen: true,
-      title: 'Delete Collection Center / Branch',
-      message: `Are you sure you want to delete branch "${name}"?`,
-      confirmText: 'Yes, Delete Branch',
+      title: 'Are you sure you want to delete this?',
+      message: `Are you sure you want to delete this? Branch / Center: "${name}".`,
       onConfirm: () => {
         deleteVendorBranch(id);
         showToast(`Branch "${name}" deleted.`);
@@ -4040,7 +4035,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 <Trash2 className="w-5 h-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="font-extrabold text-sm text-slate-900">{deleteConfirm.title}</h3>
+                <h3 className="font-extrabold text-sm text-slate-900">Are you sure you want to delete this?</h3>
                 <p className="text-[11px] text-slate-500 font-medium">Confirmation Required</p>
               </div>
             </div>
@@ -4053,17 +4048,17 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(null)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition cursor-pointer"
               >
-                Cancel
+                No
               </button>
               <button
                 type="button"
                 onClick={deleteConfirm.onConfirm}
-                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>{deleteConfirm.confirmText || 'Yes, Delete'}</span>
+                <span>Yes</span>
               </button>
             </div>
           </div>

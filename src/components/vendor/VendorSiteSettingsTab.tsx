@@ -200,6 +200,35 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
     }
   };
 
+  // Delete Confirmation state for removing logo and feature image
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const handleRemoveLogo = () => {
+    setDeleteConfirm({
+      isOpen: true,
+      message: 'Are you sure you want to delete this? The laboratory logo will be removed from your website and header.',
+      onConfirm: () => {
+        setFormData((prev) => ({ ...prev, logoUrl: '' }));
+        setDeleteConfirm(null);
+      },
+    });
+  };
+
+  const handleRemoveFeatureImage = () => {
+    setDeleteConfirm({
+      isOpen: true,
+      message: 'Are you sure you want to delete this? The feature banner image will be removed.',
+      onConfirm: () => {
+        setFormData((prev) => ({ ...prev, featureImageUrl: '', ogImageUrl: '' }));
+        setDeleteConfirm(null);
+      },
+    });
+  };
+
   // Save Settings
   const handleSave = () => {
     updateVendorLabSettings({
@@ -476,7 +505,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
               {formData.logoUrl && (
                 <button
                   type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, logoUrl: '' }))}
+                  onClick={handleRemoveLogo}
                   className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center justify-center gap-1 mx-auto cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -782,7 +811,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
               {formData.featureImageUrl && (
                 <button
                   type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, featureImageUrl: '', ogImageUrl: '' }))}
+                  onClick={handleRemoveFeatureImage}
                   className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -1324,6 +1353,45 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
           <span>Save All Settings</span>
         </button>
       </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteConfirm && deleteConfirm.isOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-rose-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-slate-900">Are you sure you want to delete this?</h3>
+                <p className="text-[11px] text-slate-500 font-medium">Confirmation Required</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+              {deleteConfirm.message}
+            </p>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 transition cursor-pointer"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={deleteConfirm.onConfirm}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
