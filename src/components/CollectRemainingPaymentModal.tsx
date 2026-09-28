@@ -25,7 +25,8 @@ export const CollectRemainingPaymentModal: React.FC<CollectRemainingPaymentModal
   if (!isOpen || !entry) return null;
 
   const netPayable = Math.max(0, entry.totalAmount - (entry.discountINR || 0));
-  const currentDue = entry.dueAmount;
+  const currentDue = entry.dueAmount ?? 0;
+  const isAlreadyFullPaid = currentDue <= 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid';
 
   const [collectAmount, setCollectAmount] = useState<number>(currentDue);
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'UPI' | 'Card'>('UPI');
@@ -36,6 +37,11 @@ export const CollectRemainingPaymentModal: React.FC<CollectRemainingPaymentModal
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAlreadyFullPaid) {
+      alert('Full payment is already completed. The payment cannot be edited again.');
+      onClose();
+      return;
+    }
     if (collectAmount <= 0) {
       alert('Please enter a valid collection amount greater than 0');
       return;
@@ -79,12 +85,13 @@ export const CollectRemainingPaymentModal: React.FC<CollectRemainingPaymentModal
         {/* Header */}
         <div className="bg-[#123B6D] text-white p-4 sm:p-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="bg-white/20 text-white font-black px-2.5 py-1 rounded-lg text-xs">
-              {entry.tokenNumber}
+            <span className="bg-white/20 text-white font-black px-2.5 py-1 rounded-lg text-xs font-mono">
+              {entry.tokenNumber || entry.tokenNo}
             </span>
             <div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight">
-                Remaining Balance Payment
+              <h2 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-1.5">
+                <IndianRupee className="w-4 h-4 text-emerald-400" />
+                <span>Update Payment Status</span>
               </h2>
               <p className="text-xs text-blue-100">
                 {entry.patientName} • UHID: {entry.uhid}
@@ -101,16 +108,40 @@ export const CollectRemainingPaymentModal: React.FC<CollectRemainingPaymentModal
 
         {/* Lock Banner if Report is Ready */}
         {isReportReady && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-2 text-amber-900 text-xs">
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-2 text-amber-950 text-xs">
             <Lock className="w-4 h-4 text-amber-600 shrink-0" />
             <div className="flex-1">
-              <span className="font-black text-amber-950">Report Issued ({entry.reportId})</span>
-              <span className="text-amber-800 ml-1">
-                — Patient demographics and tests are locked. Settle remaining payment below.
+              <span className="font-black text-amber-950">Report Ready</span>
+              <span className="text-amber-900 ml-1">
+                — Only payment status can be updated. Once full payment is completed, it cannot be edited again.
               </span>
             </div>
           </div>
         )}
+
+        {isAlreadyFullPaid ? (
+          <div className="p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Full Payment Completed</h3>
+              <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
+                All dues (₹0 due) have already been settled for this patient. Once full payment is completed, the payment cannot be edited again.
+              </p>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-800 font-bold">
+              Report is ready for download on the patient card.
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           {/* Financial Breakdown Summary */}
@@ -249,6 +280,7 @@ export const CollectRemainingPaymentModal: React.FC<CollectRemainingPaymentModal
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

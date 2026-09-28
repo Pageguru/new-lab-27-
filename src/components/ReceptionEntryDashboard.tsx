@@ -49,7 +49,7 @@ import { EditReceptionEntryModal } from './EditReceptionEntryModal';
 import { CollectRemainingPaymentModal } from './CollectRemainingPaymentModal';
 import { DayEndCashClosingModal } from './reception/DayEndCashClosingModal';
 import { ReportDetailModal } from './ReportDetailModal';
-import { generateThermalReceiptPdf, buildReceiptInvoicePdf, getReceiptPdfFilename } from '../utils/pdfGenerator';
+import { generateThermalReceiptPdf, buildReceiptInvoicePdf, getReceiptPdfFilename, downloadReportPdf } from '../utils/pdfGenerator';
 import { safePrint } from '../utils/printHelper';
 
 interface ReceptionEntryDashboardProps {
@@ -637,6 +637,13 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
 
   // Remaining Balance Collection Handler
   const handleOpenCollectPayment = (entry: ReceptionPatientEntry) => {
+    const isPaidInFull =
+      (entry.dueAmount === 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid') &&
+      (entry.dueAmount ?? 0) <= 0;
+    if (isPaidInFull) {
+      showToast('🔒 Full payment is already completed. Payment cannot be edited again.');
+      return;
+    }
     setCollectingPaymentEntry(entry);
     setIsCollectPaymentOpen(true);
   };
@@ -689,7 +696,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
 
     updateReceptionEntry(entryId, updated);
     if (newDueAmount === 0 && (entry.status === 'Report Ready' || entry.technicianStatus === 'Report Generated' || Boolean(entry.reportId))) {
-      showToast(`✅ Payment Cleared (₹0 Due) & Report Published! Patient can now view/download complete report.`);
+      showToast(`✅ Full Payment Completed (₹0 Due)! Download Report button is now available.`);
     } else {
       showToast(`✅ Collected ₹${collectedAmount} for ${entry.tokenNumber}! Status: ${newPaymentStatus}`);
     }
@@ -713,11 +720,19 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
     );
 
     if (isReportReady) {
-      showToast('🔒 Report ready hone ke baad entry edit nahi ki ja sakti.');
+      const isPaidInFull =
+        (entry.dueAmount === 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid') &&
+        (entry.dueAmount ?? 0) <= 0;
+      if (isPaidInFull) {
+        showToast('🔒 Full payment is completed. Payment and details cannot be edited again.');
+      } else {
+        showToast('ℹ️ Report is ready. Only payment status can be updated.');
+        handleOpenCollectPayment(entry);
+      }
       return;
     }
     if (isSentToLab) {
-      showToast('🔒 "Send to Lab" hone ke baad entry edit nahi ki ja sakti.');
+      showToast('🔒 Specimen already sent to lab. Demographics and tests are locked.');
       return;
     }
     setEditingEntry(entry);
@@ -754,7 +769,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
     showToast(`🧪 Token ${entry.tokenNumber} (${entry.patientName}) sent to Lab Technician!`);
   };
 
-  const handleViewPatientReport = (entry: ReceptionPatientEntry) => {
+  const getOrBuildReportForEntry = (entry: ReceptionPatientEntry): LabReport => {
     const rptId = entry.reportId;
     let foundReport: LabReport | undefined;
     if (rptId) {
@@ -797,7 +812,30 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
         status: 'Verified',
       };
     }
+    return foundReport;
+  };
 
+  const handleDownloadPatientReport = async (entry: ReceptionPatientEntry) => {
+    try {
+      const isPaidInFull =
+        (entry.dueAmount === 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid') &&
+        (entry.dueAmount ?? 0) <= 0;
+      if (!isPaidInFull) {
+        showToast(`⚠️ Payment pending: Please update payment to Full Payment before downloading.`);
+        handleOpenCollectPayment(entry);
+        return;
+      }
+      const report = getOrBuildReportForEntry(entry);
+      await downloadReportPdf(report);
+      showToast(`📥 Report PDF downloaded for ${entry.patientName} (${entry.tokenNumber})`);
+    } catch (err) {
+      console.error('Download error:', err);
+      showToast('❌ Failed to download report PDF. Please try again.');
+    }
+  };
+
+  const handleViewPatientReport = (entry: ReceptionPatientEntry) => {
+    const foundReport = getOrBuildReportForEntry(entry);
     setViewingReport(foundReport);
     setIsViewingReportModalOpen(true);
   };
@@ -2026,8 +2064,12 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                   const isAlreadySent = isReportReady || isInLab || isSentToLab;
                   const isLockedForEdit = isAlreadySent;
 
+                  const isPaidInFull =
+                    (entry.dueAmount === 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid') &&
+                    (entry.dueAmount ?? 0) <= 0;
+
                   const paymentStatusType: 'Full Payment' | 'Advance' | 'Due' =
-                    entry.dueAmount === 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid'
+                    isPaidInFull
                       ? 'Full Payment'
                       : (entry.paidAmount > 0 && entry.dueAmount > 0) || entry.paymentStatus === 'Advance' || entry.paymentStatus === 'Partial'
                       ? 'Advance'
@@ -2043,7 +2085,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                       key={entry.id}
                       className="border border-slate-200 rounded-xl p-3 hover:border-teal-300 hover:shadow-xs transition bg-white space-y-2"
                     >
-                      {/* Header: Left → Token No. + Phone No. | Right → Status Flow (Sent to Lab → in lab → Report Ready) */}
+                      {/* Header: Left → Token No. + Phone No. | Right → Status Flow & Actions */}
                       <div className="flex items-center justify-between gap-2.5 pb-2 border-b border-slate-100">
                         {/* Left: Token No. + Phone No. (+ Patient Name & Details) */}
                         <div className="flex items-center gap-2 min-w-0">
@@ -2054,12 +2096,25 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span
                                 onClick={() => {
-                                  if (isReportReady) handleViewPatientReport(entry);
+                                  if (isReportReady) {
+                                    if (isPaidInFull) {
+                                      handleViewPatientReport(entry);
+                                    } else {
+                                      showToast('⚠️ Payment pending: Please update payment to Full Payment to view/download report.');
+                                      handleOpenCollectPayment(entry);
+                                    }
+                                  }
                                 }}
                                 className={`font-extrabold text-xs sm:text-sm text-slate-900 truncate ${
                                   isReportReady ? 'cursor-pointer hover:text-emerald-700 hover:underline' : ''
                                 }`}
-                                title={isReportReady ? 'Report Ready: Click to view patient report' : undefined}
+                                title={
+                                  isReportReady
+                                    ? isPaidInFull
+                                      ? 'Report Ready: Click to view patient report'
+                                      : 'Report Ready (Payment Pending): Click to update payment'
+                                    : undefined
+                                }
                               >
                                 {entry.patientName}
                               </span>
@@ -2079,19 +2134,53 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                           </div>
                         </div>
 
-                        {/* Right: Status Flow (Sent to Lab → in lab → Report Ready) */}
+                        {/* Right: Status Flow & Primary Actions */}
                         <div className="shrink-0 flex items-center gap-1.5">
                           {isReportReady ? (
-                            <button
-                              type="button"
-                              onClick={() => handleViewPatientReport(entry)}
-                              className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 hover:border-emerald-400 text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition cursor-pointer active:scale-95 group"
-                              title="Report Ready — Click to View Patient Report"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 group-hover:scale-110 transition-transform" />
-                              <span>Report Ready</span>
-                              <Eye className="w-3.5 h-3.5 text-emerald-700 opacity-80 group-hover:opacity-100" />
-                            </button>
+                            isPaidInFull ? (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadPatientReport(entry)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition cursor-pointer active:scale-95 group"
+                                  title="Download Official Medical Report PDF"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-white" />
+                                  <span>Download Report</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewPatientReport(entry)}
+                                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                                  title="View / Print Full Report"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                                  <span className="hidden sm:inline">View</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs"
+                                  title="Report Ready — Update payment to Full Payment to unlock Download Report"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Report Ready</span>
+                                  <span className="text-[10px] bg-amber-200/90 text-amber-950 px-1.5 py-0.5 rounded font-black">
+                                    Due: ₹{entry.dueAmount}
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCollectPayment(entry)}
+                                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                                  title="Update payment status"
+                                >
+                                  <IndianRupee className="w-3 h-3" />
+                                  <span>Update Payment</span>
+                                </button>
+                              </div>
+                            )
                           ) : isInLab ? (
                             <span className="bg-blue-50 text-[#123B6D] border border-blue-200 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
                               <FlaskConical className="w-3.5 h-3.5 text-[#123B6D]" />
@@ -2141,7 +2230,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                         </span>
                       </div>
 
-                      {/* Footer: Left → Total Amount + Payment Status + Method (UPI/Cash) | Right → Edit, Delete & Print Slip buttons (WhatsApp removed) */}
+                      {/* Footer: Left → Total Amount + Payment Status + Method (UPI/Cash) | Right → Actions */}
                       <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 gap-2 text-xs">
                         {/* Left: Total Amount + Payment Status + Method (UPI/Cash) */}
                         <div className="flex flex-wrap items-center gap-2">
@@ -2153,7 +2242,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                           <span className="text-slate-300">|</span>
 
                           {/* Payment Status */}
-                          {paymentStatusType === 'Full Payment' ? (
+                          {isPaidInFull ? (
                             <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
                               <Check className="w-3 h-3 text-emerald-600" />
                               <span>Full Payment</span>
@@ -2182,22 +2271,64 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                           )}
                         </div>
 
-                        {/* Right: Edit (if editable), Delete & Print Slip buttons */}
+                        {/* Right: Actions */}
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {/* Edit button (Only editable before sending to lab) */}
-                          {!isLockedForEdit && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(entry)}
-                              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                              title="Edit Patient Details & Billing"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 text-blue-700" />
-                              <span>Edit</span>
-                            </button>
+                          {/* When Report is Ready:
+                              - Receptionist can ONLY update payment status.
+                              - Once full payment is completed, payment cannot be edited again.
+                              - Once full payment is completed, card will show a Download Report button.
+                          */}
+                          {isReportReady ? (
+                            isPaidInFull ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadPatientReport(entry)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                                title="Download Official Medical Report PDF"
+                              >
+                                <Download className="w-3.5 h-3.5 text-white" />
+                                <span>Download Report</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCollectPayment(entry)}
+                                className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                                title="Update Payment Status (Remaining Due: ₹{entry.dueAmount})"
+                              >
+                                <IndianRupee className="w-3.5 h-3.5 text-teal-700" />
+                                <span>Update Payment</span>
+                              </button>
+                            )
+                          ) : (
+                            /* When Report is NOT ready yet */
+                            <>
+                              {!isLockedForEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(entry)}
+                                  className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                                  title="Edit Patient Details & Billing"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5 text-blue-700" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                              {!isPaidInFull && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCollectPayment(entry)}
+                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                                  title="Update Payment Status (Remaining Due: ₹{entry.dueAmount})"
+                                >
+                                  <IndianRupee className="w-3.5 h-3.5 text-teal-700" />
+                                  <span>Update Payment</span>
+                                </button>
+                              )}
+                            </>
                           )}
 
-                          {/* Delete button */}
+                          {/* Delete button (with confirmation) */}
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(entry)}
