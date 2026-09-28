@@ -1507,7 +1507,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 )}
               </div>
 
-              {/* SECTION 6: DOMAIN REQUEST (1. ADD - REQUEST TO SUPER ADMIN, 2. CHANGE / DELETE) */}
+              {/* SECTION 6: DOMAIN REQUEST (ADD - REQUEST TO SUPER ADMIN) */}
               <div className="rounded-xl border border-sky-300/80 bg-sky-50/50 overflow-hidden shadow-2xs">
                 {/* Accordion Header */}
                 <button
@@ -1540,10 +1540,10 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   </div>
                 </button>
 
-                {/* Sub-Items: 1. Add - Request to super Admin, 2. Change / Delete */}
+                {/* Sub-Item: Add Domain */}
                 {isDomainMenuOpen && (
                   <div className="p-1.5 space-y-1 bg-white/95 border-t border-sky-200/70">
-                    {/* 1. Add - request to super Admin */}
+                    {/* Add Domain - Request to Super Admin */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1567,33 +1567,6 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                           : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                       }`}>
                         Request &gt;
-                      </span>
-                    </button>
-
-                    {/* 2. Change Domain / Delete Domain */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('domain');
-                        setDomainSubTab('list');
-                        setIsMobileSidebarOpen(false);
-                      }}
-                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
-                        activeTab === 'domain' && domainSubTab === 'list'
-                          ? 'bg-[#123B6D] text-white shadow-2xs font-black'
-                          : 'text-slate-700 hover:bg-sky-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Sliders className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'domain' && domainSubTab === 'list' ? 'text-amber-400' : 'text-[#123B6D]'}`} />
-                        <span className="truncate">Change Domain / Delete Domain</span>
-                      </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                        activeTab === 'domain' && domainSubTab === 'list'
-                          ? 'bg-amber-400 text-slate-950 font-black'
-                          : 'bg-blue-50 text-blue-800 border border-blue-200'
-                      }`}>
-                        Change / Delete
                       </span>
                     </button>
                   </div>
@@ -2183,7 +2156,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
           />
         )}
 
-        {/* 6. DOMAIN REQUEST (ADD - REQUEST TO SUPER ADMIN, CHANGE/DELETE) */}
+        {/* 6. DOMAIN REQUEST (ADD - REQUEST TO SUPER ADMIN) */}
         {activeTab === 'domain' && (
           <VendorDomainRequestTab
             initialSubTab={domainSubTab}

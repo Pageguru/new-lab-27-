@@ -83,8 +83,17 @@ export const EditReceptionEntryModal: React.FC<EditReceptionEntryModalProps> = (
     entry.status === 'In Lab'
   );
 
-  // Entry is strictly locked and cannot be edited if sent to lab or report is ready
-  const isLockedForEdit = isReportReady || isSentToLab;
+  const initialNetPayable = Math.max(0, (entry.totalAmount || 0) - (entry.discountINR || 0));
+  const isEntryFullyPaid =
+    (entry.dueAmount === 0 || entry.paymentStatus === 'Full Payment' || entry.paymentStatus === 'Paid') &&
+    (entry.paidAmount || 0) >= initialNetPayable;
+
+  // Demographics and tests are strictly locked once sent to lab or report is ready
+  const isDemographicsLocked = isReportReady || isSentToLab;
+  // Payment is strictly locked once full payment is completed
+  const isPaymentLocked = isEntryFullyPaid;
+  // Entire modal is locked from editing if both demographics AND payment are locked
+  const isLockedForEdit = isDemographicsLocked && isPaymentLocked;
 
   const [patientName, setPatientName] = useState(entry.patientName);
   const [age, setAge] = useState(String(entry.age));
@@ -265,6 +274,36 @@ export const EditReceptionEntryModal: React.FC<EditReceptionEntryModalProps> = (
   };
 
   const handleSaveInternal = (sendToLab: boolean = false) => {
+    if (isReportReady) {
+      if (isEntryFullyPaid) {
+        alert('Full payment is completed and report is issued. Payment cannot be edited again.');
+        return;
+      }
+
+      // ONLY payment information is updated!
+      const finalPaidAmount = Math.min(netPayable, paidAmount);
+      const finalDueAmount = Math.max(0, netPayable - finalPaidAmount);
+      const finalPaymentStatus: ReceptionPatientEntry['paymentStatus'] =
+        finalDueAmount === 0 ? 'Full Payment' : finalPaidAmount > 0 ? 'Advance' : 'Pending';
+
+      const updated: ReceptionPatientEntry = {
+        ...entry,
+        paidAmount: finalPaidAmount,
+        dueAmount: finalDueAmount,
+        paymentMode,
+        paymentStatus: finalPaymentStatus,
+        balancePaidAmount: (entry.balancePaidAmount || 0) + Math.max(0, finalPaidAmount - entry.paidAmount),
+        balancePaymentMode: paymentMode,
+        balancePaidAt: `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
+        isReportPublished: finalDueAmount === 0 ? true : entry.isReportPublished,
+        publishedAt: finalDueAmount === 0 ? `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : entry.publishedAt,
+      };
+
+      onSave(updated);
+      onClose();
+      return;
+    }
+
     if (isLockedForEdit) {
       alert(
         isReportReady
