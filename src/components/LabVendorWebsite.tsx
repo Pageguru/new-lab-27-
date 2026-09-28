@@ -1741,382 +1741,342 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         )}
       </header>
 
-      {/* SECTION 1 & 2: HERO BANNER (70% on Desktop) & CHECK REPORT (30% on Desktop) */}
+      {/* SECTION 1: HERO PHOTO BANNER CAROUSEL (Full Width with 2%-5% Peek Effect on Mobile) */}
       <section id="top" className="bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white py-3.5 sm:py-6 lg:py-8 border-b border-slate-200 scroll-mt-20 overflow-hidden">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 items-stretch">
-            
-            {/* LEFT SIDE: Banner Section (100% on Mobile, 70% on Desktop - Strictly Equal Height) */}
-            <div className="col-span-1 lg:col-span-7 flex flex-col h-full">
-              {/* Main Photo Banner Carousel Container */}
-              <div className="relative flex-1 flex flex-col min-h-[280px] sm:min-h-[360px] lg:min-h-0 h-full rounded-2xl sm:rounded-3xl lg:rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-slate-950">
-
-                {/* Carousel Track with 2%-5% Peek Effect on Mobile */}
+          {/* Main Photo Banner Carousel Container */}
+          <div className="relative group">
+            {/* Carousel Track with 2%-5% Peek Effect on Mobile */}
+            <div
+              ref={heroCarouselRef}
+              onTouchStart={handleHeroTouchStart}
+              onTouchMove={handleHeroTouchMove}
+              onTouchEnd={handleHeroTouchEnd}
+              onMouseEnter={() => setIsHeroPaused(true)}
+              onMouseLeave={() => setIsHeroPaused(false)}
+              className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 no-scrollbar px-2 sm:px-0 py-1 scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {heroBannersList.map((bannerUrl, idx) => (
                 <div
-                  ref={heroCarouselRef}
-                  onTouchStart={handleHeroTouchStart}
-                  onTouchMove={handleHeroTouchMove}
-                  onTouchEnd={handleHeroTouchEnd}
-                  onMouseEnter={() => setIsHeroPaused(true)}
-                  onMouseLeave={() => setIsHeroPaused(false)}
-                  className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 lg:gap-0 no-scrollbar px-2 sm:px-0 py-1 sm:py-0 scroll-smooth h-full"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  key={idx}
+                  className="w-[94%] xs:w-[95%] sm:w-[95%] lg:w-full shrink-0 snap-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg relative bg-slate-950 aspect-[16/8] sm:aspect-[21/9] max-h-[460px] group cursor-pointer border border-slate-200/80"
+                  onClick={() => {
+                    setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
+                    setIsBookingModalOpen(true);
+                  }}
+                  title="Click to Book Lab Tests"
                 >
-                  {heroBannersList.map((bannerUrl, idx) => (
-                    <div
-                      key={idx}
-                      className="w-[94%] xs:w-[95%] sm:w-[95%] lg:w-full shrink-0 snap-center rounded-2xl sm:rounded-3xl lg:rounded-none overflow-hidden shadow-lg lg:shadow-none relative bg-slate-950 h-full min-h-[260px] sm:min-h-[340px] lg:min-h-0 group cursor-pointer border border-slate-200/80 lg:border-0"
-                      onClick={() => {
-                        setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
-                        setIsBookingModalOpen(true);
-                      }}
-                      title="Click to Book Lab Tests"
-                    >
-                      <img
-                        src={bannerUrl}
-                        alt={`${labName} Promotional Banner ${idx + 1}`}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-101"
-                        loading={idx === 0 ? 'eager' : 'lazy'}
-                      />
+                  <img
+                    src={bannerUrl}
+                    alt={`${labName} Promotional Banner ${idx + 1}`}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-101"
+                    loading={idx === 0 ? 'eager' : 'lazy'}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Navigation Arrows */}
+            {heroBannersList.length > 1 && (
+              <div className="hidden lg:flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-10">
+                <button
+                  type="button"
+                  onClick={() => setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length)}
+                  className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
+                  aria-label="Previous Slide"
+                >
+                  <ChevronLeft className="w-5 h-5 text-slate-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length)}
+                  className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
+                  aria-label="Next Slide"
+                >
+                  <ChevronRight className="w-5 h-5 text-slate-700" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Carousel Indicators & Swipe Notification */}
+          <div className="flex items-center justify-between mt-3 px-3">
+            {/* Pill Indicator Dots */}
+            <div className="flex items-center gap-2">
+              {heroBannersList.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveHeroBanner(idx)}
+                  className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                    activeHeroBanner === idx
+                      ? 'w-8 bg-[#123B6D] shadow-xs'
+                      : 'w-2.5 bg-slate-300 hover:bg-slate-400'
+                  }`}
+                  aria-label={`Go to banner slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+
+            {/* Swipe hint on mobile, counter on desktop */}
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+              <span className="sm:hidden text-slate-400 font-medium">👉 Swipe for next banner (2% peek)</span>
+              <span className="hidden sm:inline">Banner {activeHeroBanner + 1} of {heroBannersList.length}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 2: FAST PATIENT REPORT DOWNLOAD PORTAL (Positioned Below Banner Section) */}
+      <section id="check-report-section" className="py-12 sm:py-16 bg-slate-50/80 border-b border-slate-200 scroll-mt-20">
+        <span id="check-report-quick" className="sr-only" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-2.5">
+              <FileText className="w-3.5 h-3.5 text-[#0F766E]" />
+              <span>Instant Lab Report Access</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
+              Check &amp; Download Patient Lab Report
+            </h2>
+            <p className="text-xs sm:text-sm text-[#64748B] mt-1.5">
+              Access your verified diagnostic reports directly using your registered mobile number or Token Number.
+            </p>
+          </div>
+
+          {/* Centered Form Card */}
+          <div className="max-w-xl sm:max-w-2xl mx-auto">
+            <div
+              id="inline-report-display-container"
+              className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden relative"
+            >
+              {/* Card Top Header */}
+              <div className="bg-gradient-to-r from-[#123B6D] via-[#1a4a85] to-[#0F766E] p-4 sm:p-5 text-white">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-1.5 rounded-lg bg-white/10 text-amber-300 backdrop-blur-xs">
+                      <FileText className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black tracking-tight leading-tight">
+                        Check &amp; Download Report
+                      </h3>
+                      <p className="text-[11px] text-slate-200 font-medium">
+                        Instant 10-Second Digital Report Download
+                      </p>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 text-[10px] font-bold text-amber-300">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>256-Bit Encrypted</span>
+                  </div>
                 </div>
 
-                {/* Desktop Navigation Arrows */}
-                {heroBannersList.length > 1 && (
-                  <div className="hidden lg:flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-20">
+                {/* Search Mode Pill Tabs */}
+                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickReportTab('mobile');
+                      setQuickReportError('');
+                    }}
+                    className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      quickReportTab === 'mobile'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                    }`}
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Search by Mobile</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickReportTab('report_id');
+                      setQuickReportError('');
+                    }}
+                    className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      quickReportTab === 'report_id'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                    }`}
+                  >
+                    <Hash className="w-3.5 h-3.5" />
+                    <span>Search by Token</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card Body */}
+              <div className="p-5 sm:p-6 space-y-4 text-xs bg-white">
+                {/* Error Alert Banner */}
+                {quickReportError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span className="font-semibold flex-1">{quickReportError}</span>
                     <button
                       type="button"
-                      onClick={() => setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length)}
-                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
-                      aria-label="Previous Slide"
+                      onClick={() => setQuickReportError('')}
+                      className="text-rose-500 hover:text-rose-800 cursor-pointer"
                     >
-                      <ChevronLeft className="w-5 h-5 text-slate-700" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length)}
-                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
-                      aria-label="Next Slide"
-                    >
-                      <ChevronRight className="w-5 h-5 text-slate-700" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
 
-                {/* Desktop Carousel Indicators Overlay (Inside Banner on Desktop for strictly equal height) */}
-                <div className="hidden lg:flex items-center justify-between absolute bottom-3.5 left-4 right-4 z-20 pointer-events-none">
-                  <div className="flex items-center gap-2 bg-slate-950/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 pointer-events-auto shadow-md">
-                    {heroBannersList.map((_, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveHeroBanner(idx);
-                        }}
-                        className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                          activeHeroBanner === idx
-                            ? 'w-7 bg-amber-400 shadow-xs'
-                            : 'w-2 bg-white/50 hover:bg-white/80'
-                        }`}
-                        aria-label={`Go to banner slide ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
+                {/* Fast Form Input Box */}
+                <form onSubmit={handleQuickReportSearch} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      {quickReportTab === 'mobile'
+                        ? '10-Digit Registered Mobile Number'
+                        : 'Token Number / Report ID'} <span className="text-rose-500">*</span>
+                    </label>
 
-                  <div className="bg-slate-950/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 text-[11px] font-bold text-white/90 pointer-events-auto shadow-md">
-                    Banner {activeHeroBanner + 1} of {heroBannersList.length}
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile Carousel Indicators & Swipe Notification (Unchanged for Mobile, Hidden on Desktop) */}
-              <div className="flex lg:hidden items-center justify-between px-3 shrink-0 pt-2">
-                {/* Pill Indicator Dots */}
-                <div className="flex items-center gap-2">
-                  {heroBannersList.map((_, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setActiveHeroBanner(idx)}
-                      className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                        activeHeroBanner === idx
-                          ? 'w-8 bg-[#123B6D] shadow-xs'
-                          : 'w-2.5 bg-slate-300 hover:bg-slate-400'
-                      }`}
-                      aria-label={`Go to banner slide ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-
-                {/* Mobile swipe hint */}
-                <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-                  <span className="sm:hidden text-slate-400 font-medium">👉 Swipe for next banner (2% peek)</span>
-                  <span className="hidden sm:inline">Banner {activeHeroBanner + 1} of {heroBannersList.length}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT SIDE: “Check & Download Patient Lab Report” Section (100% on Mobile, 30% on Desktop - Strictly Equal Height) */}
-            <div
-              id="check-report-section"
-              className="col-span-1 lg:col-span-3 scroll-mt-20 pt-8 sm:pt-12 lg:pt-0 flex flex-col h-full"
-            >
-              <span id="check-report-quick" className="sr-only" />
-
-              {/* Mobile View Section Header (Unchanged for Mobile, Hidden on Desktop) */}
-              <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8 lg:hidden">
-                <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-2.5">
-                  <FileText className="w-3.5 h-3.5 text-[#0F766E]" />
-                  <span>Instant Lab Report Access</span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-                  Check &amp; Download Patient Lab Report
-                </h2>
-                <p className="text-xs sm:text-sm text-[#64748B] mt-1.5">
-                  Access your verified diagnostic reports directly using your registered mobile number or Token Number.
-                </p>
-              </div>
-
-              {/* Center Card Container */}
-              <div className="w-full flex-1 flex flex-col h-full">
-                <div className="w-full max-w-3xl lg:max-w-none h-full flex flex-col">
-                  <div
-                    id="inline-report-display-container"
-                    className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden relative flex-1 flex flex-col justify-between h-full"
-                  >
-                    {/* Card Top Header */}
-                    <div className="bg-gradient-to-r from-[#123B6D] via-[#1a4a85] to-[#0F766E] p-4 text-white shrink-0">
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <span className="p-1.5 rounded-lg bg-white/10 text-amber-300 backdrop-blur-xs">
-                            <FileText className="w-4 h-4" />
+                    <div className="relative">
+                      {quickReportTab === 'mobile' ? (
+                        <>
+                          <span className="absolute left-3 top-2.5 text-xs text-slate-500 font-bold select-none">
+                            +91
                           </span>
-                          <div>
-                            <h2 className="text-sm sm:text-base font-black tracking-tight leading-tight">
-                              Check &amp; Download Report
-                            </h2>
-                            <p className="text-[11px] text-slate-200 font-medium">
-                              Instant 10-Second Digital Report Download
-                            </p>
-                          </div>
-                        </div>
+                          <input
+                            type="tel"
+                            required
+                            pattern="[0-9]{10}"
+                            maxLength={10}
+                            value={quickReportInput}
+                            onChange={(e) => {
+                              setQuickReportInput(e.target.value.replace(/\D/g, '').slice(0, 10));
+                              if (quickReportError) setQuickReportError('');
+                            }}
+                            placeholder="Enter 10-digit registered mobile"
+                            className="w-full pl-11 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
+                            id="check-report-mobile-input"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Hash className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                          <input
+                            type="text"
+                            required
+                            value={quickReportInput}
+                            onChange={(e) => {
+                              setQuickReportInput(e.target.value);
+                              if (quickReportError) setQuickReportError('');
+                            }}
+                            placeholder="Enter Token Number (e.g. 101, TK-101 or Report ID)"
+                            className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-medium"
+                            id="check-report-token-input"
+                          />
+                        </>
+                      )}
 
-                        <div className="hidden sm:flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 text-[10px] font-bold text-amber-300">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>256-Bit Encrypted</span>
-                        </div>
-                      </div>
-
-                      {/* Search Mode Pill Tabs */}
-                      <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold">
+                      {quickReportInput && (
                         <button
                           type="button"
                           onClick={() => {
-                            setQuickReportTab('mobile');
+                            setQuickReportInput('');
                             setQuickReportError('');
                           }}
-                          className={`py-1 px-2 rounded-md flex items-center justify-center gap-1 transition cursor-pointer ${
-                            quickReportTab === 'mobile'
-                              ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                              : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                          }`}
+                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                         >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span className="truncate">Search by Mobile</span>
+                          <X className="w-4 h-4" />
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQuickReportTab('report_id');
-                            setQuickReportError('');
-                          }}
-                          className={`py-1 px-2 rounded-md flex items-center justify-center gap-1 transition cursor-pointer ${
-                            quickReportTab === 'report_id'
-                              ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                              : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                          }`}
-                        >
-                          <Hash className="w-3.5 h-3.5" />
-                          <span className="truncate">Search by Token</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Card Body */}
-                    <div className="p-4 space-y-3 text-xs bg-white flex-1 flex flex-col justify-between">
-                      <div className="space-y-3">
-                        {/* Error Alert Banner */}
-                        {quickReportError && (
-                          <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                            <span className="font-semibold flex-1">{quickReportError}</span>
-                            <button
-                              type="button"
-                              onClick={() => setQuickReportError('')}
-                              className="text-rose-500 hover:text-rose-800 cursor-pointer"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Fast Form Input Box */}
-                        <form onSubmit={handleQuickReportSearch} className="space-y-3">
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                              {quickReportTab === 'mobile'
-                                ? '10-Digit Registered Mobile Number'
-                                : 'Token Number / Report ID'} <span className="text-rose-500">*</span>
-                            </label>
-
-                            <div className="relative">
-                              {quickReportTab === 'mobile' ? (
-                                <>
-                                  <span className="absolute left-2.5 top-2 text-[11px] text-slate-500 font-bold select-none">
-                                    +91
-                                  </span>
-                                  <input
-                                    type="tel"
-                                    required
-                                    pattern="[0-9]{10}"
-                                    maxLength={10}
-                                    value={quickReportInput}
-                                    onChange={(e) => {
-                                      setQuickReportInput(e.target.value.replace(/\D/g, '').slice(0, 10));
-                                      if (quickReportError) setQuickReportError('');
-                                    }}
-                                    placeholder="Enter 10-digit registered mobile"
-                                    className="w-full pl-10 pr-8 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-normal"
-                                    id="check-report-mobile-input"
-                                  />
-                                </>
-                              ) : (
-                                <>
-                                  <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                                  <input
-                                    type="text"
-                                    required
-                                    value={quickReportInput}
-                                    onChange={(e) => {
-                                      setQuickReportInput(e.target.value);
-                                      if (quickReportError) setQuickReportError('');
-                                    }}
-                                    placeholder="Enter Token Number (e.g. 101, TK-101 or Report ID)"
-                                    className="w-full pl-8 pr-8 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 font-normal"
-                                    id="check-report-token-input"
-                                  />
-                                </>
-                              )}
-
-                              {quickReportInput && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setQuickReportInput('');
-                                    setQuickReportError('');
-                                  }}
-                                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Submit Search Button */}
-                          <button
-                            type="submit"
-                            className="w-full bg-[#123B6D] hover:bg-[#0c294d] text-white py-2.5 rounded-xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                            id="check-report-submit-btn"
-                          >
-                            <Search className="w-3.5 h-3.5 text-amber-300" />
-                            <span>Search Patient Report</span>
-                            <ArrowRight className="w-3.5 h-3.5 text-amber-300" />
-                          </button>
-                        </form>
-                      </div>
-
-                      {/* REPORT STATUS ACTIONS BELOW FORM */}
-                      <div className="pt-2 border-t border-slate-100">
-                        {!inlineSearchedReport ? (
-                          /* If report is unavailable: display "Report is Under Process" button */
-                          <div className="space-y-1.5">
-                            <button
-                              type="button"
-                              disabled
-                              className="w-full py-2.5 px-3 rounded-xl bg-amber-500/10 border border-amber-300/80 text-amber-900 font-bold text-xs flex items-center justify-center gap-2 shadow-2xs cursor-not-allowed"
-                              id="btn-report-under-process"
-                            >
-                              <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                              </span>
-                              <Clock className="w-3.5 h-3.5 text-amber-700" />
-                              <span>Report is Under Process</span>
-                            </button>
-                            {inlinePendingSample ? (
-                              <p className="text-[11px] text-amber-800 text-center font-medium leading-tight">
-                                Sample for <strong>{inlinePendingSample.patientName}</strong> (Token #{inlinePendingSample.tokenNumber}) is currently being tested in lab.
-                              </p>
-                            ) : inlineSearchNotFound ? (
-                              <p className="text-[11px] text-rose-600 text-center font-medium leading-tight">
-                                Report not yet published for this entry. Testing may be in progress.
-                              </p>
-                            ) : (
-                              <p className="text-[10px] text-slate-400 text-center font-medium">
-                                Enter 10-digit mobile or Token No. above to check live report status.
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          /* Once the report becomes available: replace with View Report & Download Report inline side-by-side */
-                          <div className="space-y-2 animate-in fade-in duration-200">
-                            <div className="p-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-1.5 font-bold truncate">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                <span className="truncate">{inlineSearchedReport.patientName}</span>
-                              </div>
-                              <span className="text-[10px] bg-emerald-100 text-emerald-900 font-mono px-2 py-0.5 rounded font-bold shrink-0">
-                                {inlineSearchedReport.reportId}
-                              </span>
-                            </div>
-
-                            {/* Inline Side-by-Side: View Report & Download Report */}
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setIsReportModalOpen(true)}
-                                className="flex-1 py-2.5 px-3 rounded-xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98"
-                                id="btn-view-report"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-amber-300" />
-                                <span>View Report</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={handleDownloadInlinePdf}
-                                disabled={isDownloadingPdf}
-                                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98 disabled:opacity-50"
-                                id="btn-download-report"
-                              >
-                                <Download className="w-3.5 h-3.5 text-white" />
-                                <span>{isDownloadingPdf ? 'Preparing...' : 'Download Report'}</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
+                      )}
                     </div>
                   </div>
+
+                  {/* Submit Search Button */}
+                  <button
+                    type="submit"
+                    className="w-full bg-[#123B6D] hover:bg-[#0c294d] text-white py-3 rounded-xl font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    id="check-report-submit-btn"
+                  >
+                    <Search className="w-4 h-4 text-amber-300" />
+                    <span>Search Patient Report</span>
+                    <ArrowRight className="w-4 h-4 text-amber-300" />
+                  </button>
+                </form>
+
+                {/* REPORT STATUS ACTIONS BELOW FORM */}
+                <div className="pt-3 border-t border-slate-100">
+                  {!inlineSearchedReport ? (
+                    /* If report is unavailable: display "Report is Under Process" button */
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
+                        id="btn-report-under-process"
+                      >
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                        </span>
+                        <Clock className="w-4 h-4 text-amber-700" />
+                        <span>Report is Under Process</span>
+                      </button>
+                      {inlinePendingSample ? (
+                        <p className="text-xs text-amber-800 text-center font-medium leading-normal">
+                          Sample for <strong>{inlinePendingSample.patientName}</strong> (Token #{inlinePendingSample.tokenNumber}) is currently being tested in lab.
+                        </p>
+                      ) : inlineSearchNotFound ? (
+                        <p className="text-xs text-rose-600 text-center font-medium leading-normal">
+                          Report not yet published for this entry. Testing may be in progress.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-400 text-center font-medium">
+                          Enter registered mobile or Token No. above to check live report status.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    /* Once the report becomes available: automatically replace "Report is Under Process" with View Report and Download Report buttons (inline, side by side) */
+                    <div className="space-y-2.5 animate-in fade-in duration-200">
+                      <div className="p-2.5 px-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 font-bold truncate">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="truncate">{inlineSearchedReport.patientName}</span>
+                        </div>
+                        <span className="text-[11px] bg-emerald-100 text-emerald-900 font-mono px-2 py-0.5 rounded font-bold shrink-0">
+                          {inlineSearchedReport.reportId}
+                        </span>
+                      </div>
+
+                      {/* Inline Side-by-Side: View Report & Download Report */}
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsReportModalOpen(true)}
+                          className="flex-1 py-3 px-3 rounded-xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98"
+                          id="btn-view-report"
+                        >
+                          <Eye className="w-4 h-4 text-amber-300" />
+                          <span>View Report</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleDownloadInlinePdf}
+                          disabled={isDownloadingPdf}
+                          className="flex-1 py-3 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98 disabled:opacity-50"
+                          id="btn-download-report"
+                        >
+                          <Download className="w-4 h-4 text-white" />
+                          <span>{isDownloadingPdf ? 'Preparing...' : 'Download Report'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
               </div>
             </div>
-
           </div>
         </div>
       </section>
