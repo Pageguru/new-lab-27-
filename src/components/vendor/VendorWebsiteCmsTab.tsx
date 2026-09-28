@@ -665,22 +665,78 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
   // ==========================================
   // 6. SOCIAL MEDIA SECTION FORM (Edit, Disable)
   // ==========================================
+  const sanitizeInitialSocial = (val?: string) => {
+    if (!val) return '';
+    const trimmed = val.trim();
+    if (
+      trimmed === 'https://facebook.com' ||
+      trimmed === 'https://instagram.com' ||
+      trimmed === 'https://twitter.com' ||
+      trimmed === 'https://youtube.com' ||
+      trimmed === 'https://linkedin.com' ||
+      trimmed === '#' ||
+      trimmed === '/'
+    ) {
+      return '';
+    }
+    return trimmed;
+  };
+
   const [socialForm, setSocialForm] = useState<VendorSocialLinks>({
     enabled: vendorLabSettings.socialMedia?.enabled !== false,
-    facebook: vendorLabSettings.socialMedia?.facebook || 'https://facebook.com',
-    instagram: vendorLabSettings.socialMedia?.instagram || 'https://instagram.com',
-    twitter: vendorLabSettings.socialMedia?.twitter || 'https://twitter.com',
-    youtube: vendorLabSettings.socialMedia?.youtube || 'https://youtube.com',
-    linkedin: vendorLabSettings.socialMedia?.linkedin || 'https://linkedin.com',
-    whatsapp: vendorLabSettings.socialMedia?.whatsapp || vendorLabSettings.whatsapp || '',
+    facebook: sanitizeInitialSocial(vendorLabSettings.socialMedia?.facebook),
+    instagram: sanitizeInitialSocial(vendorLabSettings.socialMedia?.instagram),
+    twitter: sanitizeInitialSocial(vendorLabSettings.socialMedia?.twitter),
+    youtube: sanitizeInitialSocial(vendorLabSettings.socialMedia?.youtube),
+    linkedin: sanitizeInitialSocial(vendorLabSettings.socialMedia?.linkedin),
+    whatsapp: vendorLabSettings.socialMedia?.whatsapp?.trim() || '',
   });
+
+  useEffect(() => {
+    setSocialForm({
+      enabled: vendorLabSettings.socialMedia?.enabled !== false,
+      facebook: sanitizeInitialSocial(vendorLabSettings.socialMedia?.facebook),
+      instagram: sanitizeInitialSocial(vendorLabSettings.socialMedia?.instagram),
+      twitter: sanitizeInitialSocial(vendorLabSettings.socialMedia?.twitter),
+      youtube: sanitizeInitialSocial(vendorLabSettings.socialMedia?.youtube),
+      linkedin: sanitizeInitialSocial(vendorLabSettings.socialMedia?.linkedin),
+      whatsapp: vendorLabSettings.socialMedia?.whatsapp?.trim() || '',
+    });
+  }, [vendorLabSettings.socialMedia]);
 
   const handleSaveSocial = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanedSocial: VendorSocialLinks = {
+      enabled: socialForm.enabled,
+      facebook: socialForm.facebook?.trim() || '',
+      instagram: socialForm.instagram?.trim() || '',
+      twitter: socialForm.twitter?.trim() || '',
+      youtube: socialForm.youtube?.trim() || '',
+      linkedin: socialForm.linkedin?.trim() || '',
+      whatsapp: socialForm.whatsapp?.trim() || '',
+    };
     updateVendorLabSettings({
-      socialMedia: socialForm,
+      socialMedia: cleanedSocial,
     });
-    triggerToast('Social Media settings updated successfully!');
+    setSocialForm(cleanedSocial);
+    triggerToast('Social Media settings saved! Only channels with links will be displayed.');
+  };
+
+  const handleClearAllSocial = () => {
+    const emptied: VendorSocialLinks = {
+      enabled: socialForm.enabled,
+      facebook: '',
+      instagram: '',
+      twitter: '',
+      youtube: '',
+      linkedin: '',
+      whatsapp: '',
+    };
+    setSocialForm(emptied);
+    updateVendorLabSettings({
+      socialMedia: emptied,
+    });
+    triggerToast('All social media links cleared. Icons hidden from website.');
   };
 
   // ==========================================
@@ -1797,97 +1853,221 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
               </button>
             </div>
 
-            {/* Social Links Inputs */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!socialForm.enabled ? 'opacity-60 pointer-events-none' : ''}`}>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <Facebook className="w-3.5 h-3.5 text-[#1877F2]" />
-                  <span>Facebook Profile / Page URL</span>
-                </label>
-                <input
-                  type="url"
-                  value={socialForm.facebook || ''}
-                  onChange={(e) => setSocialForm({ ...socialForm, facebook: e.target.value })}
-                  placeholder="https://facebook.com/yourlab"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <Instagram className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Instagram Handle / Profile URL</span>
-                </label>
-                <input
-                  type="url"
-                  value={socialForm.instagram || ''}
-                  onChange={(e) => setSocialForm({ ...socialForm, instagram: e.target.value })}
-                  placeholder="https://instagram.com/yourlab"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <Twitter className="w-3.5 h-3.5 text-slate-800" />
-                  <span>Twitter / X Profile URL</span>
-                </label>
-                <input
-                  type="url"
-                  value={socialForm.twitter || ''}
-                  onChange={(e) => setSocialForm({ ...socialForm, twitter: e.target.value })}
-                  placeholder="https://twitter.com/yourlab"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <Youtube className="w-3.5 h-3.5 text-red-600" />
-                  <span>YouTube Channel URL</span>
-                </label>
-                <input
-                  type="url"
-                  value={socialForm.youtube || ''}
-                  onChange={(e) => setSocialForm({ ...socialForm, youtube: e.target.value })}
-                  placeholder="https://youtube.com/@yourlab"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <Linkedin className="w-3.5 h-3.5 text-[#0A66C2]" />
-                  <span>LinkedIn Company URL</span>
-                </label>
-                <input
-                  type="url"
-                  value={socialForm.linkedin || ''}
-                  onChange={(e) => setSocialForm({ ...socialForm, linkedin: e.target.value })}
-                  placeholder="https://linkedin.com/company/yourlab"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>WhatsApp Link / Number</span>
-                </label>
-                <input
-                  type="text"
-                  value={socialForm.whatsapp || ''}
-                  onChange={(e) => setSocialForm({ ...socialForm, whatsapp: e.target.value })}
-                  placeholder="917087033009"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px]"
-                />
+            {/* Real-time Display Rule Banner */}
+            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3 text-amber-900">
+              <span className="text-base shrink-0">💡</span>
+              <div className="space-y-1">
+                <p className="font-bold text-xs text-amber-950">
+                  सोशल मीडिया वही शो होंगे जिसमें लिंक डाला जाएगा, नहीं तो शो नहीं होंगे।
+                </p>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Only channels with an active link or number will appear on your website. Leave a field empty (or click the <span className="font-bold">✕</span> icon) to hide that channel completely.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200">
+            {/* Social Links Inputs */}
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!socialForm.enabled ? 'opacity-60 pointer-events-none' : ''}`}>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Facebook className="w-3.5 h-3.5 text-[#1877F2]" />
+                    <span>Facebook Profile / Page URL</span>
+                  </span>
+                  {socialForm.facebook && (
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Active</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={socialForm.facebook || ''}
+                    onChange={(e) => setSocialForm({ ...socialForm, facebook: e.target.value })}
+                    placeholder="https://facebook.com/yourlab"
+                    className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                  {socialForm.facebook && (
+                    <button
+                      type="button"
+                      onClick={() => setSocialForm({ ...socialForm, facebook: '' })}
+                      title="Clear Facebook link"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Instagram className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Instagram Handle / Profile URL</span>
+                  </span>
+                  {socialForm.instagram && (
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Active</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={socialForm.instagram || ''}
+                    onChange={(e) => setSocialForm({ ...socialForm, instagram: e.target.value })}
+                    placeholder="https://instagram.com/yourlab"
+                    className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-rose-500 focus:outline-none"
+                  />
+                  {socialForm.instagram && (
+                    <button
+                      type="button"
+                      onClick={() => setSocialForm({ ...socialForm, instagram: '' })}
+                      title="Clear Instagram link"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Twitter className="w-3.5 h-3.5 text-slate-800" />
+                    <span>Twitter / X Profile URL</span>
+                  </span>
+                  {socialForm.twitter && (
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Active</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={socialForm.twitter || ''}
+                    onChange={(e) => setSocialForm({ ...socialForm, twitter: e.target.value })}
+                    placeholder="https://twitter.com/yourlab"
+                    className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                  />
+                  {socialForm.twitter && (
+                    <button
+                      type="button"
+                      onClick={() => setSocialForm({ ...socialForm, twitter: '' })}
+                      title="Clear Twitter link"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Youtube className="w-3.5 h-3.5 text-red-600" />
+                    <span>YouTube Channel URL</span>
+                  </span>
+                  {socialForm.youtube && (
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Active</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={socialForm.youtube || ''}
+                    onChange={(e) => setSocialForm({ ...socialForm, youtube: e.target.value })}
+                    placeholder="https://youtube.com/@yourlab"
+                    className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-red-500 focus:outline-none"
+                  />
+                  {socialForm.youtube && (
+                    <button
+                      type="button"
+                      onClick={() => setSocialForm({ ...socialForm, youtube: '' })}
+                      title="Clear YouTube link"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Linkedin className="w-3.5 h-3.5 text-[#0A66C2]" />
+                    <span>LinkedIn Company URL</span>
+                  </span>
+                  {socialForm.linkedin && (
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Active</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={socialForm.linkedin || ''}
+                    onChange={(e) => setSocialForm({ ...socialForm, linkedin: e.target.value })}
+                    placeholder="https://linkedin.com/company/yourlab"
+                    className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none"
+                  />
+                  {socialForm.linkedin && (
+                    <button
+                      type="button"
+                      onClick={() => setSocialForm({ ...socialForm, linkedin: '' })}
+                      title="Clear LinkedIn link"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>WhatsApp Link / Number</span>
+                  </span>
+                  {socialForm.whatsapp && (
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Active</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={socialForm.whatsapp || ''}
+                    onChange={(e) => setSocialForm({ ...socialForm, whatsapp: e.target.value })}
+                    placeholder="917087033009 or https://wa.me/917087033009"
+                    className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  {socialForm.whatsapp && (
+                    <button
+                      type="button"
+                      onClick={() => setSocialForm({ ...socialForm, whatsapp: '' })}
+                      title="Clear WhatsApp"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={handleClearAllSocial}
+                className="text-slate-500 hover:text-rose-600 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer py-1.5 px-3 rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-200"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear All Links (Hide All from Website)</span>
+              </button>
+
               <button
                 type="submit"
-                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer w-full sm:w-auto justify-center"
               >
                 <Save className="w-4 h-4 text-amber-400" />
                 <span>Save Social Media Settings</span>

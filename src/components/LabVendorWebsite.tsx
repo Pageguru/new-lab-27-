@@ -245,6 +245,66 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     return cleanList.length > 0 ? cleanList : ['7087033009'];
   }, [vendorLabSettings?.phone, vendorLabSettings?.helplinePhone, labPhone]);
 
+  // Dynamic Social Media Links (Only show channels where a valid link/handle is entered)
+  const socialWhatsappUrl = React.useMemo(() => {
+    const val = vendorLabSettings?.socialMedia?.whatsapp;
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/') return null;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    const digits = trimmed.replace(/\D/g, '');
+    return digits ? `https://wa.me/${digits}` : null;
+  }, [vendorLabSettings?.socialMedia?.whatsapp]);
+
+  const socialFacebookUrl = React.useMemo(() => {
+    const val = vendorLabSettings?.socialMedia?.facebook;
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://facebook.com' || trimmed === 'https://facebook.com/') return null;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }, [vendorLabSettings?.socialMedia?.facebook]);
+
+  const socialInstagramUrl = React.useMemo(() => {
+    const val = vendorLabSettings?.socialMedia?.instagram;
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://instagram.com' || trimmed === 'https://instagram.com/') return null;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }, [vendorLabSettings?.socialMedia?.instagram]);
+
+  const socialTwitterUrl = React.useMemo(() => {
+    const val = vendorLabSettings?.socialMedia?.twitter;
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://twitter.com' || trimmed === 'https://twitter.com/') return null;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }, [vendorLabSettings?.socialMedia?.twitter]);
+
+  const socialYoutubeUrl = React.useMemo(() => {
+    const val = vendorLabSettings?.socialMedia?.youtube;
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://youtube.com' || trimmed === 'https://youtube.com/') return null;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }, [vendorLabSettings?.socialMedia?.youtube]);
+
+  const socialLinkedinUrl = React.useMemo(() => {
+    const val = vendorLabSettings?.socialMedia?.linkedin;
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://linkedin.com' || trimmed === 'https://linkedin.com/') return null;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }, [vendorLabSettings?.socialMedia?.linkedin]);
+
+  const hasAnySocialLinks = Boolean(
+    socialWhatsappUrl ||
+    socialFacebookUrl ||
+    socialInstagramUrl ||
+    socialTwitterUrl ||
+    socialYoutubeUrl ||
+    socialLinkedinUrl
+  );
+
   // Dynamic Open Graph, Page Title & Metadata Synchronization for Current Tenant/Shop
   useEffect(() => {
     updateDocumentMetadata({
@@ -3644,8 +3704,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 </div>
               </div>
 
-              {/* 5. Line: Social Media Small Icons (Edit / Disable support) */}
-              {vendorLabSettings?.socialMedia?.enabled !== false && (
+              {/* 5. Line: Social Media Small Icons (Only show channels where a valid link is entered) */}
+              {vendorLabSettings?.socialMedia?.enabled !== false && hasAnySocialLinks && (
                 <div className="flex items-start gap-3.5 pt-3 border-t border-slate-200">
                   <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center shrink-0">
                     <Share2 className="w-4 h-4" />
@@ -3653,9 +3713,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   <div className="min-w-0">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Social Media</span>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {(vendorLabSettings?.socialMedia?.whatsapp || stickyWhatsappUrl) && (
+                      {socialWhatsappUrl && (
                         <a
-                          href={vendorLabSettings?.socialMedia?.whatsapp ? `https://wa.me/${vendorLabSettings.socialMedia.whatsapp.replace(/\D/g, '')}` : stickyWhatsappUrl}
+                          href={socialWhatsappUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="WhatsApp"
@@ -3664,9 +3724,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           <MessageSquare className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {(vendorLabSettings?.socialMedia?.facebook || 'https://facebook.com') && (
+                      {socialFacebookUrl && (
                         <a
-                          href={vendorLabSettings?.socialMedia?.facebook || 'https://facebook.com'}
+                          href={socialFacebookUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Facebook"
@@ -3675,9 +3735,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           <Facebook className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {(vendorLabSettings?.socialMedia?.instagram || 'https://instagram.com') && (
+                      {socialInstagramUrl && (
                         <a
-                          href={vendorLabSettings?.socialMedia?.instagram || 'https://instagram.com'}
+                          href={socialInstagramUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Instagram"
@@ -3686,9 +3746,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           <Instagram className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {(vendorLabSettings?.socialMedia?.twitter || 'https://twitter.com') && (
+                      {socialTwitterUrl && (
                         <a
-                          href={vendorLabSettings?.socialMedia?.twitter || 'https://twitter.com'}
+                          href={socialTwitterUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Twitter / X"
@@ -3697,9 +3757,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           <Twitter className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {(vendorLabSettings?.socialMedia?.youtube || 'https://youtube.com') && (
+                      {socialYoutubeUrl && (
                         <a
-                          href={vendorLabSettings?.socialMedia?.youtube || 'https://youtube.com'}
+                          href={socialYoutubeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="YouTube"
@@ -3708,9 +3768,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           <Youtube className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {vendorLabSettings?.socialMedia?.linkedin && (
+                      {socialLinkedinUrl && (
                         <a
-                          href={vendorLabSettings.socialMedia.linkedin}
+                          href={socialLinkedinUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="LinkedIn"
@@ -3930,6 +3990,78 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
                   ISO 15189:2022 compliant automated diagnostic clinical pathology laboratory.
                 </p>
+
+                {/* Social media icons in footer: only channels where link has been provided */}
+                {vendorLabSettings?.socialMedia?.enabled !== false && hasAnySocialLinks && (
+                  <div className="flex items-center gap-1.5 pt-3 flex-wrap">
+                    {socialWhatsappUrl && (
+                      <a
+                        href={socialWhatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="WhatsApp"
+                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {socialFacebookUrl && (
+                      <a
+                        href={socialFacebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Facebook"
+                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-blue-50 text-[#1877F2] border border-slate-200 hover:border-blue-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                      >
+                        <Facebook className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {socialInstagramUrl && (
+                      <a
+                        href={socialInstagramUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Instagram"
+                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                      >
+                        <Instagram className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {socialTwitterUrl && (
+                      <a
+                        href={socialTwitterUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Twitter / X"
+                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 hover:border-slate-400 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                      >
+                        <Twitter className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {socialYoutubeUrl && (
+                      <a
+                        href={socialYoutubeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="YouTube"
+                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-red-50 text-red-600 border border-slate-200 hover:border-red-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                      >
+                        <Youtube className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {socialLinkedinUrl && (
+                      <a
+                        href={socialLinkedinUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="LinkedIn"
+                        className="w-7 h-7 rounded-full bg-slate-100 hover:bg-sky-50 text-[#0A66C2] border border-slate-200 hover:border-sky-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                      >
+                        <Linkedin className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

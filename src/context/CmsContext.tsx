@@ -329,12 +329,12 @@ const DEFAULT_VENDOR_LAB_SETTINGS: VendorLabSettings = {
   contactGoogleMapUrl: '',
   socialMedia: {
     enabled: true,
-    facebook: 'https://facebook.com/apexdiagnostics',
-    instagram: 'https://instagram.com/apexdiagnostics',
-    twitter: 'https://twitter.com/apexdiagnostics',
-    youtube: 'https://youtube.com/@apexdiagnostics',
-    linkedin: 'https://linkedin.com/company/apexdiagnostics',
-    whatsapp: '917087033009',
+    facebook: '',
+    instagram: '',
+    twitter: '',
+    youtube: '',
+    linkedin: '',
+    whatsapp: '',
   },
   termsAndConditions: `1. ACCEPTANCE OF TERMS: By accessing or utilizing the services provided by this diagnostic laboratory, patients and referring healthcare providers agree to abide by all clinical laboratory terms and protocols.
 2. DIAGNOSTIC SERVICES & TESTING: All testing is performed under strictly regulated NABL accredited and ISO 15189 standards using calibrated automated analyzers. Reports reflect specimen findings at the time of collection.
