@@ -60,7 +60,7 @@ export const VendorTestsTab: React.FC<VendorTestsTabProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Popular'>('All');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
 
   // Modal States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -1156,82 +1156,138 @@ export const VendorTestsTab: React.FC<VendorTestsTabProps> = ({
             </div>
           )}
 
-          {/* GRID CARDS VIEW */}
+          {/* GRID CARDS VIEW: 3 IN ROW, NEXT TEST IN 2 ROW */}
           {viewMode === 'grid' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredTests.map((test) => {
-                const isInactive = test.status === 'Inactive' || test.isActive === false;
-                return (
-                  <div
-                    key={test.id}
-                    className={`bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-[#123B6D] transition flex flex-col justify-between space-y-4 ${
-                      isInactive ? 'opacity-60 bg-slate-50/50' : ''
-                    }`}
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              {filteredTests.length === 0 ? (
+                <div className="md:col-span-6 bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400">
+                  <FlaskConical className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                  <p className="font-bold text-slate-600 text-sm">No matching online diagnostic tests found</p>
+                  <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms or category filter</p>
+                  <button
+                    onClick={handleOpenAddForm}
+                    className="mt-3.5 inline-flex items-center gap-1.5 bg-[#123B6D] text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold bg-blue-50 text-[#123B6D] px-2 py-0.5 rounded-md font-mono">
-                          {test.code}
-                        </span>
-                        {test.isPopular && (
-                          <span className="text-[9px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Sparkles className="w-2.5 h-2.5" /> POPULAR
+                    <Plus className="w-4 h-4 text-amber-400" />
+                    <span>Add New Test</span>
+                  </button>
+                </div>
+              ) : (
+                filteredTests.map((test, index) => {
+                  const isInactive = test.status === 'Inactive' || test.isActive === false;
+                  // 3 in row, next test in 2 row pattern:
+                  // Indices 0, 1, 2 take col-span-2 in a 6-col grid (3 cards in 6 cols)
+                  // Indices 3, 4 take col-span-3 in a 6-col grid (2 cards in 6 cols)
+                  const isRowOfThree = index % 5 < 3;
+                  const colSpanClass = isRowOfThree ? 'md:col-span-2' : 'md:col-span-3';
+
+                  return (
+                    <div
+                      key={test.id}
+                      className={`${colSpanClass} bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-[#123B6D] hover:shadow-md transition flex flex-col justify-between space-y-4 ${
+                        isInactive ? 'opacity-60 bg-slate-50/50' : ''
+                      }`}
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-[10px] font-bold bg-blue-50 text-[#123B6D] px-2 py-0.5 rounded-md font-mono border border-blue-100">
+                            {test.code}
                           </span>
-                        )}
-                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md ml-auto">
-                          {test.category}
-                        </span>
-                      </div>
-
-                      <h4 className="font-black text-sm text-[#123B6D] leading-snug">{test.name}</h4>
-
-                      <div className="space-y-1 text-[11px] text-slate-600 pt-1">
-                        <div className="flex items-center gap-1.5">
-                          <Droplet className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                          <span className="truncate">{test.sampleType}</span>
+                          {test.isPopular && (
+                            <span className="text-[9px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                              <Sparkles className="w-2.5 h-2.5" /> POPULAR
+                            </span>
+                          )}
+                          <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md ml-auto">
+                            {test.category}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>TAT: {test.tatHours ? `${test.tatHours} hrs` : test.turnaroundTime || '4 hrs'}</span>
-                        </div>
-                        {test.normalRange && (
-                          <div className="text-[10px] font-mono text-slate-500 bg-slate-50 p-1.5 rounded truncate">
-                            Ref: {test.normalRange}
+
+                        <h4 className="font-black text-sm text-[#123B6D] leading-snug">{test.name}</h4>
+
+                        <div className="space-y-1.5 text-[11px] text-slate-600 pt-1">
+                          <div className="flex items-center gap-1.5">
+                            <Droplet className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                            <span className="truncate font-medium">{test.sampleType}</span>
+                            {test.fastingRequired && (
+                              <span className="text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.2 rounded shrink-0">
+                                Fasting
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>TAT: {test.tatHours ? `${test.tatHours} hrs` : test.turnaroundTime || '4 hrs'}</span>
+                            {test.unit && (
+                              <span className="text-slate-400 ml-auto font-mono text-[10px]">
+                                Unit: {test.unit}
+                              </span>
+                            )}
+                          </div>
+                          {test.normalRange && (
+                            <div className="text-[10px] font-mono text-slate-600 bg-slate-50 border border-slate-100 p-2 rounded-lg line-clamp-2" title={test.normalRange}>
+                              <span className="text-slate-400 font-bold uppercase text-[9px] block">Reference Range:</span>
+                              {test.normalRange}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                        <div>
+                          <div className="text-base font-black text-[#123B6D]">₹{test.priceINR}</div>
+                          {test.mrpINR && test.mrpINR > test.priceINR && (
+                            <span className="text-[10px] text-slate-400 line-through">₹{test.mrpINR}</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newStatus = isInactive ? 'Active' : 'Inactive';
+                              updateVendorTest(test.id, {
+                                status: newStatus,
+                                isActive: newStatus === 'Active',
+                              });
+                              setToastMessage(
+                                `Test "${test.name}" marked as ${newStatus}. ${
+                                  newStatus === 'Active' ? 'Now available online.' : 'Hidden from booking.'
+                                }`
+                              );
+                              setTimeout(() => setToastMessage(''), 3000);
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition border ${
+                              isInactive
+                                ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                            }`}
+                            title="Click to toggle online booking availability"
+                          >
+                            {isInactive ? '✕ Hidden' : '✓ Active'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(test)}
+                            className="px-2.5 py-1 text-slate-700 hover:text-[#123B6D] hover:bg-amber-100/70 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-[#123B6D]" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingTest(test)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition cursor-pointer"
+                            title="Delete test"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-base font-black text-[#123B6D]">₹{test.priceINR}</div>
-                        {test.mrpINR && test.mrpINR > test.priceINR && (
-                          <span className="text-[10px] text-slate-400 line-through">₹{test.mrpINR}</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(test)}
-                          className="px-2.5 py-1 text-slate-700 hover:text-[#123B6D] hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 text-[#123B6D]" />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeletingTest(test)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition cursor-pointer"
-                          title="Delete test"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           )}
         </div>
