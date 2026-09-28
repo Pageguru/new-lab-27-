@@ -184,6 +184,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const labWebsiteUrl = vendorLabSettings?.websiteUrl && !vendorLabSettings.websiteUrl.includes('labname.com') ? vendorLabSettings.websiteUrl : canonicalUrl;
   const labLogoUrl = vendorLabSettings?.logoUrl || '';
   const labOgImageUrl = vendorLabSettings?.ogImageUrl || labLogoUrl || generateDefaultOgImage(labName, labShopId, labNabl);
+  const labEstablishedYear = vendorLabSettings?.establishedYear || (currentLabItem as any)?.establishedYear || (vendorLabSettings as any)?.sinceYear || '2012';
 
   const cleanPhone = (labPhone || '7087033009').replace(/\D/g, '');
   const cleanWhatsapp = (labWhatsapp || '7087033009').replace(/\D/g, '');
@@ -436,9 +437,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       const container = heroCarouselRef.current;
       const targetCard = container.children[activeHeroBanner] as HTMLElement;
       if (targetCard) {
-        const offset = window.innerWidth >= 1024 ? 0 : 12;
         container.scrollTo({
-          left: Math.max(0, targetCard.offsetLeft - offset),
+          left: targetCard.offsetLeft,
           behavior: 'smooth',
         });
       }
@@ -1741,89 +1741,138 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         )}
       </header>
 
-      {/* SECTION 1: HERO PHOTO BANNER CAROUSEL (Full Width with 2%-5% Peek Effect on Mobile) */}
-      <section id="top" className="bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white py-3.5 sm:py-6 lg:py-8 border-b border-slate-200 scroll-mt-20 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-          {/* Main Photo Banner Carousel Container */}
-          <div className="relative group">
-            {/* Carousel Track with 2%-5% Peek Effect on Mobile */}
-            <div
-              ref={heroCarouselRef}
-              onTouchStart={handleHeroTouchStart}
-              onTouchMove={handleHeroTouchMove}
-              onTouchEnd={handleHeroTouchEnd}
-              onMouseEnter={() => setIsHeroPaused(true)}
-              onMouseLeave={() => setIsHeroPaused(false)}
-              className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 no-scrollbar px-2 sm:px-0 py-1 scroll-smooth"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {heroBannersList.map((bannerUrl, idx) => (
-                <div
-                  key={idx}
-                  className="w-[94%] xs:w-[95%] sm:w-[95%] lg:w-full shrink-0 snap-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg relative bg-slate-950 aspect-[16/8] sm:aspect-[21/9] max-h-[460px] group cursor-pointer border border-slate-200/80"
-                  onClick={() => {
-                    setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
-                    setIsBookingModalOpen(true);
-                  }}
-                  title="Click to Book Lab Tests"
-                >
-                  <img
-                    src={bannerUrl}
-                    alt={`${labName} Promotional Banner ${idx + 1}`}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-101"
-                    loading={idx === 0 ? 'eager' : 'lazy'}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop Navigation Arrows */}
-            {heroBannersList.length > 1 && (
-              <div className="hidden lg:flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-10">
-                <button
-                  type="button"
-                  onClick={() => setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length)}
-                  className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
-                  aria-label="Previous Slide"
-                >
-                  <ChevronLeft className="w-5 h-5 text-slate-700" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length)}
-                  className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
-                  aria-label="Next Slide"
-                >
-                  <ChevronRight className="w-5 h-5 text-slate-700" />
-                </button>
+      {/* SECTION 1: MODERN TWO-COLUMN HERO BANNER (Left 50% Content, Right 50% Image Carousel) */}
+      <section id="top" className="bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white py-8 sm:py-12 lg:py-16 border-b border-slate-200 scroll-mt-20 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-center">
+            
+            {/* LEFT SECTION (Content): 50% */}
+            <div className="flex flex-col space-y-5 sm:space-y-6 text-left">
+              {/* Trust Badge: © Since & Lab Name */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#123B6D]/10 text-[#123B6D] border border-[#123B6D]/20 text-xs sm:text-[13px] font-bold tracking-wide w-fit shadow-2xs">
+                <span className="text-xs">©</span>
+                <span>Since {labEstablishedYear} • {labName}</span>
               </div>
-            )}
-          </div>
 
-          {/* Carousel Indicators & Swipe Notification */}
-          <div className="flex items-center justify-between mt-3 px-3">
-            {/* Pill Indicator Dots */}
-            <div className="flex items-center gap-2">
-              {heroBannersList.map((_, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setActiveHeroBanner(idx)}
-                  className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    activeHeroBanner === idx
-                      ? 'w-8 bg-[#123B6D] shadow-xs'
-                      : 'w-2.5 bg-slate-300 hover:bg-slate-400'
-                  }`}
-                  aria-label={`Go to banner slide ${idx + 1}`}
-                />
-              ))}
+              {/* 1. Large, bold headline with highlighted text */}
+              <h1 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-5xl font-black text-slate-900 tracking-tight leading-[1.15]">
+                Fast, Accurate &amp;{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#123B6D] via-[#0F766E] to-teal-600">
+                  Reliable Diagnostics
+                </span>{' '}
+                for Your Entire Family
+              </h1>
+
+              {/* 3. Short descriptive paragraph */}
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal max-w-xl">
+                Experience same-day digital lab reports on WhatsApp, 100% automated barcoded testing, certified pathologist approval, and free doorstep home sample collection.
+              </p>
+
+              {/* 4. Prominent “Phone Number” CTA button */}
+              <div className="flex flex-wrap items-center gap-3.5 pt-1">
+                <a
+                  href={`tel:+91${cleanPhone}`}
+                  className="inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-extrabold text-sm sm:text-base transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-98 group cursor-pointer border border-[#123B6D]/40"
+                  id="hero-phone-cta-btn"
+                >
+                  <span className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-amber-300 group-hover:scale-110 transition-transform shadow-xs">
+                    <Phone className="w-5 h-5" />
+                  </span>
+                  <div className="text-left leading-tight">
+                    <span className="block text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                      Call / Helpline Number
+                    </span>
+                    <span className="block font-black text-base sm:text-lg tracking-wide text-white">
+                      +91 {labPhone}
+                    </span>
+                  </div>
+                </a>
+              </div>
             </div>
 
-            {/* Swipe hint on mobile, counter on desktop */}
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-              <span className="sm:hidden text-slate-400 font-medium">👉 Swipe for next banner (2% peek)</span>
-              <span className="hidden sm:inline">Banner {activeHeroBanner + 1} of {heroBannersList.length}</span>
+            {/* RIGHT SECTION (Image Carousel): 50% */}
+            <div className="flex flex-col items-center w-full">
+              {/* Large rounded image container with subtle shadow & rounded corners */}
+              <div className="relative w-full rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-200/90 bg-slate-950 aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3] max-h-[460px] group">
+                
+                {/* Auto-sliding Image Carousel Track */}
+                <div
+                  ref={heroCarouselRef}
+                  onTouchStart={handleHeroTouchStart}
+                  onTouchMove={handleHeroTouchMove}
+                  onTouchEnd={handleHeroTouchEnd}
+                  onMouseEnter={() => setIsHeroPaused(true)}
+                  onMouseLeave={() => setIsHeroPaused(false)}
+                  className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth w-full h-full"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {heroBannersList.map((bannerUrl, idx) => (
+                    <div
+                      key={idx}
+                      className="w-full shrink-0 snap-center relative bg-slate-950 h-full cursor-pointer"
+                      onClick={() => {
+                        setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
+                        setIsBookingModalOpen(true);
+                      }}
+                      title="Click to Book Health Checkup"
+                    >
+                      <img
+                        src={bannerUrl}
+                        alt={`${labName} Banner ${idx + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
+                        loading={idx === 0 ? 'eager' : 'lazy'}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Navigation Arrows */}
+                {heroBannersList.length > 1 && (
+                  <div className="flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-10">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length);
+                      }}
+                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
+                      aria-label="Previous Slide"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-slate-700" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length);
+                      }}
+                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
+                      aria-label="Next Slide"
+                    >
+                      <ChevronRight className="w-5 h-5 text-slate-700" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination Dots Below the Image */}
+              <div className="flex items-center justify-center gap-2 mt-3.5">
+                {heroBannersList.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveHeroBanner(idx)}
+                    className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      activeHeroBanner === idx
+                        ? 'w-8 bg-[#123B6D] shadow-xs'
+                        : 'w-2.5 bg-slate-300 hover:bg-slate-400'
+                    }`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
             </div>
+
           </div>
         </div>
       </section>
