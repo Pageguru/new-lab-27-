@@ -147,7 +147,9 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(true);
   const [domainSubTab, setDomainSubTab] = useState<'add' | 'list'>('add');
   const [isDomainMenuOpen, setIsDomainMenuOpen] = useState(true);
-  const [settingsSubTab, setSettingsSubTab] = useState<'all' | 'logo' | 'name' | 'description' | 'feature' | 'payment_qr' | 'plan'>('all');
+  const [settingsSubTab, setSettingsSubTab] = useState<
+    'logo' | 'name' | 'description' | 'feature' | 'payment_qr' | 'plan' | 'all'
+  >('logo');
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(true);
   const [isAdminSettingsMenuOpen, setIsAdminSettingsMenuOpen] = useState(true);
   const [bookingSettingsSubTab, setBookingSettingsSubTab] = useState<'all' | 'charges' | 'timing'>('all');
@@ -1580,7 +1582,11 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('settings');
-                    setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                    if (activeTab !== 'settings') {
+                      setIsSettingsMenuOpen(true);
+                    } else {
+                      setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                    }
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'settings'
@@ -2167,6 +2173,8 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
         {/* 7. SITE SETTINGS & PLAN PRICING TAB */}
         {activeTab === 'settings' && (
           <VendorSiteSettingsTab
+            activeSubTab={settingsSubTab}
+            onSubTabChange={(sub) => setSettingsSubTab(sub)}
             initialSection={settingsSubTab}
             onNavigateView={onNavigateView}
           />

@@ -29,8 +29,19 @@ import {
 import { useCms } from '../../context/CmsContext';
 import { VendorLabSettings } from '../../types';
 
-interface VendorSiteSettingsTabProps {
-  initialSection?: 'all' | 'logo' | 'name' | 'description' | 'feature' | 'payment_qr' | 'plan';
+export type SiteSettingsSubSection =
+  | 'logo'
+  | 'name'
+  | 'description'
+  | 'feature'
+  | 'payment_qr'
+  | 'plan'
+  | 'all';
+
+export interface VendorSiteSettingsTabProps {
+  activeSubTab?: SiteSettingsSubSection;
+  onSubTabChange?: (tab: SiteSettingsSubSection) => void;
+  initialSection?: SiteSettingsSubSection;
   onNavigateView?: (view: any) => void;
 }
 
@@ -67,7 +78,9 @@ const SAMPLE_FEATURE_IMAGES = [
 ];
 
 export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
-  initialSection = 'all',
+  activeSubTab,
+  onSubTabChange,
+  initialSection = 'logo',
   onNavigateView,
 }) => {
   const {
@@ -78,9 +91,24 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
     vendorLabsList,
   } = useCms();
 
-  const [activeSection, setActiveSection] = useState<
-    'all' | 'logo' | 'name' | 'description' | 'feature' | 'payment_qr' | 'plan'
-  >(initialSection);
+  const [internalSection, setInternalSection] = useState<SiteSettingsSubSection>(
+    activeSubTab || initialSection || 'logo'
+  );
+
+  const activeSection = activeSubTab || internalSection;
+
+  useEffect(() => {
+    if (activeSubTab) {
+      setInternalSection(activeSubTab);
+    }
+  }, [activeSubTab]);
+
+  const handleSelectSection = (section: SiteSettingsSubSection) => {
+    setInternalSection(section);
+    if (onSubTabChange) {
+      onSubTabChange(section);
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState<Partial<VendorLabSettings>>({
@@ -331,92 +359,92 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           <button
             type="button"
-            onClick={() => setActiveSection('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-              activeSection === 'all'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            All Settings
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSection('logo')}
+            onClick={() => handleSelectSection('logo')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
               activeSection === 'logo'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
+                ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
+            <ImageIcon className={`w-3.5 h-3.5 ${activeSection === 'logo' ? 'text-amber-400' : 'text-indigo-500'}`} />
             <span>Logo</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveSection('name')}
+            onClick={() => handleSelectSection('name')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
               activeSection === 'name'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
+                ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <Type className="w-3.5 h-3.5 text-blue-500" />
+            <Type className={`w-3.5 h-3.5 ${activeSection === 'name' ? 'text-amber-400' : 'text-blue-500'}`} />
             <span>Site Name</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveSection('description')}
+            onClick={() => handleSelectSection('description')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
               activeSection === 'description'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
+                ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <FileText className="w-3.5 h-3.5 text-emerald-500" />
+            <FileText className={`w-3.5 h-3.5 ${activeSection === 'description' ? 'text-amber-400' : 'text-emerald-500'}`} />
             <span>Site Description</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveSection('feature')}
+            onClick={() => handleSelectSection('feature')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
               activeSection === 'feature'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
+                ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Sparkles className={`w-3.5 h-3.5 ${activeSection === 'feature' ? 'text-amber-400' : 'text-amber-500'}`} />
             <span>Feature Image</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveSection('payment_qr')}
+            onClick={() => handleSelectSection('payment_qr')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
               activeSection === 'payment_qr'
-                ? 'bg-[#123B6D] text-white shadow-2xs'
+                ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <QrCode className="w-3.5 h-3.5 text-purple-500" />
+            <QrCode className={`w-3.5 h-3.5 ${activeSection === 'payment_qr' ? 'text-amber-400' : 'text-purple-500'}`} />
             <span>Payment QR</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveSection('plan')}
+            onClick={() => handleSelectSection('plan')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
               activeSection === 'plan'
                 ? 'bg-amber-400 text-slate-950 font-black shadow-2xs'
                 : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+            <Zap className={`w-3.5 h-3.5 ${activeSection === 'plan' ? 'text-slate-950 fill-slate-950' : 'text-amber-600 fill-amber-500'}`} />
             <span>Plan &amp; Pricing ({remainingDays} Days Left)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSelectSection('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+              activeSection === 'all'
+                ? 'bg-[#123B6D] text-white shadow-2xs font-black'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            All Settings
           </button>
         </div>
 
@@ -448,7 +476,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       {/* ======================================================== */}
       {(activeSection === 'all' || activeSection === 'logo') && (
         <div id="section-logo" className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-indigo-50 text-indigo-700">
                 <ImageIcon className="w-4 h-4" />
@@ -460,9 +488,19 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              Site Setting
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                Site Setting
+              </span>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5 text-amber-400" />
+                <span>Save Logo</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -587,6 +625,20 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] text-slate-500">
+              Logo appears on website navigation, invoice receipts, and printable WhatsApp PDF reports.
+            </span>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5 text-amber-400" />
+              <span>Save Logo</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -595,7 +647,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       {/* ======================================================== */}
       {(activeSection === 'all' || activeSection === 'name') && (
         <div id="section-name" className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-blue-50 text-blue-700">
                 <Type className="w-4 h-4" />
@@ -607,9 +659,19 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-              Site Setting
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                Site Setting
+              </span>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5 text-amber-400" />
+                <span>Save Site Name</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -666,6 +728,20 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] text-slate-500">
+              Site name and subtitle are updated in real-time on your lab domain and Google search preview.
+            </span>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5 text-amber-400" />
+              <span>Save Site Name</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -674,7 +750,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       {/* ======================================================== */}
       {(activeSection === 'all' || activeSection === 'description') && (
         <div id="section-description" className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
                 <FileText className="w-4 h-4" />
@@ -686,9 +762,19 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Site Setting
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Site Setting
+              </span>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5 text-amber-400" />
+                <span>Save Description</span>
+              </button>
+            </div>
           </div>
 
           <div>
@@ -735,6 +821,20 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
               </p>
             </div>
           </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] text-slate-500">
+              Clear laboratory descriptions improve patient trust and local pathology search rankings.
+            </span>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5 text-amber-400" />
+              <span>Save Description</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -743,7 +843,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       {/* ======================================================== */}
       {(activeSection === 'all' || activeSection === 'feature') && (
         <div id="section-feature" className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-amber-50 text-amber-700">
                 <Sparkles className="w-4 h-4" />
@@ -755,9 +855,19 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-              Site Setting
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                Site Setting
+              </span>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5 text-amber-400" />
+                <span>Save Feature Banner</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -899,6 +1009,20 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] text-slate-500">
+              High resolution feature graphics provide a professional impression when sending website links to patients.
+            </span>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5 text-amber-400" />
+              <span>Save Feature Banner</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -907,7 +1031,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       {/* ======================================================== */}
       {(activeSection === 'all' || activeSection === 'payment_qr') && (
         <div id="section-payment-qr" className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-purple-50 text-purple-700">
                 <QrCode className="w-4 h-4" />
@@ -919,9 +1043,19 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-              Site Setting
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                Site Setting
+              </span>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5 text-amber-400" />
+                <span>Save Payment QR</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -1063,6 +1197,20 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
               </div>
             </div>
           </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] text-slate-500">
+              Patients can scan your verified UPI QR directly during online booking and sample collection.
+            </span>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5 text-amber-400" />
+              <span>Save Payment QR</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1073,24 +1221,34 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       {(activeSection === 'all' || activeSection === 'plan') && (
         <div id="section-plan" className="bg-white rounded-2xl border-2 border-amber-300 p-6 shadow-sm space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-amber-100">
+          <div className="flex items-center justify-between pb-3 border-b border-amber-100 flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-amber-100 text-amber-900">
                 <Zap className="w-5 h-5 fill-amber-500 text-amber-700" />
               </span>
               <div>
                 <h2 className="text-base font-black text-[#123B6D]">
-                  Plan &amp; Pricing: Active Laboratory Subscription
+                  6. Plan &amp; Pricing: Active Laboratory Subscription
                 </h2>
                 <p className="text-xs text-slate-600">
                   Showing <strong>only</strong> the plan currently purchased by this diagnostic lab with remaining visibility days.
                 </p>
               </div>
             </div>
-            <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Active Purchased Plan</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Active Purchased Plan</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5 text-amber-400" />
+                <span>Save Plan Settings</span>
+              </button>
+            </div>
           </div>
 
           {/* ======================================================== */}
@@ -1310,6 +1468,20 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+
+          <div className="pt-4 border-t border-amber-100 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] text-slate-600 font-medium">
+              Lab visibility status is active. Extend days anytime to maintain uninterrupted online bookings.
+            </span>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5 text-amber-400" />
+              <span>Save Plan Settings</span>
+            </button>
           </div>
         </div>
       )}
