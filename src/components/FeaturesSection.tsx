@@ -169,22 +169,55 @@ const CORE_FEATURES: FeatureItem[] = [
   },
 ];
 
-const ADDON_FEATURES = [
+import { useCms } from '../context/CmsContext';
+
+interface AddonFeatureItem {
+  id: string;
+  title: string;
+  side: 'left' | 'right';
+  sideLabel: string;
+  tagline: string;
+  desc: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge: string;
+  color: string;
+  highlights: string[];
+}
+
+const ADDON_FEATURES: AddonFeatureItem[] = [
   {
     id: 'addon-1',
     title: 'Custom Domain',
-    desc: 'Connect your own branded domain (e.g. www.yourlab.com)',
+    side: 'left',
+    sideLabel: 'Left Add-on',
+    tagline: 'Your Own Dedicated Web Address',
+    desc: 'Connect your own branded domain (e.g. www.yourlab.com or yourlab.in) instead of a subdomain for instant local patient trust and search credibility.',
     icon: Globe,
     badge: 'Popular Add-on',
     color: 'text-[#123B6D] bg-blue-50 border-blue-200',
+    highlights: [
+      'Dedicated Domain Binding (.com, .in, etc.)',
+      'Free Lifetime SSL Certificate (HTTPS Secure)',
+      'Automated DNS Routing & Fast CNAME Setup',
+      'Boosts Local Patient Trust & Google Search SEO',
+    ],
   },
   {
     id: 'addon-2',
-    title: '1 Professional Email ID',
-    desc: 'Custom corporate mailbox (e.g. contact@yourlab.com)',
+    title: 'Professional Email',
+    side: 'right',
+    sideLabel: 'Right Add-on',
+    tagline: 'Custom Corporate Mailbox',
+    desc: 'Create personalized business email addresses matching your domain (e.g. contact@yourlab.com or reports@yourlab.com) with secure webmail sync.',
     icon: Mail,
     badge: 'Business Identity',
     color: 'text-[#0F766E] bg-teal-50 border-teal-200',
+    highlights: [
+      'Custom Corporate Mailbox on Your Domain',
+      'Webmail, Outlook, Gmail & Mobile IMAP Sync',
+      'Built-in Anti-Spam & Phishing Defense',
+      'Direct Doctor Referrals & Corporate Lab Credibility',
+    ],
   },
 ];
 
@@ -193,10 +226,12 @@ interface FeaturesSectionProps {
 }
 
 export const FeaturesSection: React.FC<FeaturesSectionProps> = () => {
+  const { openRegisterLabModal } = useCms();
+
   return (
     <section
       id="features-section"
-      className="py-14 sm:py-20 bg-gradient-to-b from-white via-slate-50/50 to-white border-b border-slate-200 scroll-mt-20"
+      className="py-14 sm:py-20 bg-linear-to-b from-white via-slate-50/50 to-white border-b border-slate-200 scroll-mt-20"
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         
@@ -254,56 +289,132 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = () => {
 
         {/* ========================================================
             ADD-ON FEATURES: Core ke neeche separate section
-            - Custom Domain
-            - 1 Professional Email ID
+            - Left: Custom Domain
+            - Right: Professional Email
             ======================================================== */}
-        <div className="mt-12 sm:mt-16 pt-10 sm:pt-12 border-t border-slate-200/80">
-          <div className="text-center max-w-xl mx-auto mb-6 sm:mb-8">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold tracking-wide uppercase mb-2">
+        <div className="mt-14 sm:mt-18 pt-12 sm:pt-14 border-t border-slate-200">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold tracking-wide uppercase mb-2.5">
               <PlusCircle className="w-3.5 h-3.5 text-emerald-600" />
               <span>Optional Upgrades</span>
             </div>
-            <h3 className="text-xl sm:text-2xl font-black text-[#123B6D] tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-[#123B6D] tracking-tight">
               Add-on Features
             </h3>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Elevate your laboratory's direct brand identity online with dedicated add-on services.
+            <p className="text-xs sm:text-sm text-slate-600 mt-1.5 max-w-xl mx-auto leading-relaxed">
+              Elevate your laboratory's direct brand identity with our two high-impact add-ons: custom domain mapping on the left and corporate professional email on the right.
             </p>
           </div>
 
-          {/* 2-Feature Row / Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
-            {ADDON_FEATURES.map((addon) => {
-              const Icon = addon.icon;
-              return (
-                <div
-                  key={addon.id}
-                  className="relative p-5 sm:p-6 rounded-2xl border-2 border-slate-200 bg-white hover:border-[#123B6D]/40 shadow-xs hover:shadow-md transition-all duration-200 flex items-start gap-4"
-                >
-                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 border ${addon.color}`}>
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+          {/* 2-Feature Row: Left (Custom Domain) & Right (Professional Email) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 max-w-4xl mx-auto">
+            {/* Left Card: Custom Domain */}
+            <div className="relative p-6 sm:p-7 rounded-3xl border-2 border-blue-200/90 bg-linear-to-br from-blue-50/50 via-white to-slate-50/40 hover:border-[#123B6D] shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-blue-200 bg-blue-100/70 text-[#123B6D]">
+                    <Globe className="w-6 h-6" />
                   </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <h4 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-                        {addon.title}
-                      </h4>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
-                        {addon.badge}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      {addon.desc}
-                    </p>
-                    <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Setup & DNS Configuration Included</span>
-                    </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-blue-50 text-[#123B6D] border border-blue-200">
+                      Popular Add-on
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wider">
+                      Left
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 mb-1">
+                  Branded Web Address
+                </div>
+                <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Custom Domain
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                  Connect your own branded domain (e.g.{' '}
+                  <span className="font-bold text-[#123B6D]">www.yourlab.com</span> or{' '}
+                  <span className="font-bold text-[#123B6D]">yourlab.in</span>) instead of a subdomain for instant local patient trust and search credibility.
+                </p>
+
+                {/* Feature Highlights */}
+                <div className="mt-5 pt-4 border-t border-blue-100 space-y-2.5 text-xs">
+                  {ADDON_FEATURES[0].highlights.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-2.5 text-slate-700">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="leading-snug">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6 pt-5 border-t border-blue-100 flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-slate-500">
+                  Ready in under 24 hrs
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openRegisterLabModal()}
+                  className="px-4 py-2 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-98 cursor-pointer"
+                >
+                  Request Custom Domain
+                </button>
+              </div>
+            </div>
+
+            {/* Right Card: Professional Email */}
+            <div className="relative p-6 sm:p-7 rounded-3xl border-2 border-teal-200/90 bg-linear-to-br from-teal-50/50 via-white to-slate-50/40 hover:border-[#0F766E] shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-teal-200 bg-teal-100/70 text-[#0F766E]">
+                    <Mail className="w-6 h-6" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-teal-50 text-[#0F766E] border border-teal-200">
+                      Business Identity
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wider">
+                      Right
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] font-bold uppercase tracking-wider text-teal-700 mb-1">
+                  Corporate Mailbox
+                </div>
+                <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Professional Email
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                  Establish corporate trust with dedicated business email addresses (e.g.{' '}
+                  <span className="font-bold text-[#0F766E]">contact@yourlab.com</span> or{' '}
+                  <span className="font-bold text-[#0F766E]">reports@yourlab.com</span>) matching your lab's domain.
+                </p>
+
+                {/* Feature Highlights */}
+                <div className="mt-5 pt-4 border-t border-teal-100 space-y-2.5 text-xs">
+                  {ADDON_FEATURES[1].highlights.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-2.5 text-slate-700">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="leading-snug">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6 pt-5 border-t border-teal-100 flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-slate-500">
+                  IMAP / Webmail Included
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openRegisterLabModal()}
+                  className="px-4 py-2 rounded-xl bg-[#0F766E] hover:bg-[#0c5f58] text-white text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-98 cursor-pointer"
+                >
+                  Request Professional Email
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -311,3 +422,4 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = () => {
     </section>
   );
 };
+
