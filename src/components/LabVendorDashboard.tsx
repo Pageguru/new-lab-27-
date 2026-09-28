@@ -58,6 +58,7 @@ import {
   Truck,
   Headphones,
   Database,
+  Layers,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { DashboardFooter } from './DashboardFooter';
@@ -134,7 +135,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   >('website');
 
   const [websiteSubTab, setWebsiteSubTab] = useState<
-    'banners' | 'about' | 'founder' | 'team' | 'contact' | 'social' | 'legal' | 'sections'
+    'banners' | 'about' | 'founder' | 'team' | 'contact' | 'social' | 'legal' | 'sections' | 'section_content'
   >('banners');
   const [testSubTab, setTestSubTab] = useState<'list' | 'add'>('list');
   const [packageSubTab, setPackageSubTab] = useState<'list' | 'add'>('list');
@@ -1104,6 +1105,60 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                             : 'bg-slate-100 text-slate-700'
                         }`}>
                           T&C, P&P, Refund
+                        </span>
+                      </button>
+
+                      {/* 8. Section Titles & Para : Edit */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('website');
+                          setWebsiteSubTab('section_content');
+                          setIsMobileSidebarOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
+                          activeTab === 'website' && websiteSubTab === 'section_content'
+                            ? 'bg-[#123B6D] text-white shadow-2xs font-black'
+                            : 'text-slate-700 hover:bg-amber-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Type className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'website' && websiteSubTab === 'section_content' ? 'text-amber-400' : 'text-purple-600'}`} />
+                          <span className="truncate">Section Titles &amp; Para</span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                          activeTab === 'website' && websiteSubTab === 'section_content'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-purple-100 text-purple-800 border border-purple-200'
+                        }`}>
+                          Edit Titles &amp; Text
+                        </span>
+                      </button>
+
+                      {/* 9. Sections ON / OFF */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('website');
+                          setWebsiteSubTab('sections');
+                          setIsMobileSidebarOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
+                          activeTab === 'website' && websiteSubTab === 'sections'
+                            ? 'bg-[#123B6D] text-white shadow-2xs font-black'
+                            : 'text-slate-700 hover:bg-amber-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Layers className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'website' && websiteSubTab === 'sections' ? 'text-amber-400' : 'text-emerald-600'}`} />
+                          <span className="truncate">Sections ON / OFF</span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                          activeTab === 'website' && websiteSubTab === 'sections'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          Toggle
                         </span>
                       </button>
                     </div>

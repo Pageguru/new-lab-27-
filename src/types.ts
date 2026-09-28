@@ -227,11 +227,35 @@ export interface VendorLabSettings {
   heroBanners?: string[];
   banners?: VendorBannerItem[];
   // About Us Section
+  aboutBadgeText?: string;
   aboutTitle?: string;
   aboutSubtitle?: string;
   aboutStory?: string;
   aboutHeritage?: string;
   establishedYear?: number | string;
+  // Section Headings & Paragraphs (Customizable by Vendor)
+  packagesBadge?: string;
+  packagesTitle?: string;
+  packagesSubtitle?: string;
+  testsBadge?: string;
+  testsTitle?: string;
+  testsSubtitle?: string;
+  bookingBadge?: string;
+  bookingTitle?: string;
+  bookingSubtitle?: string;
+  doctorsBadge?: string;
+  doctorsTitle?: string;
+  doctorsSubtitle?: string;
+  whyChooseBadge?: string;
+  whyChooseTitle?: string;
+  whyChooseSubtitle?: string;
+  branchesBadge?: string;
+  branchesTitle?: string;
+  branchesSubtitle?: string;
+  contactTitle?: string;
+  contactSubtitle?: string;
+  reportCheckTitle?: string;
+  reportCheckSubtitle?: string;
   // Founder Section
   founderName?: string;
   founderDesignation?: string;

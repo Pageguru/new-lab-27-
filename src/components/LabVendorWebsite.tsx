@@ -2024,9 +2024,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   <span className="font-mono font-bold text-[#123B6D] bg-slate-100 px-1 py-0.2 rounded text-[9px] xs:text-[10px] border border-slate-200">
                     {labShopId}
                   </span>
-                  <span className="hidden sm:inline-block text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded text-[10px] border border-emerald-200">
-                    • {labNabl}
-                  </span>
                 </div>
               </div>
             </button>
@@ -2051,8 +2048,15 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </a>
 
             <a
-              href="#test-directory"
-              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
+              href="#book-test-section"
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById('book-test-section') || document.getElementById('test-directory');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1 cursor-pointer"
               id="vendor-nav-tests"
             >
               Tests
@@ -2209,7 +2213,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         {labName}
                       </span>
                       <span className="text-[10px] text-blue-200 font-mono">
-                        ID: {labShopId} • {labNabl}
+                        ID: {labShopId}
                       </span>
                     </div>
                   </div>
@@ -2292,8 +2296,15 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
                   {/* 3. Tests */}
                   <a
-                    href="#test-directory"
-                    onClick={() => setMobileMenuOpen(false)}
+                    href="#book-test-section"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setMobileMenuOpen(false);
+                      const el = document.getElementById('book-test-section') || document.getElementById('test-directory');
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
                     className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
                   >
                     <span className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-xs">🔬</span>
@@ -2572,11 +2583,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               <span>Instant Lab Report Access</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-              Check &amp; Download Patient Lab Report
+              {vendorLabSettings?.reportCheckTitle || 'Check & Download Patient Lab Report'}
             </h2>
-            <p className="text-xs sm:text-sm text-[#64748B] mt-1.5">
-              Access your verified diagnostic reports directly using your registered mobile number or Token Number.
-            </p>
+            {Boolean(vendorLabSettings?.reportCheckSubtitle !== undefined ? vendorLabSettings.reportCheckSubtitle : true) && (
+              <p className="text-xs sm:text-sm text-[#64748B] mt-1.5">
+                {vendorLabSettings?.reportCheckSubtitle || 'Access your verified diagnostic reports directly using your registered mobile number or Token Number.'}
+              </p>
+            )}
           </div>
 
           {/* Centered Form Card (Exact Same Unified Design) */}
@@ -2591,27 +2604,31 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-8">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B6D]/10 text-[#123B6D] text-xs font-bold mb-3">
-              <span>Preventive Health Packages</span>
+              <span>{vendorLabSettings?.packagesBadge || 'Preventive Health Packages'}</span>
             </div>
 
             {/* Mobile View Title & Subtitle */}
             <div className="md:hidden">
               <h2 className="text-2xl font-extrabold text-[#123B6D] tracking-tight">
-                Offers &amp; Health Packages
+                {vendorLabSettings?.packagesTitle || 'Comprehensive Health Checkups for Complete Wellness'}
               </h2>
-              <p className="text-sm text-[#64748B] mt-1.5 font-medium">
-                Affordable Diagnostic Tests for Your Better Health
-              </p>
+              {Boolean(vendorLabSettings?.packagesSubtitle) && (
+                <p className="text-sm text-[#64748B] mt-1.5 font-medium">
+                  {vendorLabSettings?.packagesSubtitle}
+                </p>
+              )}
             </div>
 
-            {/* Desktop View Title & Subtitle (Unchanged) */}
+            {/* Desktop View Title & Subtitle */}
             <div className="hidden md:block">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-                Comprehensive Health Checkups with Up to 60% Savings
+                {vendorLabSettings?.packagesTitle || 'Comprehensive Health Checkups for Complete Wellness'}
               </h2>
-              <p className="text-sm text-[#64748B] mt-2">
-                सभी पॉपुलर प्रिवेंटिव हेल्थ पैकेजेस (Full Body Checkup, Diabetes Care, Senior Citizen, Women Wellness आदि)। Free home sample pickup, digital NABL reports and free doctor consultation.
-              </p>
+              {Boolean(vendorLabSettings?.packagesSubtitle) && (
+                <p className="text-sm text-[#64748B] mt-2">
+                  {vendorLabSettings?.packagesSubtitle}
+                </p>
+              )}
             </div>
           </div>
 
@@ -2960,33 +2977,38 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       </section>
 
       {/* SECTION 4: ONLINE PATHOLOGY TESTS SECTION (Search Bar + Category Tabs + Desktop Grid + Show More) */}
-      <section id="book-test-section" className="py-16 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-20">
+      <section id="book-test-section" className="py-16 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-20 relative">
+        <span id="test-directory" className="absolute -top-20 left-0 invisible pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-8">
           {/* Header */}
           <div className="text-center max-w-2xl mx-auto mb-6">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-2">
               <FlaskConical className="w-3.5 h-3.5 text-[#0F766E]" />
-              <span>Diagnostic Tests &amp; Profiles</span>
+              <span>{vendorLabSettings?.testsBadge || 'Diagnostic Tests & Profiles'}</span>
             </div>
 
             {/* Mobile View Title & Subtitle */}
             <div className="md:hidden">
               <h2 className="text-2xl font-extrabold text-[#123B6D] tracking-tight">
-                Explore Lab Tests
+                {vendorLabSettings?.testsTitle || 'Explore Lab Tests'}
               </h2>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-1 font-medium">
-                Affordable Diagnostic Tests for Your Better Health
-              </p>
+              {Boolean(vendorLabSettings?.testsSubtitle !== undefined ? vendorLabSettings.testsSubtitle : true) && (
+                <p className="text-xs sm:text-sm text-[#64748B] mt-1 font-medium">
+                  {vendorLabSettings?.testsSubtitle || 'Affordable Diagnostic Tests for Your Better Health'}
+                </p>
+              )}
             </div>
 
-            {/* Desktop View Title & Subtitle (Unchanged) */}
+            {/* Desktop View Title & Subtitle */}
             <div className="hidden md:block">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-                Book Pathology Tests Online
+                {vendorLabSettings?.testsTitle || 'Book Pathology Tests Online'}
               </h2>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-1">
-                Search tests by name with transparent rates, specimen requirements, and home collection.
-              </p>
+              {Boolean(vendorLabSettings?.testsSubtitle !== undefined ? vendorLabSettings.testsSubtitle : true) && (
+                <p className="text-xs sm:text-sm text-[#64748B] mt-1">
+                  {vendorLabSettings?.testsSubtitle || 'Search tests by name with transparent rates, specimen requirements, and home collection.'}
+                </p>
+              )}
             </div>
           </div>
 
@@ -3171,14 +3193,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-2.5">
               <Calendar className="w-3.5 h-3.5 text-[#0F766E]" />
-              <span>Diagnostic Test &amp; Health Booking</span>
+              <span>{vendorLabSettings?.bookingBadge || 'Diagnostic Test & Health Booking'}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-              Lab Test &amp; Health Booking
+              {vendorLabSettings?.bookingTitle || 'Lab Test & Health Booking'}
             </h2>
-            <p className="text-xs sm:text-sm text-[#64748B] mt-1.5">
-              Fill the details below to book pathology tests with optional home sample collection or direct branch visit.
-            </p>
+            {Boolean(vendorLabSettings?.bookingSubtitle !== undefined ? vendorLabSettings.bookingSubtitle : true) && (
+              <p className="text-xs sm:text-sm text-[#64748B] mt-1.5">
+                {vendorLabSettings?.bookingSubtitle || 'Fill the details below to book pathology tests with optional home sample collection or direct branch visit.'}
+              </p>
+            )}
           </div>
 
           {/* Section me Sirf center me Form hoga */}
@@ -3202,7 +3226,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             {/* Accreditation Badge (Desktop only, hidden on mobile) */}
             <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>NABL Accredited &bull; ISO 15189:2022 Certified Medical Laboratory</span>
+              <span>{vendorLabSettings?.aboutBadgeText || 'Trusted & Accredited Diagnostic Laboratory'}</span>
             </div>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-[#123B6D] tracking-tight">
               {vendorLabSettings?.aboutTitle || 'About Our Laboratory & Medical Leadership'}
@@ -3358,34 +3382,38 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         <div className="max-w-4xl sm:max-w-6xl mx-auto px-4 sm:px-6">
           {/* Section Header */}
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-            {/* Desktop Badge (Unchanged) */}
+            {/* Desktop Badge */}
             <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-100/80 text-[#123B6D] text-xs font-black mb-3 border border-blue-200/80 shadow-2xs">
               <Users className="w-3.5 h-3.5 text-blue-700" />
-              <span>Qualified Clinical &amp; Laboratory Team</span>
+              <span>{vendorLabSettings?.doctorsBadge || 'Qualified Clinical & Laboratory Team'}</span>
             </div>
 
             {/* Mobile View Title & Subtitle */}
             <div className="block sm:hidden">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/80 text-[#123B6D] text-xs font-black mb-2.5 border border-blue-200/80">
                 <Users className="w-3.5 h-3.5 text-blue-700" />
-                <span>Medical Team</span>
+                <span>{vendorLabSettings?.doctorsBadge || 'Medical Team'}</span>
               </div>
               <h2 className="text-2xl font-extrabold text-[#123B6D] tracking-tight">
-                Our Medical &amp; Laboratory Experts
+                {vendorLabSettings?.doctorsTitle || 'Our Medical & Laboratory Experts'}
               </h2>
-              <p className="text-sm text-slate-600 mt-1.5 font-medium">
-                Qualified Clinical &amp; Laboratory Team
-              </p>
+              {Boolean(vendorLabSettings?.doctorsSubtitle !== undefined ? vendorLabSettings.doctorsSubtitle : true) && (
+                <p className="text-sm text-slate-600 mt-1.5 font-medium">
+                  {vendorLabSettings?.doctorsSubtitle || 'Qualified Clinical & Laboratory Team'}
+                </p>
+              )}
             </div>
 
-            {/* Desktop View Title & Subtitle (Unchanged) */}
+            {/* Desktop View Title & Subtitle */}
             <div className="hidden sm:block">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-                Our Medical &amp; Laboratory Experts
+                {vendorLabSettings?.doctorsTitle || 'Our Medical & Laboratory Experts'}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-                Experienced Pathologists, Biochemists &amp; Senior Technicians ensuring accurate diagnostics and timely reports.
-              </p>
+              {Boolean(vendorLabSettings?.doctorsSubtitle !== undefined ? vendorLabSettings.doctorsSubtitle : true) && (
+                <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                  {vendorLabSettings?.doctorsSubtitle || 'Experienced Pathologists, Biochemists & Senior Technicians ensuring accurate diagnostics and timely reports.'}
+                </p>
+              )}
             </div>
           </div>
 
@@ -3615,11 +3643,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               <span>Get In Touch</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-              Contact Us
+              {vendorLabSettings?.contactTitle || 'Contact Us'}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Connect with our laboratory desk or submit an inquiry form below.
-            </p>
+            {Boolean(vendorLabSettings?.contactSubtitle !== undefined ? vendorLabSettings.contactSubtitle : true) && (
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                {vendorLabSettings?.contactSubtitle || 'Connect with our laboratory desk or submit an inquiry form below.'}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
