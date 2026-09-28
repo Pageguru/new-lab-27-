@@ -2079,13 +2079,15 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               About
             </a>
 
-            <a
-              href="#doctors"
-              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
-              id="vendor-nav-team"
-            >
-              Team
-            </a>
+            {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+              <a
+                href="#doctors"
+                className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
+                id="vendor-nav-team"
+              >
+                Team
+              </a>
+            )}
 
             <a
               href="#contact"
@@ -2333,14 +2335,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   </a>
 
                   {/* 5. Team */}
-                  <a
-                    href="#doctors"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
-                  >
-                    <span className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center text-xs">👨‍⚕️</span>
-                    <span>Team (Pathologists)</span>
-                  </a>
+                  {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+                    <a
+                      href="#doctors"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center text-xs">👨‍⚕️</span>
+                      <span>Team (Pathologists)</span>
+                    </a>
+                  )}
 
                   {/* 6. Contact */}
                   <a
@@ -3348,80 +3352,77 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       </section>
 
       {/* SECTION 6: QUALIFIED TEAM SECTION (Pathologists, Biochemists & Senior Lab Technicians) */}
-      <section id="doctors" className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-20">
-        <div className="max-w-4xl sm:max-w-6xl mx-auto px-4 sm:px-6">
-          {/* Section Header */}
-          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-            {/* Desktop Badge */}
-            <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-100/80 text-[#123B6D] text-xs font-black mb-3 border border-blue-200/80 shadow-2xs">
-              <Users className="w-3.5 h-3.5 text-blue-700" />
-              <span>{vendorLabSettings?.doctorsBadge || 'Qualified Clinical & Laboratory Team'}</span>
-            </div>
-
-            {/* Mobile View Title & Subtitle */}
-            <div className="block sm:hidden">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/80 text-[#123B6D] text-xs font-black mb-2.5 border border-blue-200/80">
+      {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+        <section id="doctors" className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-20">
+          <div className="max-w-4xl sm:max-w-6xl mx-auto px-4 sm:px-6">
+            {/* Section Header */}
+            <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+              {/* Desktop Badge */}
+              <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-100/80 text-[#123B6D] text-xs font-black mb-3 border border-blue-200/80 shadow-2xs">
                 <Users className="w-3.5 h-3.5 text-blue-700" />
-                <span>{vendorLabSettings?.doctorsBadge || 'Medical Team'}</span>
+                <span>{vendorLabSettings?.doctorsBadge || 'Qualified Clinical & Laboratory Team'}</span>
               </div>
-              <h2 className="text-2xl font-extrabold text-[#123B6D] tracking-tight">
-                {vendorLabSettings?.doctorsTitle || 'Our Medical & Laboratory Experts'}
-              </h2>
-              {Boolean(vendorLabSettings?.doctorsSubtitle !== undefined ? vendorLabSettings.doctorsSubtitle : true) && (
-                <p className="text-sm text-slate-600 mt-1.5 font-medium">
-                  {vendorLabSettings?.doctorsSubtitle || 'Qualified Clinical & Laboratory Team'}
-                </p>
-              )}
-            </div>
 
-            {/* Desktop View Title & Subtitle */}
-            <div className="hidden sm:block">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
-                {vendorLabSettings?.doctorsTitle || 'Our Medical & Laboratory Experts'}
-              </h2>
-              {Boolean(vendorLabSettings?.doctorsSubtitle !== undefined ? vendorLabSettings.doctorsSubtitle : true) && (
-                <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-                  {vendorLabSettings?.doctorsSubtitle || 'Experienced Pathologists, Biochemists & Senior Technicians ensuring accurate diagnostics and timely reports.'}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Laboratory Diagnostic Team Group Photo Banner */}
-          {vendorLabSettings?.teamGroupPhotoUrl && (
-            <div className="mt-4 mb-8 max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 relative group">
-              <img
-                src={vendorLabSettings.teamGroupPhotoUrl}
-                alt={`${vendorLabSettings.labName || 'Laboratory'} Diagnostic Team`}
-                referrerPolicy="no-referrer"
-                className="w-full h-48 sm:h-64 md:h-72 object-cover object-center group-hover:scale-102 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-4 sm:p-6 text-white">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
-                    Clinical Diagnostic Team
-                  </span>
-                  <span className="text-xs text-white/90 font-medium">
-                    100% NABL Quality Assured
-                  </span>
+              {/* Mobile View Title & Subtitle */}
+              <div className="block sm:hidden">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/80 text-[#123B6D] text-xs font-black mb-2.5 border border-blue-200/80">
+                  <Users className="w-3.5 h-3.5 text-blue-700" />
+                  <span>{vendorLabSettings?.doctorsBadge || 'Medical Team'}</span>
                 </div>
-                <h3 className="text-sm sm:text-base md:text-lg font-black text-white">
-                  {vendorLabSettings.labName} Diagnostic Medical Team
-                </h3>
-                <p className="text-xs text-slate-200 line-clamp-1 sm:line-clamp-none mt-0.5">
-                  Pathologists, Biochemists, Microbiologists &amp; Senior Technologists dedicated to accurate patient testing.
-                </p>
+                <h2 className="text-2xl font-extrabold text-[#123B6D] tracking-tight">
+                  {vendorLabSettings?.doctorsTitle || 'Our Medical & Laboratory Experts'}
+                </h2>
+                {Boolean(vendorLabSettings?.doctorsSubtitle !== undefined ? vendorLabSettings.doctorsSubtitle : true) && (
+                  <p className="text-sm text-slate-600 mt-1.5 font-medium">
+                    {vendorLabSettings?.doctorsSubtitle || 'Qualified Clinical & Laboratory Team'}
+                  </p>
+                )}
+              </div>
+
+              {/* Desktop View Title & Subtitle */}
+              <div className="hidden sm:block">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
+                  {vendorLabSettings?.doctorsTitle || 'Our Medical & Laboratory Experts'}
+                </h2>
+                {Boolean(vendorLabSettings?.doctorsSubtitle !== undefined ? vendorLabSettings.doctorsSubtitle : true) && (
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                    {vendorLabSettings?.doctorsSubtitle || 'Experienced Pathologists, Biochemists & Senior Technicians ensuring accurate diagnostics and timely reports.'}
+                  </p>
+                )}
               </div>
             </div>
-          )}
 
-          {(() => {
-            const doctorsList = ((vendorDoctors && vendorDoctors.length > 0)
-              ? vendorDoctors
-              : DEFAULT_ALL_VENDOR_DOCTORS.filter((d) => isTenantMatch(d, vendorLabSettings?.labId || selectedVendorLabId || 'lab-apex')).length > 0
-              ? DEFAULT_ALL_VENDOR_DOCTORS.filter((d) => isTenantMatch(d, vendorLabSettings?.labId || selectedVendorLabId || 'lab-apex'))
-              : DEFAULT_ALL_VENDOR_DOCTORS.slice(0, 3)
-            );
+            {/* Laboratory Diagnostic Team Group Photo Banner */}
+            {vendorLabSettings?.teamGroupPhotoUrl && (
+              <div className="mt-4 mb-8 max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 relative group">
+                <img
+                  src={vendorLabSettings.teamGroupPhotoUrl}
+                  alt={`${vendorLabSettings.labName || 'Laboratory'} Diagnostic Team`}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-48 sm:h-64 md:h-72 object-cover object-center group-hover:scale-102 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-4 sm:p-6 text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
+                      Clinical Diagnostic Team
+                    </span>
+                    <span className="text-xs text-white/90 font-medium">
+                      100% NABL Quality Assured
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white">
+                    {vendorLabSettings.labName} Diagnostic Medical Team
+                  </h3>
+                  <p className="text-xs text-slate-200 line-clamp-1 sm:line-clamp-none mt-0.5">
+                    Pathologists, Biochemists, Microbiologists &amp; Senior Technologists dedicated to accurate patient testing.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {(() => {
+              const doctorsList = vendorDoctors;
+              if (!doctorsList || doctorsList.length === 0) return null;
 
             const renderDoctorCard = (doc: any, idx: number, isMobile: boolean, isSingle: boolean) => {
               // Doctor values with robust fallbacks
@@ -3602,6 +3603,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           })()}
         </div>
       </section>
+      )}
 
       {/* 9. Minimal Contact Us Section */}
       <section id="contact" className="py-12 sm:py-16 bg-white border-b border-slate-200 scroll-mt-20">
@@ -4011,14 +4013,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     About Us
                   </a>
                 </li>
-                <li>
-                  <a
-                    href="#doctors"
-                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block"
-                  >
-                    Team
-                  </a>
-                </li>
+                {Boolean(vendorDoctors && vendorDoctors.length > 0) && (
+                  <li>
+                    <a
+                      href="#doctors"
+                      className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block"
+                    >
+                      Team
+                    </a>
+                  </li>
+                )}
                 <li>
                   <a
                     href="#contact"

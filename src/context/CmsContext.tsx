@@ -2342,14 +2342,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [allVendorDoctors, setAllVendorDoctors] = useState<VendorDoctor[]>(() => {
     try {
-      const saved = localStorage.getItem('cms_all_vendor_doctors');
-      if (saved) {
+      const saved = localStorage.getItem('cms_all_vendor_doctors') || localStorage.getItem('cms_vendor_doctors');
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((d: any) => d.id));
-          const existingLabIds = new Set(parsed.map((d: any) => d.labId));
-          const missingDocs = DEFAULT_ALL_VENDOR_DOCTORS.filter((d) => !existingIds.has(d.id) && !existingLabIds.has(d.labId));
-          return [...parsed.map((d: any) => ({ ...d, labId: d.labId || 'lab-apex' })), ...missingDocs];
+        if (Array.isArray(parsed)) {
+          return parsed.map((d: any) => ({ ...d, labId: d.labId || 'lab-apex' }));
         }
       }
       return DEFAULT_ALL_VENDOR_DOCTORS;
