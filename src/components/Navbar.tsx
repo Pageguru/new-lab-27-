@@ -19,8 +19,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectLanguage,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { currentUser, logout, openLoginModal, openRegisterLabModal, companySettings } = useCms();
+  const { currentUser, logout, openLoginModal, openRegisterLabModal, companySettings, selectVendorLab } = useCms();
   const displayBrand = companySettings?.companyName || 'INDIANLALAJI.COM';
+
+  const handleGoToDashboard = () => {
+    if (currentUser?.labId && currentUser.role !== 'admin' && currentUser.labId !== 'all') {
+      selectVendorLab(currentUser.labId);
+    }
+    onSelectView(getDashboardViewForRole(currentUser.role));
+  };
 
   const getRoleLabel = (role: UserRole) => {
     switch (role) {
@@ -188,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
 
                 <button
-                  onClick={() => onSelectView(getDashboardViewForRole(currentUser.role))}
+                  onClick={handleGoToDashboard}
                   className="px-2.5 py-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white font-bold rounded-lg text-[11px] flex items-center gap-1 transition cursor-pointer shadow-2xs"
                   title="Go to Dashboard Workspace"
                 >
@@ -336,7 +343,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    onSelectView(getDashboardViewForRole(currentUser.role));
+                    handleGoToDashboard();
                   }}
                   className="w-full bg-[#123B6D] text-white py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs"
                 >

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FlaskConical,
   Plus,
@@ -427,6 +427,11 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
 
   // 5. Lab Settings Form
   const [labSettingsForm, setLabSettingsForm] = useState({ ...vendorLabSettings });
+
+  // Sync labSettingsForm whenever active laboratory settings change
+  useEffect(() => {
+    setLabSettingsForm({ ...vendorLabSettings });
+  }, [vendorLabSettings.labId, vendorLabSettings.labName]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

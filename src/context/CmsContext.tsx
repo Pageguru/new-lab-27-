@@ -2197,7 +2197,38 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [vendorLabsList]);
 
-  const [selectedVendorLabId, setSelectedVendorLabId] = useState<string>('lab-apex');
+  const [selectedVendorLabId, setSelectedVendorLabId] = useState<string>(() => {
+    try {
+      const savedUser = localStorage.getItem('cms_current_user');
+      if (savedUser) {
+        const u = JSON.parse(savedUser);
+        if (u.labId && u.labId !== 'all' && u.role !== 'admin') {
+          return u.labId;
+        }
+      }
+      const savedLab = localStorage.getItem('cms_selected_vendor_lab_id');
+      if (savedLab) return savedLab;
+      return 'lab-apex';
+    } catch {
+      return 'lab-apex';
+    }
+  });
+
+  // Persist selectedVendorLabId
+  useEffect(() => {
+    try {
+      if (selectedVendorLabId) {
+        localStorage.setItem('cms_selected_vendor_lab_id', selectedVendorLabId);
+      }
+    } catch {}
+  }, [selectedVendorLabId]);
+
+  // Keep selectedVendorLabId in sync whenever a non-superadmin user logs in
+  useEffect(() => {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all') {
+      setSelectedVendorLabId(currentUser.labId);
+    }
+  }, [currentUser]);
 
   // Super Admin global vs lab-specific view scope ('all' or specific labId)
   const [superAdminTenantScope, setSuperAdminTenantScope] = useState<string>('all');
@@ -2243,7 +2274,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const effectiveSettingsLabId = selectedVendorLabId || (currentUser?.role !== 'admin' ? currentUser?.labId : 'lab-apex') || 'lab-apex';
+  // Effective laboratory for settings: Logged-in vendor/staff ALWAYS gets their own laboratory
+  const effectiveSettingsLabId = useMemo(() => {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all') {
+      return currentUser.labId;
+    }
+    return selectedVendorLabId || 'lab-apex';
+  }, [currentUser, selectedVendorLabId]);
 
   const vendorLabSettings = useMemo<VendorLabSettings>(() => {
     if (vendorLabSettingsMap[effectiveSettingsLabId]) {
@@ -2313,7 +2350,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return allVendorPackages.filter((p) => isTenantMatch(p, superAdminTenantScope));
     }
-    const targetLab = selectedVendorLabId || currentUser?.labId || 'lab-apex';
+    const targetLab = (currentUser && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (selectedVendorLabId || 'lab-apex');
     return allVendorPackages.filter((p) => isTenantMatch(p, targetLab));
   }, [allVendorPackages, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -2326,7 +2365,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return allVendorDoctors.filter((d) => isTenantMatch(d, superAdminTenantScope));
     }
-    const targetLab = selectedVendorLabId || currentUser?.labId || 'lab-apex';
+    const targetLab = (currentUser && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (selectedVendorLabId || 'lab-apex');
     return allVendorDoctors.filter((d) => isTenantMatch(d, targetLab));
   }, [allVendorDoctors, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -2810,7 +2851,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allReports;
     }
-    const targetLab = (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || selectedVendorLabId || 'lab-apex';
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allReports.filter((r) => isTenantMatch(r, targetLab));
   }, [allReports, currentUser, superAdminTenantScope, selectedVendorLabId]);
 
@@ -2818,7 +2861,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allReceptionEntries;
     }
-    const targetLab = (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || selectedVendorLabId || 'lab-apex';
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allReceptionEntries.filter((e) => isTenantMatch(e, targetLab));
   }, [allReceptionEntries, currentUser, superAdminTenantScope, selectedVendorLabId]);
 
@@ -2826,7 +2871,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allVendorBranches;
     }
-    const targetLab = selectedVendorLabId || (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || 'lab-apex';
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allVendorBranches.filter((b) => isTenantMatch(b, targetLab));
   }, [allVendorBranches, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -2834,7 +2881,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allVendorBookings;
     }
-    const targetLab = selectedVendorLabId || (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || 'lab-apex';
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allVendorBookings.filter((b) => isTenantMatch(b, targetLab));
   }, [allVendorBookings, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -2842,7 +2891,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allContactSubmissions;
     }
-    const targetLab = selectedVendorLabId || (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || 'lab-apex';
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allContactSubmissions.filter((c) => isTenantMatch(c, targetLab));
   }, [allContactSubmissions, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -2850,15 +2901,19 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allDomainRequests;
     }
-    const targetLab = selectedVendorLabId || (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || 'lab-apex';
-    return allDomainRequests.filter((r) => isTenantMatch(r, targetLab));
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+    return allDomainRequests.filter((d) => isTenantMatch(d, targetLab));
   }, [allDomainRequests, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const staffAccounts = useMemo(() => {
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allStaffAccounts;
     }
-    const targetLab = (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || selectedVendorLabId || 'lab-apex';
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allStaffAccounts.filter((s) => isTenantMatch(s, targetLab));
   }, [allStaffAccounts, currentUser, superAdminTenantScope, selectedVendorLabId]);
 
@@ -2866,7 +2921,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
       return allVendorTests;
     }
-    const targetLab = selectedVendorLabId || (currentUser?.role !== 'admin' ? currentUser?.labId : superAdminTenantScope) || 'lab-apex';
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allVendorTests.filter((t) => isTenantMatch(t, targetLab));
   }, [allVendorTests, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -4127,6 +4184,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       localStorage.setItem('cms_current_user', JSON.stringify(user));
+      if (user.labId && user.labId !== 'all') {
+        localStorage.setItem('cms_selected_vendor_lab_id', user.labId);
+      }
     } catch {}
 
     return { success: true, targetView };
@@ -4136,11 +4196,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
     try {
       localStorage.removeItem('cms_current_user');
+      localStorage.removeItem('cms_selected_vendor_lab_id');
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
-        if (url.searchParams.has('view') || url.searchParams.has('dashboard')) {
+        if (url.searchParams.has('view') || url.searchParams.has('dashboard') || url.searchParams.has('lab')) {
           url.searchParams.delete('view');
           url.searchParams.delete('dashboard');
+          url.searchParams.delete('lab');
           window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
         }
       }

@@ -363,7 +363,17 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
 
     setTimeout(() => {
       const targetRole = labRole; // 'vendor' | 'reception' | 'technician'
-      const targetLab = selectedLabId || selectedVendorLabId || 'lab-apex';
+
+      // Auto-resolve laboratory if owner or staff credentials belong to a different registered lab
+      const cleanInput = emailOrPhone.trim().toLowerCase();
+      const cleanDigits = cleanInput.replace(/\D/g, '');
+      const matchedLab = vendorLabsList.find(
+        (l) =>
+          (cleanDigits.length >= 7 && (l.phone || '').replace(/\D/g, '').endsWith(cleanDigits)) ||
+          (l.email && l.email.toLowerCase() === cleanInput) ||
+          l.id.toLowerCase() === cleanInput
+      );
+      const targetLab = matchedLab ? matchedLab.id : (selectedLabId || selectedVendorLabId || 'lab-apex');
 
       const result = login(
         targetRole,

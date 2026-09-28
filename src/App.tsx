@@ -137,14 +137,43 @@ export default function App() {
         window.history.replaceState({}, '', url.pathname + url.search);
       } else {
         url.searchParams.set('view', currentView);
-        // keep lab param if in vendor-specific views
-        if (!['vendor_dashboard', 'reception_dashboard', 'technician_dashboard', 'pathologist_dashboard', 'patient_portal'].includes(currentView)) {
+        const effectiveLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+          ? currentUser.labId
+          : selectedVendorLabId;
+        if (effectiveLab && ['vendor_dashboard', 'reception_dashboard', 'technician_dashboard', 'pathologist_dashboard', 'branch_manager_dashboard'].includes(currentView)) {
+          const currentLab = vendorLabsList.find((l) => l.id === effectiveLab);
+          const slug = getTenantSubdomain(currentLab?.domainPreview || effectiveLab);
+          url.searchParams.set('lab', slug);
+        } else if (!['patient_portal'].includes(currentView)) {
           url.searchParams.delete('lab');
         }
         window.history.replaceState({}, '', url.pathname + url.search);
       }
     } catch {}
-  }, [currentView, selectedVendorLabId, vendorLabsList]);
+  }, [currentView, selectedVendorLabId, vendorLabsList, currentUser]);
+
+  // Keep dashboard views strictly locked to logged-in user's own laboratory
+  useEffect(() => {
+    const dashboardViews: AppView[] = [
+      'vendor_dashboard',
+      'reception_dashboard',
+      'technician_dashboard',
+      'branch_manager_dashboard',
+      'pathologist_dashboard',
+    ];
+    if (
+      dashboardViews.includes(currentView) &&
+      currentUser &&
+      currentUser.role !== 'admin' &&
+      currentUser.labId &&
+      currentUser.labId !== 'all'
+    ) {
+      if (selectedVendorLabId !== currentUser.labId) {
+        setSelectedVendorLabId(currentUser.labId);
+        selectVendorLab(currentUser.labId);
+      }
+    }
+  }, [currentView, currentUser, selectedVendorLabId, selectVendorLab, setSelectedVendorLabId]);
 
   // When user logs out while on a protected dashboard, transition back to public lab website
   useEffect(() => {
