@@ -136,26 +136,45 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const [websiteSubTab, setWebsiteSubTab] = useState<
     'banners' | 'about' | 'founder' | 'team' | 'contact' | 'social' | 'legal' | 'sections'
   >('banners');
-  const [isWebsiteMenuOpen, setIsWebsiteMenuOpen] = useState(true);
   const [testSubTab, setTestSubTab] = useState<'list' | 'add'>('list');
-  const [isTestsMenuOpen, setIsTestsMenuOpen] = useState(true);
   const [packageSubTab, setPackageSubTab] = useState<'list' | 'add'>('list');
-  const [isPackagesMenuOpen, setIsPackagesMenuOpen] = useState(true);
   const [formSubTab, setFormSubTab] = useState<'bookings' | 'contacts'>('bookings');
-  const [isFormsMenuOpen, setIsFormsMenuOpen] = useState(true);
   const [dashboardSubTab, setDashboardSubTab] = useState<'reception' | 'technician' | 'overview'>('reception');
-  const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(true);
   const [domainSubTab, setDomainSubTab] = useState<'add' | 'list'>('add');
-  const [isDomainMenuOpen, setIsDomainMenuOpen] = useState(true);
   const [settingsSubTab, setSettingsSubTab] = useState<
     'logo' | 'name' | 'description' | 'feature' | 'payment_qr' | 'plan' | 'all'
   >('logo');
-  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(true);
-  const [isAdminSettingsMenuOpen, setIsAdminSettingsMenuOpen] = useState(true);
   const [bookingSettingsSubTab, setBookingSettingsSubTab] = useState<'all' | 'charges' | 'timing'>('all');
-  const [isBookingSettingsMenuOpen, setIsBookingSettingsMenuOpen] = useState(true);
   const [staffSubTab, setStaffSubTab] = useState<'list' | 'add'>('list');
-  const [isStaffMenuOpen, setIsStaffMenuOpen] = useState(true);
+  // Single open accordion section under CMS Management sidebar: opening one closes previously opened tab
+  type SidebarSectionKey =
+    | 'website'
+    | 'tests'
+    | 'packages'
+    | 'forms'
+    | 'dashboard'
+    | 'domain'
+    | 'settings'
+    | 'admin_settings'
+    | 'booking_settings'
+    | 'staff';
+
+  const [openSidebarSection, setOpenSidebarSection] = useState<SidebarSectionKey | null>('website');
+
+  const toggleSidebarSection = (section: SidebarSectionKey) => {
+    setOpenSidebarSection((prev) => (prev === section ? null : section));
+  };
+
+  const isWebsiteMenuOpen = openSidebarSection === 'website';
+  const isTestsMenuOpen = openSidebarSection === 'tests';
+  const isPackagesMenuOpen = openSidebarSection === 'packages';
+  const isFormsMenuOpen = openSidebarSection === 'forms';
+  const isDashboardMenuOpen = openSidebarSection === 'dashboard';
+  const isDomainMenuOpen = openSidebarSection === 'domain';
+  const isSettingsMenuOpen = openSidebarSection === 'settings';
+  const isAdminSettingsMenuOpen = openSidebarSection === 'admin_settings';
+  const isBookingSettingsMenuOpen = openSidebarSection === 'booking_settings';
+  const isStaffMenuOpen = openSidebarSection === 'staff';
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [isDoctorCommissionModalOpen, setIsDoctorCommissionModalOpen] = useState(false);
@@ -867,7 +886,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                     type="button"
                     onClick={() => {
                       setActiveTab('website');
-                      setIsWebsiteMenuOpen(!isWebsiteMenuOpen);
+                      toggleSidebarSection('website');
                     }}
                     className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                       activeTab === 'website'
@@ -1094,7 +1113,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('tests');
-                    setIsTestsMenuOpen(!isTestsMenuOpen);
+                    toggleSidebarSection('tests');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'tests'
@@ -1187,7 +1206,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('packages');
-                    setIsPackagesMenuOpen(!isPackagesMenuOpen);
+                    toggleSidebarSection('packages');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'packages'
@@ -1278,7 +1297,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('forms');
-                    setIsFormsMenuOpen(!isFormsMenuOpen);
+                    toggleSidebarSection('forms');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'forms'
@@ -1371,7 +1390,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('dashboard');
-                    setIsDashboardMenuOpen(!isDashboardMenuOpen);
+                    toggleSidebarSection('dashboard');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'dashboard'
@@ -1516,7 +1535,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('domain');
-                    setIsDomainMenuOpen(!isDomainMenuOpen);
+                    toggleSidebarSection('domain');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'domain'
@@ -1582,13 +1601,13 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('settings');
-                    if (activeTab !== 'settings') {
-                      setIsSettingsMenuOpen(true);
+                    if (openSidebarSection !== 'settings') {
+                      setOpenSidebarSection('settings');
                       if (!settingsSubTab || settingsSubTab === 'all') {
                         setSettingsSubTab('logo');
                       }
                     } else {
-                      setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                      toggleSidebarSection('settings');
                     }
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
@@ -1790,7 +1809,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('admin_settings');
-                    setIsAdminSettingsMenuOpen(!isAdminSettingsMenuOpen);
+                    toggleSidebarSection('admin_settings');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'admin_settings'
@@ -1854,7 +1873,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   type="button"
                   onClick={() => {
                     setActiveTab('booking_settings');
-                    setIsBookingSettingsMenuOpen(!isBookingSettingsMenuOpen);
+                    toggleSidebarSection('booking_settings');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'booking_settings'
@@ -1948,7 +1967,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   id="tab-btn-staff-mgmt"
                   onClick={() => {
                     setActiveTab('staff');
-                    setIsStaffMenuOpen(!isStaffMenuOpen);
+                    toggleSidebarSection('staff');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
                     activeTab === 'staff'
@@ -2041,6 +2060,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   id="tab-btn-backup-reports"
                   onClick={() => {
                     setActiveTab('backup');
+                    setOpenSidebarSection(null);
                     setIsMobileSidebarOpen(false);
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
@@ -2068,6 +2088,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   id="tab-btn-tech-support"
                   onClick={() => {
                     setActiveTab('support');
+                    setOpenSidebarSection(null);
                     setIsMobileSidebarOpen(false);
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
