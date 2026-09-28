@@ -41,7 +41,6 @@ export const VendorBackupReportsTab: React.FC<VendorBackupReportsTabProps> = ({
 }) => {
   const {
     currentUser,
-    logout,
     vendorLabSettings,
     updateVendorLabSettings,
     vendorPackages,
@@ -80,9 +79,6 @@ export const VendorBackupReportsTab: React.FC<VendorBackupReportsTabProps> = ({
   const [reportSearch, setReportSearch] = useState('');
   const [reportFilter, setReportFilter] = useState<'all' | 'verified' | 'due'>('all');
   const [selectedReportForPreview, setSelectedReportForPreview] = useState<LabReport | null>(null);
-
-  // --- LOGOUT CONFIRMATION MODAL ---
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // 1. FULL WEBSITE BACKUP — DOWNLOAD
   const handleDownloadWebsiteBackup = () => {
@@ -472,35 +468,6 @@ export const VendorBackupReportsTab: React.FC<VendorBackupReportsTabProps> = ({
           <span>{toastMessage}</span>
         </div>
       )}
-
-      {/* Main Header Strip */}
-      <div className="bg-gradient-to-r from-[#123B6D] via-[#0F355F] to-[#0A2540] text-white p-6 sm:p-7 rounded-3xl shadow-md border border-[#123B6D]/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-bold mb-2">
-            <Database className="w-3.5 h-3.5 text-amber-300" />
-            <span>Section 10 • Data Protection & System Security</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            10. Backup & Reports
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-200/90 mt-1 max-w-2xl">
-            Download or upload full website configurations, customer registration entries, and inspect generated lab reports.
-          </p>
-        </div>
-
-        {/* Quick Lab Identity Tag */}
-        <div className="flex items-center gap-3 bg-white/10 px-4 py-3 rounded-2xl border border-white/15 backdrop-blur-xs shrink-0">
-          <Building className="w-5 h-5 text-amber-300" />
-          <div className="text-right sm:text-left">
-            <div className="text-xs font-bold text-white truncate max-w-[200px]">
-              {vendorLabSettings.labName || 'Laboratory'}
-            </div>
-            <div className="text-[11px] text-slate-300 font-mono">
-              ID: {vendorLabSettings.labShopId || 'LSP-7087'} • {vendorLabSettings.nablAccreditationNo || 'NABL'}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* 2-COLUMN GRID: 1. FULL WEBSITE BACKUP & 2. CUSTOMER ENTRY BACKUP */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-7">
@@ -1019,37 +986,6 @@ export const VendorBackupReportsTab: React.FC<VendorBackupReportsTabProps> = ({
         </div>
       </div>
 
-      {/* =========================================================================
-          SECTION 4: LOGOUT SECTION
-      ========================================================================= */}
-      <div className="bg-gradient-to-br from-rose-50 to-slate-50 rounded-3xl p-6 sm:p-7 border border-rose-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800">
-            <Lock className="w-3.5 h-3.5 text-rose-600" />
-            <span>Session & Access Control</span>
-          </div>
-          <h3 className="text-lg font-black text-rose-950">
-            Log Out from Laboratory Management Dashboard
-          </h3>
-          <p className="text-xs text-slate-600 max-w-xl leading-relaxed">
-            Safely ends your current administrative session for{' '}
-            <strong>{vendorLabSettings.labName || 'Laboratory'}</strong>. Any local offline changes have already been safely synchronized to the secure cloud.
-          </p>
-          <div className="text-[11px] text-slate-500 font-mono pt-1">
-            Logged in as: <strong>{currentUser?.name || 'Lab Owner'}</strong> ({currentUser?.role || 'vendor'}) • Phone: {vendorLabSettings.phone || '7087033009'}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowLogoutConfirm(true)}
-          className="bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-sm px-6 py-3.5 rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95 shrink-0"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Log Out (लॉग आउट करें)</span>
-        </button>
-      </div>
-
       {/* CANONICAL PDF PREVIEW MODAL */}
       {selectedReportForPreview && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
@@ -1100,47 +1036,6 @@ export const VendorBackupReportsTab: React.FC<VendorBackupReportsTabProps> = ({
               <div className="w-full max-w-2xl bg-white rounded-2xl shadow-md overflow-hidden">
                 <CanonicalPdfViewer report={selectedReportForPreview} />
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* LOGOUT CONFIRMATION MODAL */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
-              <LogOut className="w-6 h-6" />
-            </div>
-
-            <div className="text-center space-y-1.5">
-              <h4 className="text-lg font-black text-slate-900">
-                Confirm Log Out?
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to log out from <strong>{vendorLabSettings.labName || 'Laboratory'}</strong>? You will be redirected to the public website.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowLogoutConfirm(false)}
-                className="py-2.5 px-4 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowLogoutConfirm(false);
-                  logout();
-                  onNavigateView('website');
-                }}
-                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition cursor-pointer shadow-md active:scale-95"
-              >
-                Yes, Log Out
-              </button>
             </div>
           </div>
         </div>
