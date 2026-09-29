@@ -8,14 +8,11 @@ import {
   Eye,
   CheckCircle2,
   AlertCircle,
-  ToggleLeft,
-  ToggleRight,
   ShieldCheck,
   Phone,
   MapPin,
   Clock,
   Sparkles,
-  Layers,
   Check,
   Upload,
   Image as ImageIcon,
@@ -43,10 +40,9 @@ import {
   AlignLeft,
   ArrowRight,
 } from 'lucide-react';
-import { useCms, DEFAULT_VENDOR_SECTIONS, DEFAULT_ALL_VENDOR_DOCTORS } from '../../context/CmsContext';
-import { VendorWebsiteSections, VendorLabSettings, VendorBannerItem, VendorDoctor, VendorSocialLinks } from '../../types';
+import { useCms, DEFAULT_ALL_VENDOR_DOCTORS } from '../../context/CmsContext';
+import { VendorLabSettings, VendorBannerItem, VendorDoctor, VendorSocialLinks } from '../../types';
 import { generateDefaultOgImage } from '../../utils/seo';
-import { getTenantWebsiteUrl, getTenantDirectUrl, SUPER_ADMIN_DOMAIN } from '../../constants/domains';
 import { VendorPolicyModal, PolicyTabType } from './VendorPolicyModal';
 import { optimizeImageFile } from '../../utils/imageOptimizer';
 
@@ -66,94 +62,6 @@ interface VendorWebsiteCmsTabProps {
   activeSubTab?: WebsiteSubSection;
   onSubTabChange?: (tab: WebsiteSubSection) => void;
 }
-
-interface SectionMeta {
-  key: keyof VendorWebsiteSections;
-  name: string;
-  description: string;
-  badge: string;
-  category: 'Core' | 'Public Info' | 'Clinical';
-}
-
-const SECTION_METAS: SectionMeta[] = [
-  {
-    key: 'announcementBar',
-    name: 'Top Emergency & Notice Bar',
-    description: 'Displays 24x7 lab helpline, opening hours, NABL accreditation status, and emergency alert message.',
-    badge: 'Notice Strip',
-    category: 'Public Info',
-  },
-  {
-    key: 'header',
-    name: 'Main Website Header & Navigation',
-    description: 'Lab logo, name, tagline, navigation menu links, and quick action buttons (Book Test, Reception Desk, Download Report).',
-    badge: 'Header',
-    category: 'Core',
-  },
-  {
-    key: 'hero',
-    name: 'Hero Banner & Instant Home Booking Card',
-    description: 'Main promotional headline, WhatsApp booking button, trust badges, and home sample collection booking form.',
-    badge: 'Hero Section',
-    category: 'Core',
-  },
-  {
-    key: 'dashboardsShowcase',
-    name: 'Dedicated Operational Portals Showcase',
-    description: 'Interactive cards linking to Reception Desk, Lab Software & Technician, Patient Portal, and Vendor CMS.',
-    badge: 'Portals',
-    category: 'Core',
-  },
-  {
-    key: 'packages',
-    name: 'Preventive Health Packages Grid',
-    description: 'Full Body Health Checkup, Diabetic Care, Senior Citizen profiles with INR pricing, MRP discount, and test counts.',
-    badge: 'Packages',
-    category: 'Clinical',
-  },
-  {
-    key: 'testDirectory',
-    name: '500+ Diagnostic Tests Directory & Search',
-    description: 'Searchable directory with categories (Hematology, Biochemistry, Thyroid, Urine, etc.), sample types, TAT, and prices.',
-    badge: 'Test Library',
-    category: 'Clinical',
-  },
-  {
-    key: 'whyChooseUs',
-    name: 'Why Choose Us / Quality Assurance',
-    description: 'Highlights automated analyzers, Barcode vacutainer tracking, MD Pathologist review, and cold-chain sample logistics.',
-    badge: 'Quality Strip',
-    category: 'Public Info',
-  },
-  {
-    key: 'doctors',
-    name: 'Pathologists & Consultant Doctors Section',
-    description: 'Profiles of chief pathologist, biochemist, and microbiologist with medical council registration numbers and degrees.',
-    badge: 'Doctors',
-    category: 'Clinical',
-  },
-  {
-    key: 'branches',
-    name: 'Our Centers & Collection Desks',
-    description: 'List of all branches, central labs, phlebotomy centers with addresses, contact numbers, and timings.',
-    badge: 'Centers',
-    category: 'Public Info',
-  },
-  {
-    key: 'reportInterlink',
-    name: 'Patient Report Download Callout',
-    description: 'Direct callout banner allowing patients to look up and download their authenticated NABL report via Report ID & Mobile.',
-    badge: 'Reports CTA',
-    category: 'Core',
-  },
-  {
-    key: 'footer',
-    name: 'Website Footer & Legal Disclaimers',
-    description: 'Copyright, lab address, emergency contacts, quick links, and medical laboratory accreditation disclaimers.',
-    badge: 'Footer',
-    category: 'Public Info',
-  },
-];
 
 export const PRESET_SPECIALIST_AVATARS = [
   {
@@ -196,8 +104,6 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
   const {
     vendorLabSettings,
     updateVendorLabSettings,
-    updateVendorSection,
-    toggleAllVendorSections,
     vendorLabsList,
     selectedVendorLabId,
     currentUser,
@@ -210,7 +116,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
 
   // Internal Sub-tab State
   const [internalSubTab, setInternalSubTab] = useState<WebsiteSubSection>('banners');
-  const activeSubTab = externalSubTab || internalSubTab;
+  const activeSubTab = (externalSubTab === 'sections' ? 'banners' : externalSubTab) || internalSubTab;
 
   const handleSelectSubTab = (tab: WebsiteSubSection) => {
     setInternalSubTab(tab);
@@ -723,7 +629,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
   const handleSaveSocial = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanedSocial: VendorSocialLinks = {
-      enabled: socialForm.enabled,
+      enabled: true,
       facebook: socialForm.facebook?.trim() || '',
       instagram: socialForm.instagram?.trim() || '',
       twitter: socialForm.twitter?.trim() || '',
@@ -799,33 +705,6 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
     }
     triggerToast('Reset to standard medical policy template.');
   };
-
-  // ==========================================
-  // 8. URLS & CONTROLS HELPER
-  // ==========================================
-  const [copiedMeta, setCopiedMeta] = useState(false);
-  const [copiedSubdomain, setCopiedSubdomain] = useState(false);
-  const [copiedDirectUrl, setCopiedDirectUrl] = useState(false);
-
-  const tenantSubdomainUrl = getTenantWebsiteUrl(
-    currentLabItem?.domainPreview || `${currentLabItem?.id || 'apexdiagnostics'}.${SUPER_ADMIN_DOMAIN}`
-  );
-  const tenantDirectUrl = getTenantDirectUrl(
-    currentLabItem?.domainPreview || currentLabItem?.id || 'apexdiagnostics'
-  );
-
-  const [activeSectionFilter, setActiveSectionFilter] = useState<'All' | 'Core' | 'Public Info' | 'Clinical'>('All');
-  const currentSections: VendorWebsiteSections = {
-    ...DEFAULT_VENDOR_SECTIONS,
-    ...(vendorLabSettings?.sections || {}),
-  };
-  const activeSectionsCount = Object.values(currentSections).filter(Boolean).length;
-  const totalSectionsCount = SECTION_METAS.length;
-
-  const filteredSections = SECTION_METAS.filter((s) => {
-    if (activeSectionFilter === 'All') return true;
-    return s.category === activeSectionFilter;
-  });
 
   // ==========================================
   // 9. SECTION TITLES & PARAGRAPHS STATE & HANDLERS
@@ -928,6 +807,44 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
         </div>
       )}
 
+      {/* Website Status: Draft Mode Notice (if draft) */}
+      {isDraft && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+              <Clock className="w-5 h-5 text-amber-700" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-sm text-amber-950">
+                  Website Status: Draft Mode (ड्राफ्ट मोड - एडमिन अप्रूवल पेंडिंग)
+                </span>
+                <span className="text-[10px] font-black uppercase bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-300">
+                  Awaiting Admin Approval
+                </span>
+              </div>
+              <p className="text-xs text-amber-900 mt-1 max-w-2xl leading-relaxed">
+                लैब बनाने के बाद वेबसाइट अभी <strong>ड्राफ्ट मोड</strong> में है। जब प्लेटफॉर्म एडमिन (Admin) इसे अप्रूव करेंगे, तभी यह पब्लिकली लाइव होगी। आप सेटिंग्स एडिट कर सकते हैं और प्रीव्यू देख सकते हैं।
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const targetLabId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId;
+              if (targetLabId) {
+                setVendorStatus(targetLabId, 'Active');
+                triggerToast('Website published LIVE and approved!');
+              }
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95"
+          >
+            <CheckCircle2 className="w-4 h-4 text-white" />
+            <span>Publish Website Live (वेबसाइट लाइव करें)</span>
+          </button>
+        </div>
+      )}
+
       {/* Horizontal Sub-tab Switcher Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs overflow-x-auto flex items-center gap-1.5 scrollbar-thin">
         {[
@@ -939,7 +856,6 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
           { id: 'social', label: '6. Social Media', icon: Share2 },
           { id: 'legal', label: '7. Legal Policies', icon: FileText },
           { id: 'section_content', label: '8. Section Titles & Para', icon: Type, highlight: true },
-          { id: 'sections', label: '9. Sections ON/OFF', icon: Layers },
         ].map((item) => {
           const Icon = item.icon;
           const isActive = activeSubTab === item.id;
@@ -1962,7 +1878,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 6. SOCIAL MEDIA (Edit, Disable) */}
+      {/* 6. SOCIAL MEDIA (Profiles & Links) */}
       {/* ======================================================== */}
       {activeSubTab === 'social' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -1970,10 +1886,10 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
             <div>
               <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <Share2 className="w-4 h-4 text-indigo-600" />
-                <span>Social Media Profiles &amp; Display Control (Edit &amp; Disable)</span>
+                <span>Social Media Profiles</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Configure your social media links or disable the social icons completely from the website.
+                Configure your social media links for your website footer and contact section.
               </p>
             </div>
             <button
@@ -1986,47 +1902,6 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
           </div>
 
           <form onSubmit={handleSaveSocial} className="p-6 space-y-5 text-xs">
-            {/* Master Toggle to Enable / Disable Social Media */}
-            <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition ${
-              socialForm.enabled ? 'bg-emerald-50/60 border-emerald-300' : 'bg-rose-50/60 border-rose-300'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-                  socialForm.enabled ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                }`}>
-                  <Share2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-xs text-slate-900 flex items-center gap-2">
-                    <span>Display Social Media Icons on Website</span>
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                      socialForm.enabled ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'
-                    }`}>
-                      {socialForm.enabled ? 'Enabled' : 'Disabled (Hidden)'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {socialForm.enabled
-                      ? 'Social media links will be prominently shown in your website footer and contact section.'
-                      : 'All social media links and icons are completely hidden from patients on the website.'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSocialForm({ ...socialForm, enabled: !socialForm.enabled })}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow-xs ${
-                  socialForm.enabled
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-rose-600 hover:bg-rose-700 text-white'
-                }`}
-              >
-                {socialForm.enabled ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                <span>{socialForm.enabled ? 'Turn OFF' : 'Turn ON'}</span>
-              </button>
-            </div>
-
             {/* Real-time Display Rule Banner */}
             <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3 text-amber-900">
               <span className="text-base shrink-0">💡</span>
@@ -2041,7 +1916,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
             </div>
 
             {/* Social Links Inputs */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!socialForm.enabled ? 'opacity-60 pointer-events-none' : ''}`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -2430,285 +2305,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 8. SECTIONS ON/OFF & DOMAINS CONTROLS */}
-      {/* ======================================================== */}
-      {activeSubTab === 'sections' && (
-        <div className="space-y-6">
-          {/* Website Status: Draft Mode vs Live Mode Notice */}
-          {isDraft ? (
-            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
-                  <Clock className="w-5 h-5 text-amber-700" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-extrabold text-sm text-amber-950">
-                      Website Status: Draft Mode (ड्राफ्ट मोड - एडमिन अप्रूवल पेंडिंग)
-                    </span>
-                    <span className="text-[10px] font-black uppercase bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-300">
-                      Awaiting Admin Approval
-                    </span>
-                  </div>
-                  <p className="text-xs text-amber-900 mt-1 max-w-2xl leading-relaxed">
-                    लैब बनाने के बाद वेबसाइट अभी <strong>ड्राफ्ट मोड</strong> में है। जब प्लेटफॉर्म एडमिन (Admin) इसे अप्रूव करेंगे, तभी यह पब्लिकली लाइव होगी। आप सेटिंग्स एडिट कर सकते हैं और प्रीव्यू देख सकते हैं।
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  const targetLabId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId;
-                  if (targetLabId) {
-                    setVendorStatus(targetLabId, 'Active');
-                    triggerToast('Website published LIVE and approved!');
-                  }
-                }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95"
-              >
-                <CheckCircle2 className="w-4 h-4 text-white" />
-                <span>Publish Website Live (वेबसाइट लाइव करें)</span>
-              </button>
-            </div>
-          ) : (
-            <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800 shrink-0">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-sm text-emerald-950 flex items-center gap-2">
-                    <span>Website Status: LIVE &amp; Approved (वेबसाइट लाइव है)</span>
-                    <span className="text-[10px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full border border-emerald-300">
-                      Publicly Active
-                    </span>
-                  </div>
-                  <p className="text-xs text-emerald-800 mt-0.5">
-                    Your dedicated laboratory portal is published and accessible to patients online for booking and reports.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Quick jump to Section Titles & Para editor */}
-          <div className="bg-gradient-to-r from-purple-50 via-indigo-50/50 to-white border-2 border-purple-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Type className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-purple-950">
-                  Section Titles &amp; Paragraphs Editor (शीर्षक व विवरण एडिट)
-                </h4>
-                <p className="text-[11px] text-purple-900/80">
-                  Want to change section heading titles or descriptions on your website? Customize Packages, About Us, Tests, Doctors, etc.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleSelectSubTab('section_content')}
-              className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-2xs cursor-pointer"
-            >
-              <span>Edit Titles &amp; Text</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Dedicated Working URL Card */}
-          <div className="bg-gradient-to-r from-indigo-50/80 via-white to-blue-50/80 p-5 rounded-2xl border border-indigo-200 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                  <Globe className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-indigo-950">
-                    Your Dedicated Laboratory Website (Har Lab Ka Apna URL)
-                  </h4>
-                  <p className="text-[11px] text-slate-600">
-                    Patients can directly visit this URL to view test menus, book home collection, and download reports.
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
-                Unique Subdomain
-              </span>
-            </div>
-
-            {/* Direct Live Working URL */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Direct Live Working URL (तुरंत खुलने वाला लिंक):</span>
-                </span>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
-                  100% Active in Any Browser
-                </span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-300">
-                <div className="flex-1 flex items-center gap-2 font-mono text-xs text-emerald-950 font-bold px-2 truncate">
-                  <span className="text-emerald-700 truncate">{tenantDirectUrl}</span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      try {
-                        navigator.clipboard.writeText(tenantDirectUrl);
-                      } catch {}
-                      setCopiedDirectUrl(true);
-                      setTimeout(() => setCopiedDirectUrl(false), 2500);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                  >
-                    {copiedDirectUrl ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-white" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Working Link</span>
-                      </>
-                    )}
-                  </button>
-
-                  {onPreviewWebsite && (
-                    <button
-                      type="button"
-                      onClick={onPreviewWebsite}
-                      className="px-3 py-1.5 rounded-lg bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Preview</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sections ON / OFF Controls */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-5 border-b border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#123B6D]" />
-                  <h3 className="text-sm font-black text-slate-800">Website Sections ON / OFF Control</h3>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">
-                    {activeSectionsCount} of {totalSectionsCount} Active
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Turn any section of your public website ON or OFF with a single toggle. Disabled sections will be completely hidden.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => toggleAllVendorSections(true)}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  Turn All ON
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleAllVendorSections(false)}
-                  className="bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  Turn All OFF
-                </button>
-              </div>
-            </div>
-
-            {/* Filter buttons */}
-            <div className="px-5 py-3 border-b border-slate-100 bg-white flex items-center gap-2 overflow-x-auto text-xs">
-              <span className="text-slate-400 font-bold mr-1">Filter:</span>
-              {(['All', 'Core', 'Clinical', 'Public Info'] as const).map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveSectionFilter(cat)}
-                  className={`px-3 py-1 rounded-full font-bold transition cursor-pointer ${
-                    activeSectionFilter === cat
-                      ? 'bg-[#123B6D] text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* Grid */}
-            <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredSections.map((sec) => {
-                const isEnabled = !!currentSections[sec.key];
-                return (
-                  <div
-                    key={sec.key}
-                    className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-3 ${
-                      isEnabled
-                        ? 'border-emerald-200 bg-emerald-50/20 shadow-xs'
-                        : 'border-slate-200 bg-slate-50/60 opacity-75'
-                    }`}
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
-                            isEnabled
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-slate-200 text-slate-600'
-                          }`}
-                        >
-                          {sec.badge}
-                        </span>
-                        <span className="text-xs font-black text-slate-800">{sec.name}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 leading-relaxed pr-2">
-                        {sec.description}
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => updateVendorSection(sec.key, !isEnabled)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                          isEnabled
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                            : 'bg-slate-300 hover:bg-slate-400 text-slate-700'
-                        }`}
-                        title={isEnabled ? 'Click to Turn OFF' : 'Click to Turn ON'}
-                      >
-                        {isEnabled ? (
-                          <>
-                            <ToggleRight className="w-4 h-4" />
-                            <span>ON</span>
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="w-4 h-4" />
-                            <span>OFF</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* 9. SECTION TITLES & PARAGRAPHS (HEADINGS & SUBTITLES) */}
+      {/* SECTION TITLES & PARAGRAPHS (HEADINGS & SUBTITLES) */}
       {/* ======================================================== */}
       {activeSubTab === 'section_content' && (
         <form onSubmit={handleSaveSectionTexts} className="space-y-6">
