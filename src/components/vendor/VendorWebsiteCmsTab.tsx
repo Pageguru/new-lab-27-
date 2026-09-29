@@ -39,6 +39,7 @@ import {
   Type,
   AlignLeft,
   ArrowRight,
+  User,
 } from 'lucide-react';
 import { useCms, DEFAULT_ALL_VENDOR_DOCTORS } from '../../context/CmsContext';
 import { VendorLabSettings, VendorBannerItem, VendorDoctor, VendorSocialLinks } from '../../types';
@@ -384,19 +385,28 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
   // 3. FOUNDER SECTION FORM
   // ==========================================
   const [founderForm, setFounderForm] = useState({
-    founderName: vendorLabSettings.founderName || 'Dr. R. K. Sharma',
-    founderDesignation: vendorLabSettings.founderDesignation || 'Chief Medical Director & Founder',
-    founderDegrees: vendorLabSettings.founderDegrees || 'MBBS, MD (Pathology)',
-    founderExperience: vendorLabSettings.founderExperience || 'Chief Pathologist • 18+ Years Clinical Experience',
-    founderBadge: vendorLabSettings.founderBadge || 'AIIMS Gold Medalist',
-    founderPhotoUrl: vendorLabSettings.founderPhotoUrl || '/src/assets/images/founder_pathologist_1790345211989.jpg',
-    founderMessage: vendorLabSettings.founderMessage || 'A pathology report is not merely numbers on paper; a doctor relies on it to prescribe life-saving medicine, and a patient trusts it with their health. At our laboratory, our sacred commitment is diagnostic accuracy, uncompromising sample purity, and delivering every report with complete transparency.',
-    founderCredentials: vendorLabSettings.founderCredentials || [
-      'MD Pathology from AIIMS • Senior Resident Ex-Fellow',
-      'Fellow of Indian College of Pathologists (FICP)',
-      'Lead Auditor for NABL / ISO 15189 Quality Systems',
-    ],
+    founderName: vendorLabSettings.founderName || '',
+    founderDesignation: vendorLabSettings.founderDesignation || '',
+    founderDegrees: vendorLabSettings.founderDegrees || '',
+    founderExperience: vendorLabSettings.founderExperience || '',
+    founderBadge: vendorLabSettings.founderBadge || '',
+    founderPhotoUrl: vendorLabSettings.founderPhotoUrl || '',
+    founderMessage: vendorLabSettings.founderMessage || '',
+    founderCredentials: vendorLabSettings.founderCredentials || [],
   });
+
+  useEffect(() => {
+    setFounderForm({
+      founderName: vendorLabSettings.founderName || '',
+      founderDesignation: vendorLabSettings.founderDesignation || '',
+      founderDegrees: vendorLabSettings.founderDegrees || '',
+      founderExperience: vendorLabSettings.founderExperience || '',
+      founderBadge: vendorLabSettings.founderBadge || '',
+      founderPhotoUrl: vendorLabSettings.founderPhotoUrl || '',
+      founderMessage: vendorLabSettings.founderMessage || '',
+      founderCredentials: vendorLabSettings.founderCredentials || [],
+    });
+  }, [vendorLabSettings.founderPhotoUrl, vendorLabSettings.founderName, vendorLabSettings.labId]);
 
   const [newCredential, setNewCredential] = useState('');
 
@@ -408,12 +418,18 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
       if (optimized) {
         setFounderForm((prev) => ({ ...prev, founderPhotoUrl: optimized }));
         updateVendorLabSettings({ founderPhotoUrl: optimized });
-        triggerToast('Founder photo uploaded & saved successfully!');
+        triggerToast('Founder DP uploaded and saved to Hostinger server!');
       }
     } catch (err) {
       console.error('Error optimizing founder photo:', err);
     }
     if (e.target) e.target.value = '';
+  };
+
+  const handleRemoveFounderPhoto = () => {
+    setFounderForm((prev) => ({ ...prev, founderPhotoUrl: '' }));
+    updateVendorLabSettings({ founderPhotoUrl: '' });
+    triggerToast('Founder DP removed from server & database!');
   };
 
   const handleAddCredential = () => {
@@ -1162,17 +1178,24 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 <label className="block text-[11px] font-bold text-slate-700">
                   Founder Photograph
                 </label>
-                <div className="w-32 h-32 rounded-2xl overflow-hidden border-2 border-slate-300 mx-auto bg-slate-100 shadow-sm relative group">
-                  <img
-                    src={founderForm.founderPhotoUrl || '/src/assets/images/founder_pathologist_1790345211989.jpg'}
-                    alt="Founder Preview"
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-32 h-32 rounded-2xl overflow-hidden border-2 border-slate-300 mx-auto bg-slate-100 shadow-sm relative group flex items-center justify-center">
+                  {founderForm.founderPhotoUrl ? (
+                    <img
+                      src={founderForm.founderPhotoUrl}
+                      alt="Founder Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-400 text-[10px] font-bold gap-1 select-none">
+                      <User className="w-9 h-9 text-slate-300" />
+                      <span>No Photo</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
                     <Upload className="w-3.5 h-3.5 text-[#123B6D]" />
-                    <span>Upload New Photo</span>
+                    <span>{founderForm.founderPhotoUrl ? 'Replace Photo' : 'Upload Photo'}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -1180,6 +1203,16 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                       onChange={handleFounderPhotoUpload}
                     />
                   </label>
+                  {founderForm.founderPhotoUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveFounderPhoto}
+                      className="cursor-pointer bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Delete Photo</span>
+                    </button>
+                  )}
                   <input
                     type="url"
                     value={founderForm.founderPhotoUrl}

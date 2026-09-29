@@ -65,6 +65,13 @@
     Header set Pragma "no-cache"
     Header set Expires "0"
   </FilesMatch>
+
+  # Uploaded User Images (DP, Logo, Banners): Revalidate cache so replacement is immediate
+  <FilesMatch "^/uploads/.*\.(jpe?g|png|webp|gif|svg)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+  </FilesMatch>
+
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-XSS-Protection "1; mode=block"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"

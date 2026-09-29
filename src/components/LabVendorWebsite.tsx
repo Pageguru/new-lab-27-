@@ -3289,14 +3289,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 <div className="space-y-5">
                   {/* Photo & Identity Header */}
                   <div className="flex items-center gap-4 pt-1">
-                    {/* Founder Real Photo */}
+                    {/* Founder Real Photo or Clean Isolated Avatar */}
                     <div className="relative shrink-0">
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-emerald-500/80 shadow-md bg-slate-100">
-                        <img
-                          src={vendorLabSettings?.founderPhotoUrl || '/src/assets/images/founder_pathologist_1790345211989.jpg'}
-                          alt={vendorLabSettings?.founderName || 'Founder & Chief Medical Director'}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-emerald-500/80 shadow-md bg-slate-100 flex items-center justify-center">
+                        {vendorLabSettings?.founderPhotoUrl ? (
+                          <img
+                            src={vendorLabSettings.founderPhotoUrl}
+                            alt={vendorLabSettings?.founderName || 'Founder & Chief Medical Director'}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-linear-to-br from-indigo-100 to-teal-100 flex items-center justify-center text-indigo-700 font-black text-2xl select-none">
+                            {(vendorLabSettings?.founderName || 'MD').charAt(0).toUpperCase()}
+                          </div>
+                        )}
                       </div>
                       <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white font-bold" title="Verified Pathologist">
                         ✓

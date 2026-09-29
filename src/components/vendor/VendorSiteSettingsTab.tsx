@@ -269,10 +269,14 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
   const handleRemoveLogo = () => {
     setDeleteConfirm({
       isOpen: true,
-      message: 'Are you sure you want to delete this? The laboratory logo will be removed from your website and header.',
+      message: 'Are you sure you want to delete this? The laboratory logo will be removed from your website, database, and server storage.',
       onConfirm: () => {
         setFormData((prev) => ({ ...prev, logoUrl: '' }));
+        updateVendorLabSettings({ logoUrl: '' });
         setDeleteConfirm(null);
+        setToastMessage('Logo deleted from server & database!');
+        setIsSavedToast(true);
+        setTimeout(() => setIsSavedToast(false), 3000);
       },
     });
   };
@@ -280,10 +284,14 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
   const handleRemoveFeatureImage = () => {
     setDeleteConfirm({
       isOpen: true,
-      message: 'Are you sure you want to delete this? The feature banner image will be removed.',
+      message: 'Are you sure you want to delete this? The feature banner image will be removed from database and server storage.',
       onConfirm: () => {
         setFormData((prev) => ({ ...prev, featureImageUrl: '', ogImageUrl: '' }));
+        updateVendorLabSettings({ featureImageUrl: '', ogImageUrl: '' });
         setDeleteConfirm(null);
+        setToastMessage('Feature banner deleted from server & database!');
+        setIsSavedToast(true);
+        setTimeout(() => setIsSavedToast(false), 3000);
       },
     });
   };

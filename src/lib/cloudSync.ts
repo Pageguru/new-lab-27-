@@ -371,16 +371,26 @@ export async function testFirestoreConnection(): Promise<boolean> {
 
 /**
  * Universal Image Upload to Hostinger /uploads/ directory
+ * Supports:
+ * - Replacement of old image (deletes previous file on Hostinger server)
+ * - Anti-cache busting versioning
+ * - Direct MySQL reference recording
  */
-export async function uploadImageToHostinger(dataUrl: string, prefix: string = 'img'): Promise<string> {
+export async function uploadImageToHostinger(
+  dataUrl: string,
+  prefix: string = 'img',
+  oldUrl?: string,
+  labId: string = 'all',
+  imageType: string = 'other'
+): Promise<string> {
   if (!dataUrl || !dataUrl.startsWith('data:image')) {
     return dataUrl;
   }
   try {
     // 1. Optimize image before upload to keep uploads lightweight (20KB - 80KB)
     const optimized = await optimizeDataUrl(dataUrl, {
-      maxWidth: 1200,
-      maxHeight: 1200,
+      maxWidth: 1400,
+      maxHeight: 1400,
       quality: 0.84,
       format: 'image/jpeg',
     });
@@ -392,6 +402,9 @@ export async function uploadImageToHostinger(dataUrl: string, prefix: string = '
       body: JSON.stringify({
         image: finalDataUrl,
         prefix,
+        old_image: oldUrl,
+        labId,
+        imageType,
       }),
     });
 
@@ -401,6 +414,27 @@ export async function uploadImageToHostinger(dataUrl: string, prefix: string = '
     return finalDataUrl;
   } catch (err) {
     return dataUrl;
+  }
+}
+
+/**
+ * Universal Image Deletion from Hostinger server and MySQL database
+ */
+export async function deleteImageFromHostinger(imageUrl?: string | null): Promise<boolean> {
+  if (!imageUrl || (!imageUrl.includes('/uploads/') && !imageUrl.includes('indianlalaji.com/uploads'))) {
+    return false;
+  }
+  try {
+    const result = await callHostingerApi('/api/upload.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'delete_image',
+        url: imageUrl,
+      }),
+    });
+    return !!(result && result.status === 'success');
+  } catch {
+    return false;
   }
 }
 
@@ -479,26 +513,96 @@ async function deleteDocumentFromHostinger(collection: string, id: string): Prom
 }
 
 // -----------------------------------------------------------------------------
-// 1. Lab Settings (Theme, Brand, Logo, UPI, Contact)
+// 1. Lab Settings (Theme, Brand, Logo, UPI, Contact, Centralized Images)
 // -----------------------------------------------------------------------------
 export async function syncLabSettingsToCloud(
   labId: string,
   settings: Partial<VendorLabSettings>
 ): Promise<void> {
   try {
+    let settingsMap = getCachedCollection(COLLECTIONS.LAB_SETTINGS) || {};
+    const prev = settingsMap[labId] || {};
+
+    // 1. Logo Management (Replace & Clean)
     let cleanLogo = settings.logoUrl;
     if (cleanLogo && cleanLogo.startsWith('data:image')) {
-      cleanLogo = await uploadImageToHostinger(cleanLogo, `logo_${labId}`);
+      cleanLogo = await uploadImageToHostinger(cleanLogo, `logo_${labId}`, prev.logoUrl, labId, 'logo');
+    } else if (cleanLogo === '' && prev.logoUrl) {
+      await deleteImageFromHostinger(prev.logoUrl);
+    }
+
+    // 2. Founder DP / Photo Management (Replace & Clean)
+    let cleanFounderPhoto = settings.founderPhotoUrl;
+    if (cleanFounderPhoto && cleanFounderPhoto.startsWith('data:image')) {
+      cleanFounderPhoto = await uploadImageToHostinger(cleanFounderPhoto, `dp_${labId}`, prev.founderPhotoUrl, labId, 'dp');
+    } else if (cleanFounderPhoto === '' && prev.founderPhotoUrl) {
+      await deleteImageFromHostinger(prev.founderPhotoUrl);
+    }
+
+    // 3. Team Photo Management
+    let cleanTeamPhoto = settings.teamGroupPhotoUrl;
+    if (cleanTeamPhoto && cleanTeamPhoto.startsWith('data:image')) {
+      cleanTeamPhoto = await uploadImageToHostinger(cleanTeamPhoto, `team_${labId}`, prev.teamGroupPhotoUrl, labId, 'other');
+    } else if (cleanTeamPhoto === '' && prev.teamGroupPhotoUrl) {
+      await deleteImageFromHostinger(prev.teamGroupPhotoUrl);
+    }
+
+    // 4. Billing QR Code 1 Management
+    let cleanQr1 = settings.qrCode1Url;
+    if (cleanQr1 && cleanQr1.startsWith('data:image')) {
+      cleanQr1 = await uploadImageToHostinger(cleanQr1, `qr1_${labId}`, prev.qrCode1Url, labId, 'qr');
+    } else if (cleanQr1 === '' && prev.qrCode1Url) {
+      await deleteImageFromHostinger(prev.qrCode1Url);
+    }
+
+    // 5. Billing QR Code 2 Management
+    let cleanQr2 = settings.qrCode2Url;
+    if (cleanQr2 && cleanQr2.startsWith('data:image')) {
+      cleanQr2 = await uploadImageToHostinger(cleanQr2, `qr2_${labId}`, prev.qrCode2Url, labId, 'qr');
+    } else if (cleanQr2 === '' && prev.qrCode2Url) {
+      await deleteImageFromHostinger(prev.qrCode2Url);
+    }
+
+    // 6. Hero Banners Upload
+    let cleanHeroBanners = settings.heroBanners;
+    if (Array.isArray(cleanHeroBanners)) {
+      cleanHeroBanners = await Promise.all(
+        cleanHeroBanners.map(async (banner, idx) => {
+          if (banner && banner.startsWith('data:image')) {
+            return await uploadImageToHostinger(banner, `banner_${labId}_${idx}`, undefined, labId, 'banner');
+          }
+          return banner;
+        })
+      );
+    }
+
+    // 7. Banners Array Upload
+    let cleanBanners = settings.banners;
+    if (Array.isArray(cleanBanners)) {
+      cleanBanners = await Promise.all(
+        cleanBanners.map(async (banner, idx) => {
+          if (banner?.imageUrl && banner.imageUrl.startsWith('data:image')) {
+            const uploadedUrl = await uploadImageToHostinger(banner.imageUrl, `banner_${labId}_${idx}`, undefined, labId, 'banner');
+            return { ...banner, imageUrl: uploadedUrl };
+          }
+          return banner;
+        })
+      );
     }
 
     const payload = {
       ...settings,
       labId,
-      logoUrl: cleanLogo,
+      ...(cleanLogo !== undefined ? { logoUrl: cleanLogo } : {}),
+      ...(cleanFounderPhoto !== undefined ? { founderPhotoUrl: cleanFounderPhoto } : {}),
+      ...(cleanTeamPhoto !== undefined ? { teamGroupPhotoUrl: cleanTeamPhoto } : {}),
+      ...(cleanQr1 !== undefined ? { qrCode1Url: cleanQr1 } : {}),
+      ...(cleanQr2 !== undefined ? { qrCode2Url: cleanQr2 } : {}),
+      ...(cleanHeroBanners !== undefined ? { heroBanners: cleanHeroBanners } : {}),
+      ...(cleanBanners !== undefined ? { banners: cleanBanners } : {}),
       _updatedAt: new Date().toISOString(),
     };
 
-    let settingsMap = getCachedCollection(COLLECTIONS.LAB_SETTINGS) || {};
     settingsMap[labId] = { ...(settingsMap[labId] || {}), ...payload };
     setCachedCollection(COLLECTIONS.LAB_SETTINGS, settingsMap);
     notifySubscribers(COLLECTIONS.LAB_SETTINGS, settingsMap);
@@ -884,9 +988,13 @@ export function subscribeToPortalSections(
 // -----------------------------------------------------------------------------
 export async function syncVendorLabToCloud(lab: VendorLabDirectoryItem): Promise<void> {
   try {
+    let cachedLabs: VendorLabDirectoryItem[] = getCachedCollection(COLLECTIONS.VENDOR_LABS) || [];
+    const prev = Array.isArray(cachedLabs) ? cachedLabs.find((l) => l.id === lab.id) : null;
     let cleanLogo = lab.logoUrl;
     if (cleanLogo && cleanLogo.startsWith('data:image')) {
-      cleanLogo = await uploadImageToHostinger(cleanLogo, `lablogo_${lab.id}`);
+      cleanLogo = await uploadImageToHostinger(cleanLogo, `lablogo_${lab.id}`, prev?.logoUrl, lab.id, 'logo');
+    } else if (cleanLogo === '' && prev?.logoUrl) {
+      await deleteImageFromHostinger(prev.logoUrl);
     }
     const payload = { ...lab, logoUrl: cleanLogo };
     await saveDocumentToHostinger(COLLECTIONS.VENDOR_LABS, lab.id, payload);
