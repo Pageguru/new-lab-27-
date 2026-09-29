@@ -293,7 +293,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
   const [dateFilter, setDateFilter] = useState<'All Dates' | 'Today' | 'Yesterday' | 'Custom Date'>('All Dates');
   const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentFilter, setPaymentFilter] = useState<'All' | 'Advance' | 'Due' | 'Full Payment'>('All');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Website' | 'Waiting' | 'Sample Collected' | 'In Lab' | 'Report Ready' | 'Publish Pending'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Website' | 'Waiting' | 'In Lab' | 'Report Ready'>('All');
 
   // Thermal Slip Modal
   const [selectedReceipt, setSelectedReceipt] = useState<ReceptionPatientEntry | null>(null);
@@ -1036,13 +1036,8 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
         if (!getWebsiteBookingMeta(item)) return false;
       } else if (statusFilter === 'Report Ready') {
         if (!isReady) return false;
-      } else if (statusFilter === 'Publish Pending') {
-        if (!isReady || item.isReportPublished) return false;
       } else if (statusFilter === 'In Lab') {
         if (isReady || !isInLab) return false;
-      } else if (statusFilter === 'Sample Collected') {
-        if (isReady || isInLab) return false;
-        if (item.status !== 'Sample Collected' && item.technicianStatus !== 'Sent to Lab') return false;
       } else {
         if (isReady || isInLab) return false;
         if (item.status !== statusFilter) return false;
@@ -2055,7 +2050,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
 
             {/* Workflow Status Filter Tabs */}
             <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-bold">
-              {(['All', 'Website', 'Waiting', 'Sample Collected', 'In Lab', 'Report Ready', 'Publish Pending'] as const).map((st) => {
+              {(['All', 'Website', 'Waiting', 'In Lab', 'Report Ready'] as const).map((st) => {
                 const count =
                   st === 'All'
                     ? receptionEntries.length
@@ -2063,12 +2058,8 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                     ? websiteBookingCount
                     : st === 'Report Ready'
                     ? receptionEntries.filter((e) => e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)).length
-                    : st === 'Publish Pending'
-                    ? receptionEntries.filter((e) => (e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && !e.isReportPublished).length
                     : st === 'In Lab'
                     ? receptionEntries.filter((e) => !(e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && (e.technicianStatus === 'Accepted' || (e.status === 'In Lab' && e.technicianStatus !== 'Sent to Lab'))).length
-                    : st === 'Sample Collected'
-                    ? receptionEntries.filter((e) => !(e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && !(e.technicianStatus === 'Accepted' || (e.status === 'In Lab' && e.technicianStatus !== 'Sent to Lab')) && (e.status === 'Sample Collected' || e.technicianStatus === 'Sent to Lab')).length
                     : receptionEntries.filter((e) => !(e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)) && e.status === st).length;
                 return (
                   <button
@@ -2082,13 +2073,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <span>
-                      {st === 'Website'
-                        ? '🌐 Website Bookings'
-                        : st === 'Publish Pending'
-                        ? '🔔 Publish Pending'
-                        : st}
-                    </span>
+                    <span>{st === 'Website' ? '🌐 Website Bookings' : st}</span>
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                         st === 'Website'
@@ -2097,8 +2082,6 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                               ? 'bg-white text-red-700 font-black'
                               : 'bg-red-500 text-white font-black'
                             : 'opacity-75'
-                          : st === 'Publish Pending' && count > 0
-                          ? 'bg-amber-200 text-amber-950 font-black'
                           : 'opacity-75'
                       }`}
                     >
