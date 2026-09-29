@@ -2,15 +2,12 @@ import React, { useState, useRef } from 'react';
 import {
   Download,
   Upload,
-  Database,
   FileText,
-  LogOut,
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
   Calendar,
   Users,
-  Building,
   ShieldCheck,
   FileSpreadsheet,
   Globe,
@@ -21,7 +18,6 @@ import {
   Printer,
   Share2,
   ExternalLink,
-  Lock,
   X,
   Check,
   HelpCircle,
@@ -33,16 +29,14 @@ import { safePrint } from '../../utils/printHelper';
 import { CanonicalPdfViewer } from '../CanonicalPdfViewer';
 
 interface VendorBackupReportsTabProps {
-  onNavigateView: (view: any) => void;
+  onNavigateView?: (view: any) => void;
 }
 
 export const VendorBackupReportsTab: React.FC<VendorBackupReportsTabProps> = ({
-  onNavigateView,
+  onNavigateView: _onNavigateView,
 }) => {
   const {
-    currentUser,
     vendorLabSettings,
-    updateVendorLabSettings,
     vendorPackages,
     vendorTests,
     vendorDoctors,
