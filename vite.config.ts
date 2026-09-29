@@ -1,11 +1,309 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import fs from 'fs';
+import { defineConfig, Plugin } from 'vite';
+
+function hostingerApiDevPlugin(): Plugin {
+  const dataDir = path.resolve(__dirname, 'public/api/data');
+  const uploadsDir = path.resolve(__dirname, 'public/uploads');
+
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const readCol = (col: string): any[] => {
+    const p = path.join(dataDir, `${col}.json`);
+    if (!fs.existsSync(p)) return [];
+    try {
+      return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch {
+      return [];
+    }
+  };
+
+  const writeCol = (col: string, data: any[]) => {
+    const p = path.join(dataDir, `${col}.json`);
+    fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf-8');
+    const metaPath = path.join(dataDir, '_meta.json');
+    fs.writeFileSync(
+      metaPath,
+      JSON.stringify({ lastUpdated: Date.now(), lastCollection: col }),
+      'utf-8'
+    );
+  };
+
+  const getMeta = (): { lastUpdated: number; lastCollection: string } => {
+    const metaPath = path.join(dataDir, '_meta.json');
+    if (fs.existsSync(metaPath)) {
+      try {
+        return JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+      } catch {}
+    }
+    return { lastUpdated: Date.now(), lastCollection: '' };
+  };
+
+  return {
+    name: 'hostinger-api-dev-server',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const urlStr = req.url || '';
+        const [pathname, searchStr] = urlStr.split('?');
+        const searchParams = new URLSearchParams(searchStr || '');
+
+        // 1. API: /api/status.php
+        if (pathname === '/api/status.php') {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(
+            JSON.stringify({
+              status: 'online',
+              platform: 'INDIANLALAJI.COM',
+              server: 'Hostinger (Dev Server)',
+              storageMode: 'file',
+              timestamp: Date.now(),
+            })
+          );
+          return;
+        }
+
+        // 2. API: /api/upload.php
+        if (pathname === '/api/upload.php' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk) => {
+            body += chunk;
+          });
+          req.on('end', () => {
+            try {
+              const payload = JSON.parse(body);
+              if (payload.image) {
+                const match = payload.image.match(/^data:image\/(\w+);base64,(.+)$/);
+                if (match) {
+                  const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+                  const buffer = Buffer.from(match[2], 'base64');
+                  const filename = `${payload.prefix || 'img'}_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .slice(2, 6)}.${ext}`;
+                  fs.writeFileSync(path.join(uploadsDir, filename), buffer);
+
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      status: 'success',
+                      url: `/uploads/${filename}`,
+                      filename,
+                    })
+                  );
+                  return;
+                }
+              }
+            } catch {}
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ status: 'error', message: 'Upload parse error' }));
+          });
+          return;
+        }
+
+        // 3. API: /api/sync.php
+        if (pathname === '/api/sync.php') {
+          res.setHeader('Content-Type', 'application/json');
+          const action = searchParams.get('action') || '';
+
+          if (req.method === 'GET') {
+            if (action === 'check_updates') {
+              const since = parseFloat(searchParams.get('since') || '0');
+              const meta = getMeta();
+              res.end(
+                JSON.stringify({
+                  status: 'success',
+                  serverTime: Date.now(),
+                  lastUpdated: meta.lastUpdated,
+                  hasUpdates: meta.lastUpdated > since,
+                  lastCollection: meta.lastCollection,
+                  storageMode: 'file',
+                })
+              );
+              return;
+            }
+
+            if (action === 'get_collection') {
+              const col = searchParams.get('collection') || '';
+              const data = readCol(col);
+              res.end(
+                JSON.stringify({
+                  status: 'success',
+                  collection: col,
+                  data,
+                  serverTime: Date.now(),
+                })
+              );
+              return;
+            }
+
+            // Get All
+            const cols = [
+              'reception_entries',
+              'lab_reports',
+              'vendor_bookings',
+              'lab_staff',
+              'lab_settings',
+              'lab_tests',
+              'lab_packages',
+              'lab_doctors',
+              'vendor_branches',
+              'company_settings',
+              'portal_sections',
+              'vendor_labs',
+              'pricing_plans',
+              'contact_submissions',
+              'domain_requests',
+            ];
+            const allData: Record<string, any[]> = {};
+            for (const c of cols) {
+              allData[c] = readCol(c);
+            }
+            res.end(
+              JSON.stringify({
+                status: 'success',
+                data: allData,
+                serverTime: Date.now(),
+                lastUpdated: getMeta().lastUpdated,
+                storageMode: 'file',
+              })
+            );
+            return;
+          }
+
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', (chunk) => {
+              body += chunk;
+            });
+            req.on('end', () => {
+              try {
+                const payload = JSON.parse(body);
+                const postAction = payload.action || 'save';
+                const collection = payload.collection || '';
+
+                if (postAction === 'save') {
+                  const id = String(payload.id);
+                  const itemData = payload.data || {};
+                  itemData.id = itemData.id || id;
+                  itemData._updatedAt = new Date().toISOString();
+
+                  const list = readCol(collection);
+                  const idx = list.findIndex(
+                    (it: any) => (it.id || it.reportId || it.labId) === id
+                  );
+                  if (idx !== -1) {
+                    list[idx] = { ...list[idx], ...itemData };
+                  } else {
+                    list.unshift(itemData);
+                  }
+                  writeCol(collection, list);
+
+                  res.end(
+                    JSON.stringify({
+                      status: 'success',
+                      action: 'save',
+                      collection,
+                      id,
+                      serverTime: Date.now(),
+                    })
+                  );
+                  return;
+                }
+
+                if (postAction === 'delete') {
+                  const id = String(payload.id);
+                  const list = readCol(collection);
+                  const filtered = list.filter(
+                    (it: any) => (it.id || it.reportId || it.labId) !== id
+                  );
+                  writeCol(collection, filtered);
+
+                  res.end(
+                    JSON.stringify({
+                      status: 'success',
+                      action: 'delete',
+                      collection,
+                      id,
+                      serverTime: Date.now(),
+                    })
+                  );
+                  return;
+                }
+
+                if (postAction === 'batch_save') {
+                  const items = payload.items || [];
+                  const list = readCol(collection);
+                  const map = new Map<string, any>();
+                  for (const it of list) {
+                    const itId = it.id || it.reportId || it.labId;
+                    if (itId) map.set(itId, it);
+                  }
+                  for (const it of items) {
+                    const itId = it.id || it.reportId || it.labId;
+                    if (itId) {
+                      it._updatedAt = new Date().toISOString();
+                      const existing = map.get(itId) || {};
+                      map.set(itId, { ...existing, ...it });
+                    }
+                  }
+                  writeCol(collection, Array.from(map.values()));
+
+                  res.end(
+                    JSON.stringify({
+                      status: 'success',
+                      action: 'batch_save',
+                      collection,
+                      count: items.length,
+                      serverTime: Date.now(),
+                    })
+                  );
+                  return;
+                }
+
+                if (postAction === 'seed_all') {
+                  const allCols = payload.collections || {};
+                  for (const [colName, colItems] of Object.entries(allCols)) {
+                    const existing = readCol(colName);
+                    if (existing.length === 0 && Array.isArray(colItems)) {
+                      writeCol(colName, colItems);
+                    }
+                  }
+                  res.end(
+                    JSON.stringify({
+                      status: 'success',
+                      action: 'seed_all',
+                      serverTime: Date.now(),
+                    })
+                  );
+                  return;
+                }
+              } catch (err: any) {
+                res.end(
+                  JSON.stringify({ status: 'error', message: err?.message || 'Sync error' })
+                );
+                return;
+              }
+              res.end(JSON.stringify({ status: 'error', message: 'Unknown action' }));
+            });
+            return;
+          }
+        }
+
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), hostingerApiDevPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -20,3 +318,4 @@ export default defineConfig(() => {
     },
   };
 });
+
