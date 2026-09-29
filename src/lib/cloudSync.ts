@@ -82,11 +82,23 @@ export function sanitizeForFirestore<T>(data: T): T {
 }
 
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // Hostinger API Connection & Multi-Device Polling Engine
 // -----------------------------------------------------------------------------
 function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined' && window.location.origin) {
-    return window.location.origin;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    // If the browser is running on indianlalaji.com or any of its subdomains:
+    if (host.endsWith('indianlalaji.com')) {
+      return 'https://indianlalaji.com';
+    }
+    // If running on local developer dev server (localhost:3000):
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return window.location.origin;
+    }
+    // On all other devices (preview, shared link, mobile phone, custom domain):
+    // Always connect to the central Hostinger server so ALL devices share the same live database!
+    return 'https://indianlalaji.com';
   }
   return 'https://indianlalaji.com';
 }
@@ -94,10 +106,16 @@ function getApiBaseUrl(): string {
 async function callHostingerApi(endpoint: string, options?: RequestInit): Promise<any> {
   try {
     const base = getApiBaseUrl();
-    const url = `${base}${endpoint}`;
+    const sep = endpoint.includes('?') ? '&' : '?';
+    const cacheBuster = `_ts=${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const url = `${base}${endpoint}${sep}${cacheBuster}`;
+
     const res = await fetch(url, {
+      cache: 'no-store',
       ...options,
       headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
         'Content-Type': 'application/json',
         ...(options?.headers || {}),
       },
@@ -145,6 +163,25 @@ const localCache: Record<string, any> = {};
 let lastServerTimestamp = 0;
 let isPollingActive = false;
 let pollingTimer: any = null;
+let isInitialSyncDone = false;
+
+// Real-Time Cross-Tab / In-Browser Sync Channel
+const SYNC_CHANNEL_NAME = 'indianlalaji_realtime_sync_v2';
+let syncChannel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    syncChannel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+    syncChannel.onmessage = (event) => {
+      if (event.data && event.data.type === 'SYNC_COLLECTION') {
+        const { collection, data } = event.data;
+        if (collection && data) {
+          setCachedCollection(collection, data);
+          notifySubscribers(collection, data);
+        }
+      }
+    };
+  }
+} catch {}
 
 // Load initial cache from localStorage
 function getCachedCollection(collection: string): any {
@@ -169,25 +206,107 @@ function setCachedCollection(collection: string, data: any) {
   } catch {}
 }
 
+const ALL_CORE_COLLECTIONS = [
+  COLLECTIONS.RECEPTION_ENTRIES,
+  COLLECTIONS.LAB_REPORTS,
+  COLLECTIONS.BOOKINGS,
+  COLLECTIONS.LAB_SETTINGS,
+  COLLECTIONS.TESTS,
+  COLLECTIONS.PACKAGES,
+  COLLECTIONS.DOCTORS,
+  COLLECTIONS.BRANCHES,
+  COLLECTIONS.STAFF,
+  COLLECTIONS.COMPANY_SETTINGS,
+  COLLECTIONS.PORTAL_SECTIONS,
+  COLLECTIONS.VENDOR_LABS,
+  COLLECTIONS.PRICING_PLANS,
+  COLLECTIONS.DOMAIN_REQUESTS,
+];
+
+/**
+ * Normalizes collection data into the format expected by state and subscriptions
+ */
+export function normalizeCollectionData(collection: string, rawData: any): any {
+  if (rawData === undefined || rawData === null) return rawData;
+
+  // 1. LAB_SETTINGS: Must be a Map keyed by labId (e.g. { 'lab-kumarlab-2960': { ... } })
+  if (collection === COLLECTIONS.LAB_SETTINGS) {
+    const map: Record<string, VendorLabSettings> = {};
+    if (Array.isArray(rawData)) {
+      for (const item of rawData) {
+        const id = item?.labId || item?.id;
+        if (id && id !== '0') {
+          map[id] = item;
+        }
+      }
+      return map;
+    } else if (typeof rawData === 'object' && rawData !== null) {
+      for (const [key, item] of Object.entries(rawData)) {
+        const realId = (item as any)?.labId || (item as any)?.id || key;
+        if (realId && realId !== '0') {
+          map[realId] = item as VendorLabSettings;
+        }
+      }
+      return map;
+    }
+    return map;
+  }
+
+  // 2. COMPANY_SETTINGS: Must be single object
+  if (collection === COLLECTIONS.COMPANY_SETTINGS) {
+    if (Array.isArray(rawData)) return rawData[0] || null;
+    return rawData;
+  }
+
+  // 3. PORTAL_SECTIONS: Must be single object
+  if (collection === COLLECTIONS.PORTAL_SECTIONS) {
+    if (Array.isArray(rawData)) return rawData[0] || null;
+    return rawData;
+  }
+
+  // 4. All other collections are arrays
+  if (Array.isArray(rawData)) {
+    return rawData;
+  }
+
+  return rawData;
+}
+
 /**
  * Checks Hostinger server for any updates made by other devices and synchronizes automatically
  */
-export async function pollHostingerServerUpdates(): Promise<void> {
+export async function pollHostingerServerUpdates(force: boolean = false): Promise<void> {
   try {
-    const result = await callHostingerApi(`/api/sync.php?action=check_updates&since=${lastServerTimestamp}`);
-    if (result && result.status === 'success') {
-      const serverTime = result.serverTime || Date.now();
-      
-      if (result.hasUpdates || lastServerTimestamp === 0) {
-        // Fetch all collections that have changed or full data on first connect
-        const fullResult = await callHostingerApi('/api/sync.php');
-        if (fullResult && fullResult.status === 'success' && fullResult.data) {
-          const allData = fullResult.data;
-          
-          for (const [colName, colItems] of Object.entries(allData)) {
-            if (colItems && (Array.isArray(colItems) || typeof colItems === 'object')) {
-              setCachedCollection(colName, colItems);
-              notifySubscribers(colName, colItems);
+    // 1. On initial load or explicit force refresh: fetch all collections in one fast unified request
+    if (!isInitialSyncDone || force) {
+      const fullRes = await callHostingerApi('/api/sync.php');
+      if (fullRes && fullRes.status === 'success' && fullRes.data) {
+        for (const [colName, colData] of Object.entries(fullRes.data)) {
+          const normalized = normalizeCollectionData(colName, colData);
+          if (normalized !== undefined && normalized !== null) {
+            setCachedCollection(colName, normalized);
+            notifySubscribers(colName, normalized);
+          }
+        }
+        isInitialSyncDone = true;
+        lastServerTimestamp = fullRes.serverTime || Date.now();
+        return;
+      }
+    }
+
+    // 2. Continuous lightweight heartbeat check (every 1.5s)
+    const checkRes = await callHostingerApi(`/api/sync.php?action=check_updates&since=${lastServerTimestamp}`);
+    if (checkRes && checkRes.status === 'success') {
+      const serverTime = checkRes.serverTime || Date.now();
+      if (checkRes.hasUpdates) {
+        // Data has changed on Hostinger server (from another device): pull latest immediately
+        const fullRes = await callHostingerApi('/api/sync.php');
+        if (fullRes && fullRes.status === 'success' && fullRes.data) {
+          for (const [colName, colData] of Object.entries(fullRes.data)) {
+            const normalized = normalizeCollectionData(colName, colData);
+            if (normalized !== undefined && normalized !== null) {
+              setCachedCollection(colName, normalized);
+              notifySubscribers(colName, normalized);
             }
           }
         }
@@ -199,25 +318,37 @@ export async function pollHostingerServerUpdates(): Promise<void> {
   }
 }
 
-// Start continuous multi-device sync background heartbeat
+/**
+ * Force manual immediate refresh from Hostinger server across all collections
+ */
+export async function forceRefreshAllFromHostinger(): Promise<void> {
+  await pollHostingerServerUpdates(true);
+}
+
+// Start continuous multi-device sync background heartbeat (every 1.5 seconds)
 function startMultiDeviceSyncHeartbeat() {
   if (isPollingActive || typeof window === 'undefined') return;
   isPollingActive = true;
 
   // Initial immediate fetch
-  pollHostingerServerUpdates();
+  pollHostingerServerUpdates(true);
 
-  // Poll every 2.5 seconds for changes across devices
+  // Poll every 1.5 seconds for changes across devices
   pollingTimer = setInterval(() => {
     pollHostingerServerUpdates();
-  }, 2500);
+  }, 1500);
 
   // Poll immediately when user tabs back into the browser or reconnects
   window.addEventListener('focus', () => {
-    pollHostingerServerUpdates();
+    pollHostingerServerUpdates(true);
   });
   window.addEventListener('online', () => {
-    pollHostingerServerUpdates();
+    pollHostingerServerUpdates(true);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      pollHostingerServerUpdates(true);
+    }
   });
 }
 
@@ -288,12 +419,20 @@ async function saveDocumentToHostinger(collection: string, id: string, itemData:
     } else {
       currentList.unshift(sanitized);
     }
-    setCachedCollection(collection, [...currentList]);
-    notifySubscribers(collection, currentList);
+    const updated = [...currentList];
+    setCachedCollection(collection, updated);
+    notifySubscribers(collection, updated);
+    try {
+      syncChannel?.postMessage({ type: 'SYNC_COLLECTION', collection, data: updated });
+    } catch {}
   } else if (typeof currentList === 'object' && currentList !== null) {
     currentList[id] = sanitized;
-    setCachedCollection(collection, { ...currentList });
-    notifySubscribers(collection, currentList);
+    const updated = { ...currentList };
+    setCachedCollection(collection, updated);
+    notifySubscribers(collection, updated);
+    try {
+      syncChannel?.postMessage({ type: 'SYNC_COLLECTION', collection, data: updated });
+    } catch {}
   }
 
   // 2. Persist to Hostinger server/database
@@ -315,10 +454,17 @@ async function deleteDocumentFromHostinger(collection: string, id: string): Prom
     const filtered = currentList.filter((it: any) => (it.id || it.reportId || it.labId) !== id);
     setCachedCollection(collection, filtered);
     notifySubscribers(collection, filtered);
+    try {
+      syncChannel?.postMessage({ type: 'SYNC_COLLECTION', collection, data: filtered });
+    } catch {}
   } else if (typeof currentList === 'object' && currentList !== null) {
     delete currentList[id];
-    setCachedCollection(collection, { ...currentList });
-    notifySubscribers(collection, currentList);
+    const updated = { ...currentList };
+    setCachedCollection(collection, updated);
+    notifySubscribers(collection, updated);
+    try {
+      syncChannel?.postMessage({ type: 'SYNC_COLLECTION', collection, data: updated });
+    } catch {}
   }
 
   // 2. Delete on Hostinger server
@@ -376,10 +522,16 @@ export function subscribeToLabSettings(
   _onError?: (err?: any) => void
 ): () => void {
   const cached = getCachedCollection(COLLECTIONS.LAB_SETTINGS);
-  if (cached && Object.keys(cached).length > 0) {
-    callback(cached);
+  const normalized = normalizeCollectionData(COLLECTIONS.LAB_SETTINGS, cached);
+  if (normalized && Object.keys(normalized).length > 0) {
+    callback(normalized);
   }
-  return registerSubscriber(COLLECTIONS.LAB_SETTINGS, callback);
+  return registerSubscriber(COLLECTIONS.LAB_SETTINGS, (data) => {
+    const cleanMap = normalizeCollectionData(COLLECTIONS.LAB_SETTINGS, data);
+    if (cleanMap && Object.keys(cleanMap).length > 0) {
+      callback(cleanMap);
+    }
+  });
 }
 
 export async function fetchAllLabSettingsFromCloud(): Promise<Record<string, VendorLabSettings>> {

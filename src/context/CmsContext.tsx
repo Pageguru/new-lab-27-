@@ -77,6 +77,7 @@ import {
   syncBranchToCloud,
   deleteBranchFromCloud,
   subscribeToBranches,
+  forceRefreshAllFromHostinger,
 } from '../lib/cloudSync';
 
 export const DEFAULT_VENDOR_SECTIONS: VendorWebsiteSections = {
@@ -2637,22 +2638,15 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (cloudSettingsMap && Object.keys(cloudSettingsMap).length > 0) {
           setVendorLabSettingsMap((prev) => {
             const next = { ...prev };
-            for (const [labId, cloudSettings] of Object.entries(cloudSettingsMap)) {
-              const currentLocal = prev[labId];
-              if (!currentLocal) {
-                next[labId] = cloudSettings;
-                continue;
-              }
-              const cloudTime = cloudSettings._updatedAt ? new Date(cloudSettings._updatedAt).getTime() : 0;
-              const localTime = (currentLocal as any)._updatedAt ? new Date((currentLocal as any)._updatedAt).getTime() : 0;
-              
-              // Only overwrite local if cloud is strictly newer OR local has no timestamp
-              if (!localTime || cloudTime >= localTime) {
-                next[labId] = { ...currentLocal, ...cloudSettings };
-              } else {
-                // Local has a newer edit; keep local and re-sync to cloud so it never gets lost!
-                syncLabSettingsToCloud(labId, currentLocal);
-              }
+            // Support both Map (Record<string, VendorLabSettings>) and Array
+            const entries = Array.isArray(cloudSettingsMap)
+              ? cloudSettingsMap.map((item: any) => [item.labId || item.id, item] as const)
+              : Object.entries(cloudSettingsMap);
+
+            for (const [rawKey, cloudSettings] of entries) {
+              const labId = (cloudSettings as any)?.labId || (cloudSettings as any)?.id || rawKey;
+              if (!labId || labId === '0') continue;
+              next[labId] = { ...(prev[labId] || {}), ...cloudSettings };
             }
             try {
               localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(next));
@@ -2673,7 +2667,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 3. Subscribe to Tests Catalog & Pricing
     const unsubscribeTests = subscribeToTests(
       (cloudTests) => {
-        if (cloudTests) {
+        if (Array.isArray(cloudTests) && cloudTests.length > 0) {
           setAllVendorTests(cloudTests);
           try {
             localStorage.setItem('cms_vendor_tests', JSON.stringify(cloudTests));
@@ -2685,7 +2679,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 4. Subscribe to Health Packages
     const unsubscribePackages = subscribeToPackages(
       (cloudPackages) => {
-        if (cloudPackages) {
+        if (Array.isArray(cloudPackages) && cloudPackages.length > 0) {
           setAllVendorPackages(cloudPackages);
           try {
             localStorage.setItem('cms_vendor_packages', JSON.stringify(cloudPackages));
@@ -2697,7 +2691,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 5. Subscribe to Doctors & Pathologists
     const unsubscribeDoctors = subscribeToDoctors(
       (cloudDoctors) => {
-        if (cloudDoctors) {
+        if (Array.isArray(cloudDoctors) && cloudDoctors.length > 0) {
           setAllVendorDoctors(cloudDoctors);
           try {
             localStorage.setItem('cms_vendor_doctors', JSON.stringify(cloudDoctors));
@@ -2709,7 +2703,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 6. Subscribe to live reception patients
     const unsubscribeReception = subscribeToReceptionEntries(
       (cloudEntries) => {
-        if (cloudEntries) {
+        if (Array.isArray(cloudEntries)) {
           setAllReceptionEntries(cloudEntries);
           try {
             localStorage.setItem('cms_reception_entries', JSON.stringify(cloudEntries));
@@ -2728,7 +2722,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 7. Subscribe to live lab reports
     const unsubscribeReports = subscribeToLabReports(
       (cloudReports) => {
-        if (cloudReports) {
+        if (Array.isArray(cloudReports)) {
           setAllReports(cloudReports);
           try {
             localStorage.setItem('cms_lab_reports', JSON.stringify(cloudReports));
@@ -2747,7 +2741,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 8. Subscribe to home collection bookings
     const unsubscribeBookings = subscribeToBookings(
       (cloudBookings) => {
-        if (cloudBookings) {
+        if (Array.isArray(cloudBookings)) {
           setAllVendorBookings(cloudBookings);
         }
       }
@@ -2755,62 +2749,33 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 9. Subscribe to Company Settings
     const unsubscribeCompany = subscribeToCompanySettings((cloudSettings) => {
-      if (cloudSettings && Object.keys(cloudSettings).length > 0) {
-        setCompanySettings((prev) => ({ ...prev, ...cloudSettings }));
+      if (cloudSettings && typeof cloudSettings === 'object') {
+        const clean = Array.isArray(cloudSettings) ? cloudSettings[0] : cloudSettings;
+        if (clean) setCompanySettings((prev) => ({ ...prev, ...clean }));
       }
     });
 
     // 10. Subscribe to Portal Sections
     const unsubscribeSections = subscribeToPortalSections((cloudSections) => {
-      if (cloudSections && Object.keys(cloudSections).length > 0) {
-        setPortalSections((prev) => ({ ...prev, ...cloudSections }));
+      if (cloudSections && typeof cloudSections === 'object') {
+        const clean = Array.isArray(cloudSections) ? cloudSections[0] : cloudSections;
+        if (clean) setPortalSections((prev) => ({ ...prev, ...clean }));
       }
     });
 
-    // 11. Subscribe to Vendor Labs Directory
+    // 11. Subscribe to Vendor Labs Directory (Updates instantly across all devices)
     const unsubscribeVendorLabs = subscribeToVendorLabs((cloudLabs) => {
-      if (cloudLabs && cloudLabs.length > 0) {
-        setVendorLabsList((prev) => {
-          const next = [...prev];
-          for (const cLab of cloudLabs) {
-            const idx = next.findIndex((l) => l.id === cLab.id);
-            if (idx === -1) {
-              next.push({
-                ...cLab,
-                isWebsiteApproved: cLab.isWebsiteApproved ?? (cLab.status === 'Active'),
-              });
-            } else {
-              const localLab = next[idx];
-              const cloudTime = (cLab as any)._updatedAt ? new Date((cLab as any)._updatedAt).getTime() : 0;
-              const localTime = (localLab as any)._updatedAt ? new Date((localLab as any)._updatedAt).getTime() : 0;
-
-              // CRITICAL: If local lab is marked published ('Active') and cloud still has older/draft data:
-              // Keep the active published state and re-sync to cloud so it never reverts to draft!
-              if (localLab.status === 'Active' && (cLab.status !== 'Active' || !cLab.isWebsiteApproved)) {
-                syncVendorLabToCloud(localLab);
-                continue;
-              }
-
-              if (!localTime || cloudTime >= localTime) {
-                next[idx] = {
-                  ...localLab,
-                  ...cLab,
-                  isWebsiteApproved: cLab.isWebsiteApproved ?? (cLab.status === 'Active' || localLab.status === 'Active'),
-                };
-              }
-            }
-          }
-          try {
-            localStorage.setItem('cms_vendor_labs_list', JSON.stringify(next));
-          } catch {}
-          return next;
-        });
+      if (Array.isArray(cloudLabs) && cloudLabs.length > 0) {
+        setVendorLabsList(cloudLabs);
+        try {
+          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(cloudLabs));
+        } catch {}
       }
     });
 
     // 12. Subscribe to Branches & Counters (Device A, B, Reception, etc.)
     const unsubscribeBranches = subscribeToBranches((cloudBranches) => {
-      if (cloudBranches) {
+      if (Array.isArray(cloudBranches) && cloudBranches.length > 0) {
         setAllVendorBranches(cloudBranches);
         try {
           localStorage.setItem('cms_vendor_branches', JSON.stringify(cloudBranches));
@@ -2886,10 +2851,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Explicit Cloud Refresh (Pulls latest directly from Cloud Firestore servers, zero cache)
+  // Explicit Cloud Refresh (Pulls latest directly from Hostinger server/database, zero cache)
   const refreshCloudData = async () => {
     setCloudSyncStatus('syncing');
     try {
+      await forceRefreshAllFromHostinger();
       const [cloudSettings, cloudReports, cloudEntries] = await Promise.all([
         fetchAllLabSettingsFromCloud(),
         fetchReportsFromServer(),

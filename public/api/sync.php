@@ -17,14 +17,46 @@ if ($method === 'GET') {
         $since = isset($_GET['since']) ? (float)$_GET['since'] : 0;
         $meta = getSyncMetadata();
         $serverTime = round(microtime(true) * 1000);
+        $lastUpdated = (float)($meta['lastUpdated'] ?? 0);
         
-        $hasUpdates = $meta['lastUpdated'] > $since;
+        $hasUpdates = $lastUpdated > $since;
+        $updatedCollections = [];
+        
+        if (isset($meta['collections']) && is_array($meta['collections'])) {
+            foreach ($meta['collections'] as $col => $ts) {
+                if ((float)$ts > $since) {
+                    $updatedCollections[] = $col;
+                }
+            }
+        }
+        
+        // Fallback for legacy meta
+        if ($hasUpdates && empty($updatedCollections)) {
+            $updatedCollections = [
+                'reception_entries',
+                'lab_reports',
+                'vendor_bookings',
+                'lab_staff',
+                'lab_settings',
+                'lab_tests',
+                'lab_packages',
+                'lab_doctors',
+                'vendor_branches',
+                'company_settings',
+                'portal_sections',
+                'vendor_labs',
+                'pricing_plans',
+                'contact_submissions',
+                'domain_requests'
+            ];
+        }
+
         echo json_encode([
             'status' => 'success',
             'serverTime' => $serverTime,
-            'lastUpdated' => $meta['lastUpdated'],
+            'lastUpdated' => $lastUpdated,
             'hasUpdates' => $hasUpdates,
-            'lastCollection' => $meta['lastCollection'] ?? '',
+            'updatedCollections' => $updatedCollections,
             'storageMode' => getStorageMode()
         ]);
         exit();
@@ -37,16 +69,25 @@ if ($method === 'GET') {
             exit();
         }
         $data = readCollectionFile($collection);
-        echo json_encode([
+        $resp = [
             'status' => 'success',
             'collection' => $collection,
             'data' => $data,
             'serverTime' => round(microtime(true) * 1000)
-        ]);
+        ];
+        if ($collection === 'lab_settings' && is_array($data)) {
+            $map = [];
+            foreach ($data as $item) {
+                $lid = $item['labId'] ?? $item['id'] ?? '';
+                if ($lid) $map[$lid] = $item;
+            }
+            $resp['map'] = $map;
+        }
+        echo json_encode($resp);
         exit();
     }
 
-    // Default GET: Fetch all active collections for full hydration
+    // Default GET: Fetch all active collections
     $knownCollections = [
         'reception_entries',
         'lab_reports',
@@ -75,7 +116,7 @@ if ($method === 'GET') {
         'status' => 'success',
         'data' => $allData,
         'serverTime' => round(microtime(true) * 1000),
-        'lastUpdated' => $meta['lastUpdated'],
+        'lastUpdated' => $meta['lastUpdated'] ?? round(microtime(true) * 1000),
         'storageMode' => getStorageMode()
     ]);
     exit();

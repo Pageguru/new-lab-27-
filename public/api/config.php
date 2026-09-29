@@ -4,17 +4,26 @@
  * Handles Hostinger MySQL Database Connection with Automatic FileStorage Fallback
  */
 
-// Enable error reporting for debugging (disable in strict production if desired)
+// Enable error reporting for debugging
 error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
 ini_set('display_errors', '0');
 
-// CORS Headers - Allow cross-origin requests from custom domains and subdomains
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header("Access-Control-Allow-Origin: $origin");
-header("Access-Control-Allow-Credentials: true");
+// CORS Headers - Allow cross-origin requests from all lab subdomains, mobile devices & preview apps
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (!empty($origin)) {
+    header("Access-Control-Allow-Origin: $origin");
+    header("Access-Control-Allow-Credentials: true");
+} else {
+    header("Access-Control-Allow-Origin: *");
+}
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma");
 header("Content-Type: application/json; charset=UTF-8");
+
+// Strict Anti-Cache Headers: Force Hostinger CDN and Browsers to never cache dynamic API responses
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0");
+header("Pragma: no-cache");
+header("Expires: 0");
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -25,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // -----------------------------------------------------------------------------
 // 1. Hostinger Database Credentials
 // -----------------------------------------------------------------------------
-// Enter your Hostinger MySQL database details below (from Hostinger hPanel -> Databases):
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_USER', getenv('DB_USER') ?: 'u873216892_lalaji'); // Hostinger MySQL Username
 define('DB_PASS', getenv('DB_PASS') ?: 'IndianLalaji@2026');   // Hostinger MySQL Password
@@ -47,10 +55,10 @@ if (!file_exists(UPLOADS_DIR)) {
 // 2. Database Connection Helper (PDO with Graceful Fallback)
 // -----------------------------------------------------------------------------
 $pdo = null;
-$storageMode = 'file'; // 'mysql' or 'file'
+$storageMode = 'file';
 
 try {
-    if (defined('DB_USER') && DB_USER !== 'u873216892_lalaji' && DB_NAME !== 'u873216892_healthcare') {
+    if (defined('DB_USER') && DB_USER) {
         $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
         $pdo = new PDO($dsn, DB_USER, DB_PASS, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -61,22 +69,15 @@ try {
         $storageMode = 'mysql';
     }
 } catch (Exception $e) {
-    // If MySQL connection fails, seamlessly fallback to high-performance JSON flat-file storage
     $pdo = null;
     $storageMode = 'file';
 }
 
-/**
- * Returns current database PDO or null
- */
 function getDbConnection() {
     global $pdo;
     return $pdo;
 }
 
-/**
- * Returns current active storage mode
- */
 function getStorageMode() {
     global $storageMode;
     return $storageMode;
@@ -114,17 +115,20 @@ function writeCollectionFile($collection, $data) {
         fclose($fp);
     }
     
-    // Update global sync timestamp
+    // Update global sync timestamp and track per-collection update
+    $now = round(microtime(true) * 1000);
+    $meta = getSyncMetadata();
+    $meta['lastUpdated'] = $now;
+    if (!isset($meta['collections']) || !is_array($meta['collections'])) {
+        $meta['collections'] = [];
+    }
+    $meta['collections'][$collection] = $now;
     $metaFile = DATA_DIR . '/_meta.json';
-    $meta = [
-        'lastUpdated' => round(microtime(true) * 1000),
-        'lastCollection' => $collection
-    ];
-    @file_put_contents($metaFile, json_encode($meta));
+    @file_put_contents($metaFile, json_encode($meta, JSON_PRETTY_PRINT));
 }
 
 /**
- * Get Global Sync Timestamp
+ * Get Global Sync Timestamp and per-collection timestamps
  */
 function getSyncMetadata() {
     $metaFile = DATA_DIR . '/_meta.json';
@@ -134,6 +138,6 @@ function getSyncMetadata() {
     }
     return [
         'lastUpdated' => round(microtime(true) * 1000),
-        'lastCollection' => ''
+        'collections' => []
     ];
 }

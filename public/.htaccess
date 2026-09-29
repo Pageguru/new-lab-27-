@@ -46,8 +46,10 @@
 # Browser Caching for Production Assets
 <IfModule mod_expires.c>
   ExpiresActive On
-  ExpiresDefault "access plus 1 month"
+  ExpiresDefault "access plus 0 seconds"
   ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType application/json "access plus 0 seconds"
+  ExpiresByType application/x-httpd-php "access plus 0 seconds"
   ExpiresByType application/javascript "access plus 1 year"
   ExpiresByType text/css "access plus 1 year"
   ExpiresByType image/jpeg "access plus 1 year"
@@ -56,8 +58,13 @@
   ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 
-# Security Headers
+# Strict Anti-Caching for API Endpoints and Dynamic Scripts (Hostinger LiteSpeed / Apache / hcdn)
 <IfModule mod_headers.c>
+  <FilesMatch "\.(php|json)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-XSS-Protection "1; mode=block"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"

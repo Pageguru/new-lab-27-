@@ -29,8 +29,28 @@ export const RoleContextBanner: React.FC<RoleContextBannerProps> = ({
   currentView,
   onNavigateView,
 }) => {
-  const { currentUser, logout, openLoginModal, isCloudConnected, activeBranchId, setActiveBranchId } =
-    useCms();
+  const {
+    currentUser,
+    logout,
+    openLoginModal,
+    isCloudConnected,
+    activeBranchId,
+    setActiveBranchId,
+    refreshCloudData,
+    cloudSyncStatus,
+    lastCloudSyncTime,
+  } = useCms();
+
+  const [isManualSyncing, setIsManualSyncing] = React.useState(false);
+
+  const handleManualSync = async () => {
+    setIsManualSyncing(true);
+    try {
+      await refreshCloudData();
+    } finally {
+      setTimeout(() => setIsManualSyncing(false), 600);
+    }
+  };
 
   if (!currentUser) return null;
 
@@ -248,6 +268,17 @@ export const RoleContextBanner: React.FC<RoleContextBannerProps> = ({
           >
             <RefreshCw className="w-3 h-3 text-slate-950" />
             <span>Switch Role / Re-login</span>
+          </button>
+
+          {/* Quick Manual Server Sync button */}
+          <button
+            type="button"
+            onClick={handleManualSync}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-500/40 rounded-lg text-[11px] font-bold transition shadow-xs cursor-pointer active:scale-95"
+            title={`Server Database Live: ${lastCloudSyncTime || 'Just Now'}. Click to pull latest updates from Hostinger server across all devices.`}
+          >
+            <RefreshCw className={`w-3 h-3 ${isManualSyncing || cloudSyncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+            <span>Sync Data</span>
           </button>
 
           {/* Logout */}
