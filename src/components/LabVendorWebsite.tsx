@@ -388,7 +388,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const [isPaymentQrModalOpen, setIsPaymentQrModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
-  const [selectedQrType, setSelectedQrType] = useState<'counter' | 'home'>('counter');
   const [isWebsiteQrModalOpen, setIsWebsiteQrModalOpen] = useState(false);
   const [copiedWebsiteUrl, setCopiedWebsiteUrl] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
@@ -4216,48 +4215,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               </div>
             </div>
 
-            {/* If 2 QRs are configured, show toggle tabs */}
-            {(vendorLabSettings?.upiId2 || vendorLabSettings?.qrCode2Url) && (
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl w-full my-3 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setSelectedQrType('counter')}
-                  className={`py-1.5 px-2 rounded-lg transition text-[11px] ${
-                    selectedQrType === 'counter'
-                      ? 'bg-white text-[#123B6D] shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {vendorLabSettings?.qrCode1Label || 'Counter Billing'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedQrType('home')}
-                  className={`py-1.5 px-2 rounded-lg transition text-[11px] ${
-                    selectedQrType === 'home'
-                      ? 'bg-white text-[#123B6D] shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {vendorLabSettings?.qrCode2Label || 'Home Collection'}
-                </button>
-              </div>
-            )}
-
             {/* QR Code Container */}
             <div className="mt-3 p-3 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 w-full flex flex-col items-center">
               <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
                 <img
                   src={
-                    (selectedQrType === 'counter'
-                      ? vendorLabSettings?.qrCode1Url
-                      : vendorLabSettings?.qrCode2Url) ||
+                    vendorLabSettings?.qrCode1Url ||
+                    (vendorLabSettings as any)?.qrCodeUrl ||
                     `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(
                       `upi://pay?pa=${
-                        (selectedQrType === 'counter'
-                          ? vendorLabSettings?.upiId1
-                          : vendorLabSettings?.upiId2) ||
                         vendorLabSettings?.upiId1 ||
+                        (vendorLabSettings as any)?.upiId ||
                         'apexlab@icici'
                       }&pn=${encodeURIComponent(
                         vendorLabSettings?.merchantName || labName
@@ -4281,20 +4249,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 {/* 1-Click Copy UPI Bar */}
                 <div className="mt-2 flex items-center justify-between gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs w-full">
                   <div className="truncate font-mono font-bold text-slate-700 text-[11px]">
-                    {(selectedQrType === 'counter'
-                      ? vendorLabSettings?.upiId1
-                      : vendorLabSettings?.upiId2) ||
-                      vendorLabSettings?.upiId1 ||
+                    {vendorLabSettings?.upiId1 ||
+                      (vendorLabSettings as any)?.upiId ||
                       'apexlab@icici'}
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       const upi =
-                        (selectedQrType === 'counter'
-                          ? vendorLabSettings?.upiId1
-                          : vendorLabSettings?.upiId2) ||
                         vendorLabSettings?.upiId1 ||
+                        (vendorLabSettings as any)?.upiId ||
                         'apexlab@icici';
                       navigator.clipboard?.writeText(upi);
                       setCopiedUpi(true);
