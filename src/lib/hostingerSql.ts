@@ -1,6 +1,6 @@
 export const HOSTINGER_SQL_SCHEMA = `-- ==============================================================================
--- INDIANLALAJI.COM - COMPLETE HOSTINGER MYSQL DATABASE SCHEMA
--- For Import in Hostinger phpMyAdmin / MySQL Databases
+-- INDIANALALA.COM - COMPLETE HOSTINGER MYSQL DATABASE SCHEMA
+-- Main Domain: indianalala.com | Hostinger Web Hosting & MySQL Databases
 -- ==============================================================================
 
 SET NAMES utf8mb4;
@@ -255,7 +255,7 @@ VALUES (
   'rkmehra331996@gmail.com',
   'rkmehra331996@gmail.com',
   '+91 7087033009',
-  'admin123',
+  'Asdfzxcv@336699',
   'active',
   '24x7 Master Administrator',
   'Primary Account Owner & Super Admin (rkmehra331996@gmail.com)'

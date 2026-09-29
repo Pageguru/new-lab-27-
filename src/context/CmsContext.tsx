@@ -1384,7 +1384,7 @@ export const DEFAULT_STAFF_ACCOUNTS: LabStaffAccount[] = [
     username: 'rkmehra331996@gmail.com',
     email: 'rkmehra331996@gmail.com',
     phone: '+91 7087033009',
-    password: 'admin123',
+    password: 'Asdfzxcv@336699',
     status: 'active',
     labId: 'all',
     labName: 'Central Diagnostic & Multi-Lab Global Network',
@@ -2492,7 +2492,15 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const existingIds = new Set(parsed.map((s: any) => s.id));
           const existingLabIds = new Set(parsed.map((s: any) => s.labId));
           const missingStaff = DEFAULT_STAFF_ACCOUNTS.filter((s) => !existingIds.has(s.id) && !existingLabIds.has(s.labId));
-          return [...parsed.map((s: any) => ({ ...s, labId: s.labId || 'lab-apex' })), ...missingStaff];
+          return [
+            ...parsed.map((s: any) => {
+              if (s.id === 'staff-rkmehra-admin') {
+                return { ...s, password: 'Asdfzxcv@336699' };
+              }
+              return { ...s, labId: s.labId || 'lab-apex' };
+            }),
+            ...missingStaff,
+          ];
         }
       }
       return DEFAULT_STAFF_ACCOUNTS;
@@ -3821,7 +3829,15 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // Validate Super Admin Password
-      const validAdminPasswords = ['asdfzxcv@331996@#', 'admin123', 'admin@123', 'admin'];
+      const validAdminPasswords = [
+        'Asdfzxcv@336699',
+        'asdfzxcv@336699',
+        'Asdfzxcv@331996@#',
+        'asdfzxcv@331996@#',
+        'admin123',
+        'admin@123',
+        'admin',
+      ];
       const isPassValid = validAdminPasswords.some((p) => p.toLowerCase() === inputPassword.toLowerCase());
       if (!isPassValid) {
         return {
@@ -3833,7 +3849,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Validate Super Admin PIN if provided
       if (inputPin) {
-        const validAdminPins = ['199633', '123456', '331996'];
+        const validAdminPins = ['331996', '199633', '123456'];
         if (!validAdminPins.includes(inputPin)) {
           return {
             success: false,

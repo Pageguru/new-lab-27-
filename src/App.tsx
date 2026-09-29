@@ -121,9 +121,12 @@ export default function App() {
       } else if (currentView === 'vendor_website') {
         const hostname = window.location.hostname.toLowerCase();
         const isSubdomainOfMain =
-          hostname.endsWith('indianlalaji.com') &&
-          hostname !== 'indianlalaji.com' &&
-          hostname !== 'www.indianlalaji.com';
+          (hostname.endsWith('indianalala.com') &&
+            hostname !== 'indianalala.com' &&
+            hostname !== 'www.indianalala.com') ||
+          (hostname.endsWith('indianlalaji.com') &&
+            hostname !== 'indianlalaji.com' &&
+            hostname !== 'www.indianlalaji.com');
 
         if (isSubdomainOfMain) {
           // Dedicated lab subdomain (e.g. apexdiagnostics.indianlalaji.com) - keep clean URL

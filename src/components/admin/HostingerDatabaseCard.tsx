@@ -20,12 +20,12 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'indianlalaji_hostinger_database.sql');
+      link.setAttribute('download', 'indianalala_hostinger_database.sql');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast('✅ Hostinger SQL Database Schema Downloaded! Import this into Hostinger phpMyAdmin.');
+      showToast('✅ Hostinger SQL Database Schema Downloaded! Import this into Hostinger phpMyAdmin for indianalala.com.');
     } catch {
       showToast('❌ Failed to trigger file download.');
     }
@@ -72,7 +72,7 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Hostinger cPanel / hPanel MySQL Database setup • Firebase से पूरी तरह स्वतंत्र
+              Hostinger cPanel / hPanel MySQL Database setup • Main Domain: <strong>indianalala.com</strong> • Firebase से पूरी तरह स्वतंत्र
             </p>
           </div>
         </div>
@@ -120,7 +120,7 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
               <span>phpMyAdmin खोलें और Import करें</span>
             </div>
             <p className="text-slate-600 text-[11px] leading-relaxed">
-              बने हुए डेटाबेस के सामने <strong>Enter phpMyAdmin</strong> पर क्लिक करें। ऊपर <strong>Import</strong> टैब दबाएँ और ऊपर दिए गए बटन से डाउनलोड की हुई <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-800 font-mono">indianlalaji_hostinger_database.sql</code> फाइल सेलेक्ट करें।
+              बने हुए डेटाबेस के सामने <strong>Enter phpMyAdmin</strong> पर क्लिक करें। ऊपर <strong>Import</strong> टैब दबाएँ और ऊपर दिए गए बटन से डाउनलोड की हुई <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-800 font-mono">indianalala_hostinger_database.sql</code> फाइल सेलेक्ट करें।
             </p>
           </div>
 
@@ -130,7 +130,7 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
               <span>100% Hostinger Ready</span>
             </div>
             <p className="text-slate-600 text-[11px] leading-relaxed">
-              Import होते ही सभी 10 टेबल्स (मरीज़, टेस्ट्स, बिलिंग, रिपोर्ट्स, स्टाफ, सेटिंग्स) सीधे Hostinger MySQL पर लाइव तैयार हो जाएँगे।
+              Import होते ही सभी 10 टेबल्स (मरीज़, टेस्ट्स, बिलिंग, रिपोर्ट्स, स्टाफ, सेटिंग्स) सीधे Hostinger MySQL (indianalala.com) पर लाइव तैयार हो जाएँगे।
             </p>
           </div>
         </div>
@@ -140,7 +140,7 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
       <form onSubmit={handleSaveHostingerConfig} className="space-y-4 pt-2 border-t border-slate-100">
         <div className="flex items-center justify-between">
           <h4 className="font-bold text-xs text-slate-800">
-            Hostinger Database Connection Settings (hostinger_db_config)
+            Hostinger Database Connection Settings (Main Domain: indianalala.com)
           </h4>
           {isSaved && (
             <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
@@ -167,7 +167,7 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
               type="text"
               value={dbName}
               onChange={(e) => setDbName(e.target.value)}
-              placeholder="u123456789_indianlalaji"
+              placeholder="u123456789_indianalala"
               className="w-full p-2.5 rounded-xl border border-slate-200 font-mono text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-hidden"
             />
           </div>

@@ -43,13 +43,18 @@ export function resolveAppRoute(
   const viewParam = params.get('view') as AppView | null;
   const labParam = params.get('lab') || params.get('subdomain');
 
-  // 1. Check for platform root domain (indianlalaji.com or www.indianlalaji.com)
-  const isMainRootDomain = cleanHost === 'indianlalaji.com' || cleanHost === 'www.indianlalaji.com';
+  // 1. Check for platform root domain (indianalala.com, indianlalaji.com, or www.*)
+  const isMainRootDomain =
+    cleanHost === 'indianalala.com' ||
+    cleanHost === 'www.indianalala.com' ||
+    cleanHost === 'indianlalaji.com' ||
+    cleanHost === 'www.indianlalaji.com';
 
-  // 2. Check for subdomains on indianlalaji.com
+  // 2. Check for subdomains on indianalala.com or indianlalaji.com
   let hostSubdomain: string | null = null;
-  if (cleanHost.endsWith('indianlalaji.com') && !isMainRootDomain) {
-    const withoutSuffix = cleanHost.replace(/\.?indianlalaji\.com$/, '');
+  const isMatchedBaseDomain = cleanHost.endsWith('indianalala.com') || cleanHost.endsWith('indianlalaji.com');
+  if (isMatchedBaseDomain && !isMainRootDomain) {
+    const withoutSuffix = cleanHost.replace(/\.?(indianalala|indianlalaji)\.com$/, '');
     const parts = withoutSuffix.split('.');
     const sub = parts[parts.length - 1];
     if (sub && sub !== 'www') {

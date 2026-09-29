@@ -1,11 +1,12 @@
 /**
- * Central Domain Configuration for INDIANLALAJI.COM Healthcare Platform
+ * Central Domain Configuration for INDIANALALA.COM Healthcare Platform
  * "Har Lab Ka Apna URL" - Every Diagnostic Lab has its own dedicated website URL & subdomain.
+ * Hostinger Database & Main Domain: indianalala.com
  */
 
-export const SUPER_ADMIN_DOMAIN = 'indianlalaji.com';
-export const SUPER_ADMIN_NAME = 'INDIANLALAJI.COM';
-export const SUPER_ADMIN_EMAIL = 'admin@indianlalaji.com';
+export const SUPER_ADMIN_DOMAIN = 'indianalala.com';
+export const SUPER_ADMIN_NAME = 'INDIANALALA.COM';
+export const SUPER_ADMIN_EMAIL = 'admin@indianalala.com';
 export const SUPPORT_PHONE = '7087033009';
 export const SUPPORT_PHONE_FORMATTED = '+91 7087033009';
 
@@ -54,8 +55,8 @@ export function getTenantBrowserUrl(subdomainOrDomain: string, targetView: strin
   const cleanSub = getTenantSubdomain(subdomainOrDomain);
   if (typeof window !== 'undefined' && window.location.origin) {
     const origin = window.location.origin;
-    // If running on actual indianlalaji.com domain
-    if (window.location.hostname.endsWith(SUPER_ADMIN_DOMAIN)) {
+    // If running on actual indianalala.com domain or subdomains
+    if (window.location.hostname.endsWith(SUPER_ADMIN_DOMAIN) || window.location.hostname.endsWith('indianlalaji.com')) {
       return `https://${cleanSub}.${SUPER_ADMIN_DOMAIN}`;
     }
     // In preview / container / local dev: generate accessible deep link

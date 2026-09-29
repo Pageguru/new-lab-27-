@@ -88,19 +88,22 @@ export function sanitizeForFirestore<T>(data: T): T {
 function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    // If the browser is running on indianlalaji.com or any of its subdomains:
-    if (host.endsWith('indianlalaji.com')) {
-      return 'https://indianlalaji.com';
-    }
     // If running on local developer dev server (localhost:3000):
     if (host === 'localhost' || host === '127.0.0.1') {
       return window.location.origin;
     }
+    // If the browser is running on indianalala.com or indianlalaji.com or any of its subdomains:
+    if (host.endsWith('indianalala.com')) {
+      return 'https://indianalala.com';
+    }
+    if (host.endsWith('indianlalaji.com')) {
+      return 'https://indianalala.com';
+    }
     // On all other devices (preview, shared link, mobile phone, custom domain):
-    // Always connect to the central Hostinger server so ALL devices share the same live database!
-    return 'https://indianlalaji.com';
+    // Always connect to the central Hostinger server on main domain indianalala.com so ALL devices share the same live database!
+    return 'https://indianalala.com';
   }
-  return 'https://indianlalaji.com';
+  return 'https://indianalala.com';
 }
 
 async function callHostingerApi(endpoint: string, options?: RequestInit): Promise<any> {
