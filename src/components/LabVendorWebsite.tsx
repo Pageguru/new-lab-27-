@@ -476,7 +476,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const handleScrollPackages = (direction: 'left' | 'right') => {
     if (!packagesCarouselRef.current) return;
     const container = packagesCarouselRef.current;
-    const scrollAmount = container.clientWidth * 0.88;
+    const scrollAmount = container.clientWidth * 0.76;
     container.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth'
@@ -2656,8 +2656,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
       {/* SECTION 3: HEALTH PACKAGES (with Booking Button & Peek Carousel) */}
       <div id="packages-section" className="scroll-mt-24" />
-      <section id="packages" className="py-16 bg-white border-b border-slate-200 scroll-mt-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8">
+      <section id="packages" className="py-12 sm:py-16 bg-white border-b border-slate-200 scroll-mt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B6D]/10 text-[#123B6D] text-xs font-bold mb-3">
               <span>{vendorLabSettings?.packagesBadge || 'Preventive Health Packages'}</span>
@@ -2711,19 +2711,19 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             };
 
             return (
-              <div className="max-w-6xl mx-auto">
-                {/* Desktop View: Grid (Unchanged) */}
-                <div className="hidden md:grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch justify-center">
+              <div className="max-w-5xl mx-auto">
+                {/* Desktop View: Compact Grid */}
+                <div className="hidden md:grid md:grid-cols-3 gap-5 lg:gap-6 items-stretch justify-center">
                   {vendorPackages.slice(0, 3).map((pkg, idx) => {
                     const pkgImageUrl = getPackageImg(pkg, idx);
 
                     return (
                       <div
                         key={pkg.id || idx}
-                        className="bg-white rounded-3xl border border-slate-200/90 hover:border-[#123B6D]/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group relative h-full w-full"
+                        className="bg-white rounded-2xl border border-slate-200 hover:border-[#123B6D]/40 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group relative h-full w-full"
                       >
-                        {/* Package Cover Image */}
-                        <div className="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
+                        {/* Package Cover Image - Compact & Sleek */}
+                        <div className="relative w-full h-36 sm:h-40 bg-slate-100 overflow-hidden shrink-0">
                           <img
                             src={pkgImageUrl}
                             alt={pkg.name}
@@ -2734,31 +2734,31 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
                           {/* Popular Badge */}
                           {(pkg.isPopular || idx === 0) && (
-                            <div className="absolute top-3 left-3 bg-[#F59E0B] text-slate-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                            <div className="absolute top-2.5 left-2.5 bg-[#F59E0B] text-slate-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
                               Most Popular
                             </div>
                           )}
                         </div>
 
-                        {/* Card Content with Flex-1 to guarantee uniform equal height */}
-                        <div className="p-5 sm:p-6 flex flex-col flex-1 justify-between">
+                        {/* Card Content - Compact padding */}
+                        <div className="p-4 sm:p-4.5 flex flex-col flex-1 justify-between">
                           <div className="flex-1 flex flex-col">
-                            {/* Sabse upar Package ka naam with equal fixed min-height */}
-                            <h3 className="text-base sm:text-lg font-black text-[#123B6D] leading-snug mb-3 min-h-[3rem] flex items-center">
+                            {/* Package Name */}
+                            <h3 className="text-sm sm:text-base font-black text-[#123B6D] leading-snug mb-2 min-h-[2.4rem] flex items-center">
                               {pkg.name}
                             </h3>
 
-                            {/* Uske neeche List of Tests with equal fixed height */}
-                            <div className="space-y-2 mb-5 flex-1 flex flex-col">
-                              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                            {/* Tests List */}
+                            <div className="space-y-1.5 mb-3 flex-1 flex flex-col">
+                              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                 <span>Included Tests:</span>
                                 <span className="text-[10px] font-bold text-slate-400">
                                   {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                 </span>
                               </div>
-                              <div className="space-y-1.5 h-48 overflow-y-auto pr-1">
+                              <div className="space-y-1 h-28 overflow-y-auto pr-1">
                                 {pkg.features.map((feat, fIdx) => (
-                                  <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
+                                  <div key={fIdx} className="flex items-start gap-1.5 text-[11px] sm:text-xs text-slate-700 leading-snug">
                                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                                     <span className="font-medium text-slate-700">{feat}</span>
                                   </div>
@@ -2767,9 +2767,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                             </div>
                           </div>
 
-                          {/* Uske neeche inline 2 buttons: Price aur Book Test */}
-                          <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5 mt-auto shrink-0">
-                            <div className="px-3.5 py-2.5 rounded-xl bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-sm sm:text-base flex items-center justify-center shrink-0 shadow-2xs">
+                          {/* Price & Book Button */}
+                          <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
+                            <div className="px-3 py-1.5 rounded-lg bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-xs sm:text-sm flex items-center justify-center shrink-0 shadow-2xs">
                               ₹{pkg.priceINR}
                             </div>
 
@@ -2779,7 +2779,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 setSelectedTestOrPackage(`${pkg.name} (₹${pkg.priceINR})`);
                                 setIsBookingModalOpen(true);
                               }}
-                              className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                              className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-1.5 px-3 rounded-lg text-xs font-black transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                             >
                               <span>Book Test</span>
                               <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
@@ -2791,20 +2791,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   })}
                 </div>
 
-                {/* Mobile View: 1 Package = 100% width, 2+ Packages = 90% card with 10% peek & swipe */}
+                {/* Mobile View: Compact Cards with Proper Section Margins */}
                 <div className="block md:hidden">
                   {vendorPackages.length === 1 ? (
-                    /* 1 Package: Full screen width (100%) */
-                    <div className="w-full">
+                    /* 1 Package: Compact centered card with margin */
+                    <div className="max-w-xs mx-auto">
                       {(() => {
                         const pkg = vendorPackages[0];
                         const pkgImageUrl = getPackageImg(pkg, 0);
                         return (
                           <div
                             key={pkg.id || 0}
-                            className="bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative w-full"
+                            className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-hidden relative w-full"
                           >
-                            <div className="relative w-full h-48 bg-slate-100 overflow-hidden shrink-0">
+                            <div className="relative w-full h-36 bg-slate-100 overflow-hidden shrink-0">
                               <img
                                 src={pkgImageUrl}
                                 alt={pkg.name}
@@ -2812,25 +2812,25 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 loading="lazy"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
-                              <div className="absolute top-3 left-3 bg-[#F59E0B] text-slate-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                              <div className="absolute top-2.5 left-2.5 bg-[#F59E0B] text-slate-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
                                 Most Popular
                               </div>
                             </div>
-                            <div className="p-5 flex flex-col justify-between">
+                            <div className="p-3.5 sm:p-4 flex flex-col justify-between">
                               <div>
-                                <h3 className="text-base font-black text-[#123B6D] leading-snug mb-2.5">
+                                <h3 className="text-sm font-black text-[#123B6D] leading-snug mb-1.5 min-h-[2.2rem] flex items-center">
                                   {pkg.name}
                                 </h3>
-                                <div className="space-y-2 mb-4">
-                                  <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                <div className="space-y-1.5 mb-3">
+                                  <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                     <span>Included Tests:</span>
                                     <span className="text-[10px] font-bold text-slate-400">
                                       {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                     </span>
                                   </div>
-                                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                                  <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
                                     {pkg.features.map((feat, fIdx) => (
-                                      <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
+                                      <div key={fIdx} className="flex items-start gap-1.5 text-xs text-slate-700 leading-snug">
                                         <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                                         <span className="font-medium text-slate-700">{feat}</span>
                                       </div>
@@ -2838,8 +2838,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                   </div>
                                 </div>
                               </div>
-                              <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5">
-                                <div className="px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#123B6D] font-black text-base shadow-2xs">
+                              <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2">
+                                <div className="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[#123B6D] font-black text-xs shadow-2xs">
                                   ₹{pkg.priceINR}
                                 </div>
                                 <button
@@ -2848,7 +2848,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     setSelectedTestOrPackage(`${pkg.name} (₹${pkg.priceINR})`);
                                     setIsBookingModalOpen(true);
                                   }}
-                                  className="flex-1 bg-[#123B6D] text-white py-2.5 px-3 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 active:scale-98"
+                                  className="flex-1 bg-[#123B6D] text-white py-1.5 px-3 rounded-lg text-xs font-black shadow-sm flex items-center justify-center gap-1 active:scale-98"
                                 >
                                   <span>Book Test</span>
                                   <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
@@ -2860,11 +2860,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       })()}
                     </div>
                   ) : vendorPackages.length > 1 ? (
-                    /* 2+ Packages: First card 90% width, next card 10% visible on right. Horizontal swipe & click navigation enabled. */
+                    /* 2+ Packages: Compact card carousel with clean margins and peek */
                     <div className="relative">
                       <div
                         ref={packagesCarouselRef}
-                        className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 pb-2 -mx-4 px-4 scroll-smooth touch-pan-x"
+                        className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-3 px-1 scroll-smooth touch-pan-x"
                         style={{
                           scrollbarWidth: 'none',
                           msOverflowStyle: 'none',
@@ -2873,7 +2873,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         onScroll={(e) => {
                           const el = e.currentTarget;
                           const scrollLeft = el.scrollLeft;
-                          const cardWidth = el.offsetWidth * 0.88;
+                          const cardWidth = el.offsetWidth * 0.76;
                           if (cardWidth > 0) {
                             const idx = Math.min(
                               vendorPackages.length - 1,
@@ -2890,10 +2890,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           return (
                             <div
                               key={pkg.id || idx}
-                              className="w-[88vw] shrink-0 snap-start bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative"
+                              className="w-[74vw] sm:w-[260px] max-w-[270px] shrink-0 snap-start bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-hidden relative"
                             >
-                              {/* Package Cover Image */}
-                              <div className="relative w-full h-44 bg-slate-100 overflow-hidden shrink-0">
+                              {/* Package Cover Image - Compact & Sleek */}
+                              <div className="relative w-full h-32 bg-slate-100 overflow-hidden shrink-0">
                                 <img
                                   src={pkgImageUrl}
                                   alt={pkg.name}
@@ -2904,39 +2904,39 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
                                 {/* Popular Badge */}
                                 {(pkg.isPopular || idx === 0) && (
-                                  <div className="absolute top-3 left-3 bg-[#F59E0B] text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
+                                  <div className="absolute top-2 left-2 bg-[#F59E0B] text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
                                     Most Popular
                                   </div>
                                 )}
                               </div>
 
                               {/* Card Content */}
-                              <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between">
+                              <div className="p-3.5 flex flex-col flex-1 justify-between">
                                 <div className="flex-1 flex flex-col">
-                                  <h3 className="text-base font-black text-[#123B6D] leading-snug mb-2 min-h-[2.5rem] flex items-center">
+                                  <h3 className="text-xs sm:text-sm font-black text-[#123B6D] leading-snug mb-1.5 min-h-[2.2rem] flex items-center">
                                     {pkg.name}
                                   </h3>
 
-                                  <div className="space-y-2 mb-4 flex-1 flex flex-col">
-                                    <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                  <div className="space-y-1 mb-3 flex-1 flex flex-col">
+                                    <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                       <span>Included Tests:</span>
-                                      <span className="text-[10px] font-bold text-slate-400">
+                                      <span className="text-[9px] font-bold text-slate-400">
                                         {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                       </span>
                                     </div>
-                                    <div className="space-y-1.5 h-36 overflow-y-auto pr-1">
+                                    <div className="space-y-1 h-24 overflow-y-auto pr-1">
                                       {pkg.features.map((feat, fIdx) => (
-                                        <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
-                                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                          <span className="font-medium text-slate-700">{feat}</span>
+                                        <div key={fIdx} className="flex items-start gap-1.5 text-[11px] text-slate-700 leading-snug">
+                                          <Check className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                                          <span className="font-medium text-slate-700 truncate">{feat}</span>
                                         </div>
                                       ))}
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="pt-3 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
-                                  <div className="px-3 py-2 rounded-xl bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                                <div className="pt-2 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
+                                  <div className="px-2.5 py-1 rounded-lg bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
                                     ₹{pkg.priceINR}
                                   </div>
 
@@ -2946,10 +2946,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       setSelectedTestOrPackage(`${pkg.name} (₹${pkg.priceINR})`);
                                       setIsBookingModalOpen(true);
                                     }}
-                                    className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2 px-3 rounded-xl text-xs font-black transition shadow-sm flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                                    className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-1.5 px-2.5 rounded-lg text-xs font-black transition shadow-sm flex items-center justify-center gap-1 active:scale-98 cursor-pointer"
                                   >
                                     <span>Book Test</span>
-                                    <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+                                    <ArrowRight className="w-3 h-3 text-amber-400" />
                                   </button>
                                 </div>
                               </div>
@@ -2968,7 +2968,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               onClick={() => {
                                 const el = packagesCarouselRef.current;
                                 if (el) {
-                                  const cardW = el.offsetWidth * 0.88;
+                                  const cardW = el.offsetWidth * 0.76;
                                   el.scrollTo({ left: dotIdx * cardW, behavior: 'smooth' });
                                   setActiveMobilePkgIndex(dotIdx);
                                 }
@@ -3433,34 +3433,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 )}
               </div>
             </div>
-
-            {/* Laboratory Diagnostic Team Group Photo Banner */}
-            {vendorLabSettings?.teamGroupPhotoUrl && (
-              <div className="mt-4 mb-8 max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 relative group">
-                <img
-                  src={vendorLabSettings.teamGroupPhotoUrl}
-                  alt={`${vendorLabSettings.labName || 'Laboratory'} Diagnostic Team`}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-48 sm:h-64 md:h-72 object-cover object-center group-hover:scale-102 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-4 sm:p-6 text-white">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
-                      Clinical Diagnostic Team
-                    </span>
-                    <span className="text-xs text-white/90 font-medium">
-                      100% NABL Quality Assured
-                    </span>
-                  </div>
-                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white">
-                    {vendorLabSettings.labName} Diagnostic Medical Team
-                  </h3>
-                  <p className="text-xs text-slate-200 line-clamp-1 sm:line-clamp-none mt-0.5">
-                    Pathologists, Biochemists, Microbiologists &amp; Senior Technologists dedicated to accurate patient testing.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {(() => {
               const doctorsList = effectiveTeamDoctors;
