@@ -187,7 +187,7 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
 
   const isPaymentPending = activeDueAmount > 0;
 
-  // Real-time Firestore auto-sync for patient screen (Instant updates on client phone when lab changes anything)
+  // Real-time Hostinger auto-sync for patient screen (Instant updates on client phone when lab changes anything)
   useEffect(() => {
     if (searchedReport) {
       const liveReport = scopedReports.find(

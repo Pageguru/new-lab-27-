@@ -422,7 +422,7 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
           {/* Form Actions */}
           <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div className="text-[11px] text-slate-400">
-              Changes sync directly to Firestore database for <strong className="text-slate-600">{currentLabId}</strong>
+              Changes sync directly to Hostinger MySQL database for <strong className="text-slate-600">{currentLabId}</strong>
             </div>
 
             <div className="flex items-center gap-2">

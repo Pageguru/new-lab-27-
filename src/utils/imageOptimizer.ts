@@ -2,10 +2,10 @@
  * Universal Image Optimization Utility
  * 
  * Solves:
- * 1. Firestore 1MB document limit: Automatically compresses and resizes 2MB-15MB camera/gallery
+ * 1. Hostinger / MySQL payload efficiency: Automatically compresses and resizes 2MB-15MB camera/gallery
  *    photos down to 30KB-120KB without perceptible visual degradation.
  * 2. Browser localStorage 5MB quota: Prevents QuotaExceededError when caching settings/images.
- * 3. Eliminates image rollback bug where Firestore rejected large writes and reverted to old images.
+ * 3. Fast network transit and instant cloud sync across Indian 3G/4G/5G connections.
  */
 
 export interface ImageOptimizationOptions {

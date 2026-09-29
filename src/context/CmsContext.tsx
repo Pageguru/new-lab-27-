@@ -1972,7 +1972,7 @@ interface CmsContextType {
   };
   queryTenantIsolatedStaff: (targetLabId?: string) => LabStaffAccount[];
   
-  // Real-Time Cloud Synchronization (Firestore)
+  // Real-Time Server & Database Synchronization (Hostinger)
   isCloudConnected: boolean;
   cloudSyncStatus: 'synced' | 'syncing' | 'offline';
   lastCloudSyncTime: string;
@@ -2367,7 +2367,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return allVendorDoctors.filter((d) => isTenantMatch(d, targetLab));
   }, [allVendorDoctors, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
-  // Real-Time Cloud Firestore Sync State
+  // Real-Time Hostinger Server & MySQL Sync State
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>('Just now');
@@ -2595,7 +2595,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [allVendorTests]);
 
-  // Real-Time Cloud Firestore Multi-Device Sync
+  // Real-Time Hostinger Server & MySQL Multi-Device Sync
   // Subscribes All Devices (Client Phone, Reception, Technician, Pathologist, Admin) to Live Updates
   useEffect(() => {
     // 1. Seed initial mock records if cloud database is fresh
@@ -2983,7 +2983,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const effectiveBranch = report.branchId || (activeBranchId !== 'all' ? activeBranchId : 'branch-1');
     const stamped = stampTenant({ ...report, branchId: effectiveBranch }, effectiveTenant);
     setAllReports((prev) => [stamped, ...prev.filter((r) => r.reportId !== stamped.reportId)]);
-    // Cloud Firestore Sync across computers
+    // Hostinger Server & Database Sync across computers
     syncLabReportToCloud(stamped);
   };
 
@@ -3121,7 +3121,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `rcp-${Date.now()}`,
     };
     setAllReceptionEntries((prev) => [newEntry, ...prev]);
-    // Sync to Cloud Firestore for Technician & Pathologist
+    // Sync to Hostinger Server & Database for Technician & Pathologist
     syncReceptionEntryToCloud(newEntry);
     return newEntry;
   };
@@ -5380,7 +5380,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ];
     setAllVendorTests((prev) => [...starterTests, ...prev]);
 
-    // Sync newly registered lab and all its starter entities to Firestore for live cross-device sync
+    // Sync newly registered lab and all its starter entities to Hostinger for live cross-device sync
     syncVendorLabToCloud(newLab);
     syncLabSettingsToCloud(newLabId, settings);
     syncBranchToCloud(newBranch);

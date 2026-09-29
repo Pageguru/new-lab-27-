@@ -849,7 +849,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                     <span className="text-sm font-black text-emerald-700">Real-Time Sync</span>
                   </div>
                   <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
-                    <span>{pingResult.latencyMs ? `Ping: ${pingResult.latencyMs}ms` : 'Hostinger & Firestore'}</span>
+                    <span>{pingResult.latencyMs ? `Ping: ${pingResult.latencyMs}ms` : 'Hostinger Server & DB'}</span>
                     <span className="font-bold text-teal-700 group-hover:underline">Inspect →</span>
                   </div>
                 </div>
@@ -1700,15 +1700,15 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-black text-white tracking-wide">
-                        Google Cloud Firestore Real-Time Engine
+                        Hostinger MySQL Live Database &amp; Server Engine
                       </h2>
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        {isCloudConnected ? 'Cloud Active & Synced' : 'Connecting to Cloud...'}
+                        {isCloudConnected ? 'Hostinger Active & Synced' : 'Connecting to Hostinger...'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-300 mt-1">
-                      Continuous bi-directional WebSocket sync across All Devices (Mobile, PC, Reception, Pathology Bench & Patient Portal).
+                      Continuous bi-directional sync across All Devices (Mobile, PC, Reception, Pathology Bench &amp; Patient Portal) via Hostinger REST APIs.
                     </p>
                   </div>
                 </div>
@@ -1720,7 +1720,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                     className="flex-1 md:flex-initial px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                   >
                     <Activity className={`w-4 h-4 ${pingResult.status === 'testing' ? 'animate-spin' : ''}`} />
-                    <span>{pingResult.status === 'testing' ? 'Testing Live Ping...' : '⚡ Test Real-Time Cloud Ping'}</span>
+                    <span>{pingResult.status === 'testing' ? 'Testing Live Ping...' : '⚡ Test Hostinger Server Ping'}</span>
                   </button>
                 </div>
               </div>
@@ -1730,29 +1730,29 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 <div className="mt-4 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-medium flex items-center gap-2.5">
                   <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                   <div>
-                    <span className="font-bold text-white">Live Ping Success ({pingResult.latencyMs}ms):</span> {pingResult.message}
+                    <span className="font-bold text-white">Live Hostinger Ping Success ({pingResult.latencyMs}ms):</span> {pingResult.message}
                   </div>
                 </div>
               )}
 
-              {/* Cloud Parameters Grid */}
+              {/* Hostinger Cloud Parameters Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-white/10 text-xs">
                 <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Firebase Project</div>
-                  <div className="font-mono font-bold text-amber-300 mt-0.5 truncate" title="focal-replica-2nm8c">
-                    focal-replica-2nm8c
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Hostinger Server</div>
+                  <div className="font-mono font-bold text-amber-300 mt-0.5 truncate" title="indianalala.com">
+                    indianalala.com
                   </div>
                 </div>
                 <div className="bg-white/5 p-3 rounded-xl border border-white/10">
                   <div className="text-[10px] uppercase font-bold text-slate-400">Database Engine</div>
-                  <div className="font-mono font-bold text-emerald-300 mt-0.5 truncate" title="ai-studio-labshop-ee7fdddf-d48c-4855-82de-e1fe18eb0046">
-                    ai-studio-labshop
+                  <div className="font-mono font-bold text-emerald-300 mt-0.5 truncate" title="MySQL 8.0 (Hostinger phpMyAdmin)">
+                    MySQL 8.0 (Hostinger)
                   </div>
                 </div>
                 <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Live Stream Collections</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Live Synced Tables</div>
                   <div className="font-bold text-white mt-0.5">
-                    13 Collections Streamed
+                    17 Hostinger Tables
                   </div>
                 </div>
                 <div className="bg-white/5 p-3 rounded-xl border border-white/10">
@@ -1764,21 +1764,21 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               </div>
             </div>
 
-            {/* Why Firebase Console permission error happens */}
-            <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200 text-amber-950">
+            {/* Hostinger Dedicated Architecture Banner */}
+            <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-200 text-emerald-950">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-amber-200/60 rounded-xl text-amber-800 shrink-0 mt-0.5">
-                  <HelpCircle className="w-5 h-5" />
+                <div className="p-2 bg-emerald-200/60 rounded-xl text-emerald-800 shrink-0 mt-0.5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div className="space-y-2 text-xs">
-                  <h3 className="text-sm font-bold text-amber-900">
-                    Firebase Console में "Project does not exist or you do not have permission" क्यों आता है?
+                  <h3 className="text-sm font-bold text-emerald-900">
+                    Hostinger Dedicated MySQL Architecture • 100% Zero Firebase Dependency
                   </h3>
-                  <p className="text-amber-800 leading-relaxed">
-                    यह Google Cloud प्रोजेक्ट (<span className="font-mono font-bold">focal-replica-2nm8c</span>) Google AI Studio द्वारा एक <strong>Dedicated Managed Cloud Tenant</strong> के रूप में स्वचालित (automated) बनाया गया है। Google के सुरक्षा नियमों के अनुसार, इस क्लाउड इंफ्रास्ट्रक्चर का Master IAM Owner प्लेटफ़ॉर्म का सर्विस इंजन होता है। इसलिए आपके व्यक्तिगत Gmail से सीधे Firebase Console का यूआरएल खोलने पर IAM अनुमति का संदेश दिखाई देता है।
+                  <p className="text-emerald-800 leading-relaxed">
+                    यह पूरा प्लेटफ़ॉर्म और सभी लैब्स अब सीधे <strong>Hostinger Web Hosting &amp; MySQL Databases</strong> से जुड़े हैं। Firebase या Google Cloud की कोई निर्भरता नहीं है। सभी डेटा, पेशेंट एंट्रीज, टेस्ट्स, पैकेज, बिल्स, डिजिटल रिपोर्ट PDFs, और सेटिंग्स सीधे आपके Hostinger MySQL डेटाबेस और <code className="font-mono bg-emerald-100 px-1 py-0.5 rounded text-emerald-900">/api/sync.php</code> रेस्ट एपीआई से लाइव सिंक होते हैं।
                   </p>
-                  <p className="text-emerald-900 font-bold bg-emerald-100/80 p-2.5 rounded-lg border border-emerald-300">
-                    ✅ <strong>अच्छी खबर (100% Active):</strong> आपके इस वेब एप्लिकेशन के पास आधिकारिक API Credentials हैं और Firestore के सभी 13 Collections में <strong>Real-Time Read & Write पूर्ण रूप से सक्रिय हैं</strong>। जब भी आप या आपका क्लाइंट कोई भी डेटा बदलते हैं, वह बिना किसी देरी के सीधे Google Cloud पर सुरक्षित सेव होता है। आप नीचे दिए गए लाइव टेबल्स और ऊपर "⚡ Test Real-Time Cloud Ping" से इसे सीधे सत्यापित कर सकते हैं।
+                  <p className="text-emerald-900 font-bold bg-white/80 p-2.5 rounded-lg border border-emerald-300">
+                    ✅ <strong>100% Hostinger Controlled:</strong> आपके डेटा पर आपका 100% कंट्रोल है। Hostinger hPanel → phpMyAdmin से आप किसी भी समय डेटाबेस एक्सपोर्ट कर सकते हैं या कस्टमाइज़ कर सकते हैं।
                   </p>
                 </div>
               </div>
