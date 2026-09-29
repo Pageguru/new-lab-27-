@@ -40,38 +40,19 @@ import { Building } from 'lucide-react';
 import { isUserAuthorizedForView } from './utils/rbac';
 import { useCms } from './context/CmsContext';
 import { getTenantSubdomain } from './constants/domains';
+import { resolveAppRoute } from './utils/domainRouting';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const viewParam = params.get('view') as AppView | null;
-      const validViews: AppView[] = [
-        'vendor_dashboard',
-        'branch_manager_dashboard',
-        'reception_dashboard',
-        'technician_dashboard',
-        'pathologist_dashboard',
-        'admin_dashboard',
-        'vendor_website',
-        'website',
-        'patient_portal',
-        'lab_app',
-      ];
-      if (viewParam && validViews.includes(viewParam)) {
-        return viewParam;
-      }
-      const labParam = params.get('lab') || params.get('subdomain');
-      if (labParam) {
-        return 'vendor_website';
-      }
-      const savedView = localStorage.getItem('cms_current_view') as AppView | null;
-      if (savedView && validViews.includes(savedView)) {
-        return savedView;
-      }
-    } catch {}
-    // Default to vendor_website so the Lab Shop opens and is immediately visible
-    return 'vendor_website';
+      const resolution = resolveAppRoute(
+        typeof window !== 'undefined' ? window.location.hostname : '',
+        typeof window !== 'undefined' ? window.location.search : ''
+      );
+      return resolution.view;
+    } catch {
+      return 'website';
+    }
   });
   const [language, setLanguage] = useState<Language>('en');
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
@@ -89,60 +70,44 @@ export default function App() {
     vendorLabsList,
   } = useCms();
 
-  // Persist currentView to localStorage whenever it changes
+  // Persist currentView to localStorage whenever it changes (only for authenticated or dashboard views, avoid trapping homepage)
   useEffect(() => {
     try {
-      localStorage.setItem('cms_current_view', currentView);
+      if (currentView === 'website') {
+        localStorage.removeItem('cms_current_view');
+      } else {
+        localStorage.setItem('cms_current_view', currentView);
+      }
     } catch {}
   }, [currentView]);
 
-  // Sync view and lab tenant from URL parameters or subdomain on initial mount
+  // Sync view and lab tenant from URL parameters, subdomains, or custom domains on initial mount
   useEffect(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const viewParam = params.get('view') as AppView | null;
-      const labParam = params.get('lab') || params.get('subdomain');
+      const resolution = resolveAppRoute(
+        window.location.hostname,
+        window.location.search,
+        vendorLabsList
+      );
 
-      // Check if hostname is e.g. <subdomain>.indianlalaji.com
-      const hostname = window.location.hostname;
-      let hostSubdomain: string | null = null;
-      // Only extract subdomain if hostname actually belongs to the platform production domain (e.g. *.indianlalaji.com)
-      if (hostname.endsWith('indianlalaji.com') && !hostname.startsWith('www.') && hostname !== 'indianlalaji.com') {
-        const parts = hostname.split('.');
-        if (parts.length >= 3) {
-          hostSubdomain = parts[0];
-        }
-      }
-
-      const targetLab = labParam || hostSubdomain;
-      if (targetLab) {
-        selectVendorLab(targetLab);
-        if (!viewParam) {
-          setCurrentView('vendor_website');
-        }
+      if (resolution.targetLab) {
+        selectVendorLab(resolution.targetLab);
       } else if (!selectedVendorLabId || selectedVendorLabId === 'all') {
         selectVendorLab('lab-apex');
       }
 
-      if (
-        viewParam &&
-        [
-          'vendor_dashboard',
-          'branch_manager_dashboard',
-          'reception_dashboard',
-          'technician_dashboard',
-          'pathologist_dashboard',
-          'admin_dashboard',
-          'vendor_website',
-          'website',
-          'patient_portal',
-          'lab_app',
-        ].includes(viewParam)
-      ) {
-        setCurrentView(viewParam);
+      if (resolution.isExplicitMainPlatform) {
+        // When visiting indianlalaji.com or www.indianlalaji.com directly:
+        // Always open the main platform website and clear any old cached vendor view
+        setCurrentView('website');
+        try {
+          localStorage.removeItem('cms_current_view');
+        } catch {}
+      } else if (resolution.view) {
+        setCurrentView(resolution.view);
       }
     } catch {}
-  }, []);
+  }, [vendorLabsList]);
 
   // Update URL search parameters when view or selected lab changes
   useEffect(() => {
@@ -154,13 +119,26 @@ export default function App() {
         url.searchParams.delete('subdomain');
         window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
       } else if (currentView === 'vendor_website') {
-        url.searchParams.set('view', 'vendor_website');
-        if (selectedVendorLabId) {
-          const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
-          const slug = getTenantSubdomain(currentLab?.domainPreview || selectedVendorLabId);
-          url.searchParams.set('lab', slug);
+        const hostname = window.location.hostname.toLowerCase();
+        const isSubdomainOfMain =
+          hostname.endsWith('indianlalaji.com') &&
+          hostname !== 'indianlalaji.com' &&
+          hostname !== 'www.indianlalaji.com';
+
+        if (isSubdomainOfMain) {
+          // Dedicated lab subdomain (e.g. apexdiagnostics.indianlalaji.com) - keep clean URL
+          url.searchParams.delete('view');
+          url.searchParams.delete('lab');
+          url.searchParams.delete('subdomain');
+        } else {
+          url.searchParams.set('view', 'vendor_website');
+          if (selectedVendorLabId) {
+            const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
+            const slug = getTenantSubdomain(currentLab?.domainPreview || selectedVendorLabId);
+            url.searchParams.set('lab', slug);
+          }
         }
-        window.history.replaceState({}, '', url.pathname + url.search);
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
       } else if (currentView === 'patient_portal') {
         url.searchParams.set('view', 'patient_portal');
         if (selectedVendorLabId && selectedVendorLabId !== 'all') {
@@ -211,7 +189,7 @@ export default function App() {
     }
   }, [currentView, currentUser, selectedVendorLabId, selectVendorLab, setSelectedVendorLabId]);
 
-  // When user logs out while on a protected dashboard, transition back to public lab website
+  // When user logs out while on a protected dashboard, transition back to appropriate website
   useEffect(() => {
     if (!currentUser) {
       const protectedViews: AppView[] = [
@@ -223,11 +201,15 @@ export default function App() {
         'pathologist_dashboard',
       ];
       if (protectedViews.includes(currentView)) {
-        setCurrentView(selectedVendorLabId ? 'vendor_website' : 'website');
+        const resolution = resolveAppRoute(
+          typeof window !== 'undefined' ? window.location.hostname : '',
+          typeof window !== 'undefined' ? window.location.search : ''
+        );
+        setCurrentView(resolution.targetLab ? 'vendor_website' : 'website');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
-  }, [currentUser, currentView, selectedVendorLabId]);
+  }, [currentUser, currentView]);
 
   // Authorization check for protected dashboard workspaces using RBAC
   const isAuthorizedForView = (view: AppView): boolean => {
@@ -255,7 +237,11 @@ export default function App() {
   const handleBackToWebsite = () => {
     setSelectedReportId('');
     setSelectedPatientMobile('');
-    if (selectedVendorLabId && selectedVendorLabId !== 'all') {
+    const resolution = resolveAppRoute(
+      typeof window !== 'undefined' ? window.location.hostname : '',
+      typeof window !== 'undefined' ? window.location.search : ''
+    );
+    if (resolution.targetLab) {
       setCurrentView('vendor_website');
     } else {
       setCurrentView('website');
