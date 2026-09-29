@@ -41,6 +41,7 @@ import {
   Calculator,
   Calendar,
   RotateCcw,
+  Hash,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { DashboardFooter } from './DashboardFooter';
@@ -51,6 +52,74 @@ import { DayEndCashClosingModal } from './reception/DayEndCashClosingModal';
 import { ReportDetailModal } from './ReportDetailModal';
 import { generateThermalReceiptPdf, buildReceiptInvoicePdf, getReceiptPdfFilename, downloadReportPdf } from '../utils/pdfGenerator';
 import { safePrint } from '../utils/printHelper';
+
+// Clean token number extraction (e.g. "TK-232" -> "232", "232" -> "232", timestamps -> clean 3-digit number)
+export const getDisplayTokenNumber = (tokenRaw?: string, fallbackId?: string): string => {
+  if (!tokenRaw && !fallbackId) return '101';
+  let raw = String(tokenRaw || fallbackId || '').trim();
+  if (raw.startsWith('rcp-')) {
+    raw = raw.replace('rcp-', '');
+  }
+  // Strip ellipsis if present
+  raw = raw.replace(/\.{2,}/g, '');
+  // If long timestamp, extract the last 3 digits
+  if (raw.replace(/\D/g, '').length > 6) {
+    const digits = raw.replace(/\D/g, '');
+    return digits.slice(-3);
+  }
+  // Strip TK- or TK or # prefix if present to display the pure token number
+  if (/^TK[-_\s]?/i.test(raw)) {
+    return raw.replace(/^TK[-_\s]?/i, '');
+  }
+  if (raw.startsWith('#')) {
+    return raw.replace('#', '');
+  }
+  return raw;
+};
+
+// Detect if this test was booked directly from the website (Package, Cart, Booking Form)
+export const getWebsiteBookingMeta = (entry: ReceptionPatientEntry) => {
+  const source = (entry.bookingSource || '').toLowerCase();
+  const notes = (entry.notes || '').toLowerCase();
+  const receipt = (entry.receiptNumber || '').toLowerCase();
+  const uhid = (entry.uhid || '').toLowerCase();
+
+  const isWebsite =
+    source.includes('website') ||
+    source.includes('web') ||
+    source.includes('online') ||
+    source.includes('cart') ||
+    source.includes('package') ||
+    notes.includes('website') ||
+    notes.includes('hero booking') ||
+    notes.includes('online website booking') ||
+    receipt.includes('web') ||
+    uhid.startsWith('uhid-w-');
+
+  if (!isWebsite) return null;
+
+  let category = 'Website Booking';
+  let badgeDetail = 'Direct Web';
+
+  if (source.includes('package') || notes.includes('package') || notes.includes('checkup') || notes.includes('profile')) {
+    category = 'Package Booking';
+    badgeDetail = 'Health Package';
+  } else if (source.includes('cart') || notes.includes('cart') || notes.includes('multi-cart')) {
+    category = 'Cart Multi-Booking';
+    badgeDetail = 'Cart Order';
+  } else if (source.includes('form') || notes.includes('hero') || notes.includes('booking form')) {
+    category = 'Booking Form';
+    badgeDetail = 'Online Form';
+  }
+
+  return {
+    category,
+    badgeDetail,
+    isHomeVisit: entry.visitType === 'Home Collection',
+    paymentStatus: entry.paymentStatus,
+    paymentMode: entry.paymentMode,
+  };
+};
 
 interface ReceptionEntryDashboardProps {
   onNavigateView: (view: AppView) => void;
@@ -224,7 +293,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
   const [dateFilter, setDateFilter] = useState<'All Dates' | 'Today' | 'Yesterday' | 'Custom Date'>('All Dates');
   const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentFilter, setPaymentFilter] = useState<'All' | 'Advance' | 'Due' | 'Full Payment'>('All');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Waiting' | 'Sample Collected' | 'In Lab' | 'Report Ready' | 'Publish Pending'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Website' | 'Waiting' | 'Sample Collected' | 'In Lab' | 'Report Ready' | 'Publish Pending'>('All');
 
   // Thermal Slip Modal
   const [selectedReceipt, setSelectedReceipt] = useState<ReceptionPatientEntry | null>(null);
@@ -882,7 +951,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
     (e) => e.paidAmount === 0 || e.paymentStatus === 'Pending' || e.paymentStatus === 'Due' || e.paymentStatus === 'Due Payment'
   ).length;
   const websiteBookingCount = receptionEntries.filter(
-    (e) => e.bookingSource === 'Website' || e.notes?.toLowerCase().includes('website')
+    (e) => Boolean(getWebsiteBookingMeta(e))
   ).length;
 
   // Filtered Queue with Independent Date Filter & Payment Filter & Dual Inline Search (Token / Mobile)
@@ -895,9 +964,11 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
     // 1. Search by Token Number or Mobile Number (Inline Row)
     const qToken = searchToken.trim().toLowerCase();
     if (qToken) {
+      const displayTok = getDisplayTokenNumber(item.tokenNumber || item.tokenNo, item.id).toLowerCase();
       const matchToken =
         (item.tokenNumber && item.tokenNumber.toLowerCase().includes(qToken)) ||
-        (item.tokenNo && item.tokenNo.toLowerCase().includes(qToken));
+        (item.tokenNo && item.tokenNo.toLowerCase().includes(qToken)) ||
+        displayTok.includes(qToken);
       if (!matchToken) return false;
     }
 
@@ -961,7 +1032,9 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
     );
 
     if (statusFilter !== 'All') {
-      if (statusFilter === 'Report Ready') {
+      if (statusFilter === 'Website') {
+        if (!getWebsiteBookingMeta(item)) return false;
+      } else if (statusFilter === 'Report Ready') {
         if (!isReady) return false;
       } else if (statusFilter === 'Publish Pending') {
         if (!isReady || item.isReportPublished) return false;
@@ -1862,15 +1935,13 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
               {/* Right Side: Search by Token Number & Mobile Number */}
               <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto">
                 {/* Search by Token Number */}
-                <div className="relative w-full sm:w-44">
-                  <span className="absolute left-2.5 top-2 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                    TK
-                  </span>
+                <div className="relative w-full sm:w-48">
+                  <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                   <input
                     type="text"
                     value={searchToken}
                     onChange={(e) => setSearchToken(e.target.value)}
-                    placeholder="Search Token No..."
+                    placeholder="Search Token (e.g. 101, 232)..."
                     className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-900 bg-white focus:ring-1 focus:ring-teal-600 focus:border-teal-600 outline-none placeholder:text-slate-400 font-mono shadow-2xs"
                   />
                   {searchToken && (
@@ -1984,10 +2055,12 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
 
             {/* Workflow Status Filter Tabs */}
             <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-bold">
-              {(['All', 'Waiting', 'Sample Collected', 'In Lab', 'Report Ready', 'Publish Pending'] as const).map((st) => {
+              {(['All', 'Website', 'Waiting', 'Sample Collected', 'In Lab', 'Report Ready', 'Publish Pending'] as const).map((st) => {
                 const count =
                   st === 'All'
                     ? receptionEntries.length
+                    : st === 'Website'
+                    ? websiteBookingCount
                     : st === 'Report Ready'
                     ? receptionEntries.filter((e) => e.status === 'Report Ready' || e.technicianStatus === 'Report Generated' || Boolean(e.reportId)).length
                     : st === 'Publish Pending'
@@ -2003,12 +2076,32 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                     onClick={() => setStatusFilter(st)}
                     className={`py-1 px-2.5 rounded-lg transition text-[11px] flex items-center gap-1.5 cursor-pointer ${
                       statusFilter === st
-                        ? 'bg-white text-teal-800 font-black shadow-2xs'
+                        ? st === 'Website'
+                          ? 'bg-red-600 text-white font-black shadow-xs'
+                          : 'bg-white text-teal-800 font-black shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <span>{st === 'Publish Pending' ? '🔔 Publish Pending' : st}</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${st === 'Publish Pending' && count > 0 ? 'bg-amber-200 text-amber-950 font-black' : 'opacity-75'}`}>
+                    <span>
+                      {st === 'Website'
+                        ? '🌐 Website Bookings'
+                        : st === 'Publish Pending'
+                        ? '🔔 Publish Pending'
+                        : st}
+                    </span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                        st === 'Website'
+                          ? count > 0
+                            ? statusFilter === 'Website'
+                              ? 'bg-white text-red-700 font-black'
+                              : 'bg-red-500 text-white font-black'
+                            : 'opacity-75'
+                          : st === 'Publish Pending' && count > 0
+                          ? 'bg-amber-200 text-amber-950 font-black'
+                          : 'opacity-75'
+                      }`}
+                    >
                       {count}
                     </span>
                   </button>
@@ -2060,19 +2153,58 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                     (paymentStatusType === 'Full Payment' || paymentStatusType === 'Advance') &&
                     (entry.paidAmount || 0) > 0;
 
+                  const websiteMeta = getWebsiteBookingMeta(entry);
+                  const displayToken = getDisplayTokenNumber(entry.tokenNumber || entry.tokenNo, entry.id);
+
                   return (
                     <div
                       key={entry.id}
-                      className="border border-slate-200 rounded-xl p-3 hover:border-teal-300 hover:shadow-xs transition bg-white space-y-2"
+                      className={`rounded-xl transition bg-white space-y-2 overflow-hidden ${
+                        websiteMeta
+                          ? 'border-2 border-red-500 shadow-sm ring-1 ring-red-100'
+                          : 'border border-slate-200 p-3 hover:border-teal-300 hover:shadow-xs'
+                      }`}
                     >
-                      {/* Header: Left → Token No. + Phone No. | Right → Status Flow & Actions */}
-                      <div className="flex items-center justify-between gap-2.5 pb-2 border-b border-slate-100">
-                        {/* Left: Token No. + Phone No. (+ Patient Name & Details) */}
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="bg-[#123B6D] text-white text-xs font-black px-2 py-0.5 rounded-md shrink-0 font-mono tracking-wide shadow-2xs">
-                            {entry.tokenNumber || entry.tokenNo}
-                          </span>
-                          <div className="min-w-0">
+                      {/* Red Batch Label Above the Card for Website Bookings (Package, Cart, Booking Form) */}
+                      {websiteMeta && (
+                        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-3.5 py-1.5 flex items-center justify-between text-xs font-black shadow-xs border-b border-red-700">
+                          <div className="flex items-center gap-2">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                            </span>
+                            <Globe className="w-4 h-4 text-red-100 shrink-0" />
+                            <span className="uppercase tracking-wider text-[11px] font-black drop-shadow-xs">
+                              Direct Website Booking • {websiteMeta.category}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="bg-white/20 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-xs">
+                              {websiteMeta.badgeDetail}
+                            </span>
+                            {websiteMeta.isHomeVisit && (
+                              <span className="bg-amber-300 text-amber-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
+                                🏠 Home Sample Collection
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className={websiteMeta ? 'p-3 pt-1 space-y-2' : 'space-y-2'}>
+                        {/* Header: Left → Token Number + Phone No. | Right → Status Flow & Actions */}
+                        <div className="flex items-center justify-between gap-2.5 pb-2 border-b border-slate-100">
+                          {/* Left: Token Number + Phone No. (+ Patient Name & Details) */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="bg-[#123B6D] text-white text-xs font-black px-2.5 py-1 rounded-lg shrink-0 font-mono tracking-wide shadow-2xs flex items-center gap-1.5 border border-[#1e4e8c]">
+                              <span className="text-[10px] text-teal-200 font-sans font-extrabold uppercase tracking-wider">
+                                Token Number
+                              </span>
+                              <span className="text-white text-sm font-black font-mono">
+                                #{displayToken}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span
                                 onClick={() => {
@@ -2335,8 +2467,9 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                         </div>
                       </div>
                     </div>
-                  );
-                })
+                  </div>
+                );
+              })
               )}
             </div>
           </div>
@@ -2376,7 +2509,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                 Generated Token Number
               </div>
               <div className="text-4xl sm:text-5xl font-black text-[#123B6D] tracking-tight font-mono my-1">
-                {selectedReceipt.tokenNumber}
+                #{getDisplayTokenNumber(selectedReceipt.tokenNumber || selectedReceipt.tokenNo, selectedReceipt.id)}
               </div>
               <div className="flex items-center justify-center gap-2 text-xs text-slate-600 font-medium">
                 <span>UHID: <strong className="font-mono text-slate-800">{selectedReceipt.uhid}</strong></span>

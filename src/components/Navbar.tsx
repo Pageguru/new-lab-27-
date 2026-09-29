@@ -19,7 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectLanguage,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { currentUser, logout, openLoginModal, openRegisterLabModal, companySettings, selectVendorLab } = useCms();
+  const { currentUser, logout, openLoginModal, openRegisterLabModal, companySettings, selectVendorLab, selectedVendorLabId } = useCms();
   const displayBrand = companySettings?.companyName || 'INDIANLALAJI.COM';
 
   const handleGoToDashboard = () => {
@@ -154,6 +154,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="nav-link-contact"
             >
               Contact Us
+            </button>
+
+            <button
+              onClick={() => {
+                selectVendorLab(selectedVendorLabId || 'lab-apex');
+                onSelectView('vendor_website');
+              }}
+              className="hover:text-emerald-700 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl font-black transition cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs active:scale-95"
+              id="nav-link-lab-shop"
+              title="Open Diagnostic Lab Shop"
+            >
+              <Building2 className="w-4 h-4 text-emerald-600" />
+              <span>🏪 Lab Shop</span>
             </button>
           </div>
 
@@ -313,6 +326,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Contact Us</span>
               <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                 7087033009
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                selectVendorLab(selectedVendorLabId || 'lab-apex');
+                onSelectView('vendor_website');
+              }}
+              className="text-left py-2.5 px-3 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 font-black flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                <span>🏪 Open Lab Shop (Apex Lab)</span>
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800 font-black">
+                LSP-7087
               </span>
             </button>
           </div>

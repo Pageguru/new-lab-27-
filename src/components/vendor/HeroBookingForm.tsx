@@ -315,7 +315,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
     const currentYear = new Date().getFullYear();
     const randomSeq = Math.floor(100000 + Math.random() * 900000);
     const receiptNo = `LAB-${currentYear}-${randomSeq}`;
-    const tokenNumber = `TK-${Math.floor(100 + Math.random() * 899)}`;
+    const tokenNumber = String(Math.floor(100 + Math.random() * 899));
     const uhid = `UHID-W-${Date.now().toString().slice(-6)}`;
     const nowStr = new Date().toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -332,6 +332,14 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
       name: t.name,
       price: t.priceINR,
     }));
+
+    const isPackage = selectedTestsList.some(
+      (t) =>
+        t.name.toLowerCase().includes('package') ||
+        t.name.toLowerCase().includes('profile') ||
+        t.name.toLowerCase().includes('checkup')
+    );
+    const sourceLabel = isPackage ? 'Website Package Booking' : 'Website Booking Form';
 
     // Construct address string
     const assembledAddress =
@@ -360,7 +368,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
       paymentStatus: paymentMethod === 'Online' ? 'Pending' : 'Due',
       status: 'Waiting',
       registeredAt: `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
-      bookingSource: 'Website',
+      bookingSource: sourceLabel,
       visitType: collectionType === 'Home' ? 'Home Collection' : 'Walk-in',
       address: assembledAddress,
       preferredTimeSlot: collectionType === 'Home' ? preferredTimeSlot : undefined,
@@ -372,7 +380,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
       city: city.trim() || undefined,
       pincode: pincode.trim() || undefined,
       selectedTestsBreakdown,
-      notes: `Website Hero Booking | Token: ${tokenNumber} | Receipt: ${receiptNo} | Method: ${paymentMethod} | Status: ${paymentStatus}${
+      notes: `Website Booking Form (${isPackage ? 'Package' : 'Individual Test'}) | Token: ${tokenNumber} | Receipt: ${receiptNo} | Method: ${paymentMethod} | Status: ${paymentStatus}${
         utrNumber ? ` | UTR: ${utrNumber}` : ''
       }`,
     };

@@ -42,7 +42,37 @@ import { useCms } from './context/CmsContext';
 import { getTenantSubdomain } from './constants/domains';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<AppView>('website');
+  const [currentView, setCurrentView] = useState<AppView>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get('view') as AppView | null;
+      const validViews: AppView[] = [
+        'vendor_dashboard',
+        'branch_manager_dashboard',
+        'reception_dashboard',
+        'technician_dashboard',
+        'pathologist_dashboard',
+        'admin_dashboard',
+        'vendor_website',
+        'website',
+        'patient_portal',
+        'lab_app',
+      ];
+      if (viewParam && validViews.includes(viewParam)) {
+        return viewParam;
+      }
+      const labParam = params.get('lab') || params.get('subdomain');
+      if (labParam) {
+        return 'vendor_website';
+      }
+      const savedView = localStorage.getItem('cms_current_view') as AppView | null;
+      if (savedView && validViews.includes(savedView)) {
+        return savedView;
+      }
+    } catch {}
+    // Default to vendor_website so the Lab Shop opens and is immediately visible
+    return 'vendor_website';
+  });
   const [language, setLanguage] = useState<Language>('en');
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState('');
@@ -58,6 +88,13 @@ export default function App() {
     setSelectedVendorLabId,
     vendorLabsList,
   } = useCms();
+
+  // Persist currentView to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('cms_current_view', currentView);
+    } catch {}
+  }, [currentView]);
 
   // Sync view and lab tenant from URL parameters or subdomain on initial mount
   useEffect(() => {
@@ -83,6 +120,8 @@ export default function App() {
         if (!viewParam) {
           setCurrentView('vendor_website');
         }
+      } else if (!selectedVendorLabId || selectedVendorLabId === 'all') {
+        selectVendorLab('lab-apex');
       }
 
       if (
@@ -101,9 +140,6 @@ export default function App() {
         ].includes(viewParam)
       ) {
         setCurrentView(viewParam);
-      } else if (!targetLab) {
-        // Default root landing page is the main platform website
-        setCurrentView('website');
       }
     } catch {}
   }, []);
@@ -588,6 +624,11 @@ export default function App() {
           <Hero
             onOpenDemo={handleOpenDemo}
             onLaunchApp={handleLaunchLabApp}
+            onLaunchLabShop={() => {
+              selectVendorLab(selectedVendorLabId || 'lab-apex');
+              setCurrentView('vendor_website');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             language={language}
           />
         )}

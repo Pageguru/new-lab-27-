@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Building2,
 } from 'lucide-react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../data/mockData';
@@ -20,6 +21,7 @@ import barcodeImg from '../assets/images/lab_barcode_station_1790347227373.jpg';
 interface HeroProps {
   onOpenDemo: () => void;
   onLaunchApp: () => void;
+  onLaunchLabShop?: () => void;
   language?: Language;
 }
 
@@ -35,9 +37,10 @@ const CAROUSEL_IMAGES = [
 export const Hero: React.FC<HeroProps> = ({
   onOpenDemo,
   onLaunchApp,
+  onLaunchLabShop,
   language = 'en',
 }) => {
-  const { companySettings, openRegisterLabModal } = useCms();
+  const { companySettings, openRegisterLabModal, selectedVendorLabId, selectVendorLab } = useCms();
   const t = (language && TRANSLATIONS[language]) || TRANSLATIONS['en'];
 
   // Dynamic CMS copy
@@ -133,6 +136,24 @@ export const Hero: React.FC<HeroProps> = ({
               >
                 <span>{t.getStarted}</span>
                 <ArrowRight className="w-4 h-4 text-amber-400" />
+              </button>
+
+              <button
+                id="hero-btn-open-lab-shop"
+                type="button"
+                onClick={() => {
+                  selectVendorLab(selectedVendorLabId || 'lab-apex');
+                  if (onLaunchLabShop) {
+                    onLaunchLabShop();
+                  } else {
+                    onLaunchApp();
+                  }
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-xl font-black text-sm transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                title="Open Diagnostic Lab Shop (Apex Lab)"
+              >
+                <Building2 className="w-4 h-4 text-emerald-200" />
+                <span>🏪 Visit Lab Shop</span>
               </button>
             </div>
           </div>

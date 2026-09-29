@@ -2455,24 +2455,19 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                   </p>
                 </div>
               </div>
-              {currentUser?.role === 'admin' ? (
-                <button
-                  onClick={() => {
-                    if (currentLabItem) {
-                      setVendorStatus(currentLabItem.id, 'Active');
-                      triggerToast('Website approved and published live!');
-                    }
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                  <span>Approve &amp; Make Live (एडमिन अप्रूवल)</span>
-                </button>
-              ) : (
-                <div className="text-[11px] font-bold text-amber-800 bg-amber-100/80 px-3 py-1.5 rounded-lg border border-amber-300 shrink-0">
-                  ⏳ Pending Admin Approval
-                </div>
-              )}
+              <button
+                onClick={() => {
+                  const targetLabId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId;
+                  if (targetLabId) {
+                    setVendorStatus(targetLabId, 'Active');
+                    triggerToast('Website published LIVE and approved!');
+                  }
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95"
+              >
+                <CheckCircle2 className="w-4 h-4 text-white" />
+                <span>Publish Website Live (वेबसाइट लाइव करें)</span>
+              </button>
             </div>
           ) : (
             <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

@@ -576,6 +576,7 @@ export interface VendorLabDirectoryItem {
   establishedYear?: number;
   reviewsCount?: number;
   features?: string[];
+  _updatedAt?: string;
 }
 
 export interface ReceptionPatientEntry {

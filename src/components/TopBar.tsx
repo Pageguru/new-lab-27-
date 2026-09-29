@@ -29,6 +29,8 @@ export const TopBar: React.FC<TopBarProps> = ({
     refreshCloudData,
     activeBranchId,
     setActiveBranchId,
+    selectVendorLab,
+    selectedVendorLabId,
   } = useCms();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -88,15 +90,37 @@ export const TopBar: React.FC<TopBarProps> = ({
           </a>
 
           {/* Lab Website & Home Navigation Buttons */}
-          {currentView === 'vendor_website' && (
+          {currentView === 'website' && (
             <button
               type="button"
-              onClick={() => onSelectView('website')}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-full text-[11px] sm:text-xs transition shadow-xs cursor-pointer active:scale-95"
-              title="Go to IndianLalaji.com Home Portal"
+              onClick={() => {
+                selectVendorLab(selectedVendorLabId || 'lab-apex');
+                onSelectView('vendor_website');
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-full text-[11px] sm:text-xs transition shadow-xs cursor-pointer active:scale-95"
+              title="Open Diagnostic Lab Shop Website"
+              id="topbar-btn-open-lab-shop"
             >
-              <span>🏠 Main Home</span>
+              <Building2 className="w-3.5 h-3.5 text-slate-950" />
+              <span>🏪 Open Lab Shop</span>
             </button>
+          )}
+
+          {currentView === 'vendor_website' && (
+            <div className="flex items-center gap-1.5">
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Lab Shop Active</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => onSelectView('website')}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-full text-[11px] sm:text-xs transition shadow-xs cursor-pointer active:scale-95"
+                title="Go to IndianLalaji.com Home Portal"
+              >
+                <span>🏠 Software Home</span>
+              </button>
+            </div>
           )}
 
           {(currentView === 'reception_dashboard' ||

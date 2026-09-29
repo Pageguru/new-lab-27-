@@ -1145,8 +1145,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   };
 
   // Check if website is in Draft mode (Not Approved/Published by Admin)
-  // When a website is created, it starts in Draft mode; until Super Admin publishes it, visit/preview is locked.
-  const isDraftOrPending = currentLabItem ? currentLabItem.status !== 'Active' || !currentLabItem.isWebsiteApproved : false;
+  // If lab is explicitly Active or has isWebsiteApproved === true, it is LIVE and accessible!
+  const isDraftOrPending = currentLabItem
+    ? currentLabItem.status === 'Draft' || currentLabItem.status === 'Pending' || (currentLabItem.status !== 'Active' && !currentLabItem.isWebsiteApproved)
+    : false;
 
   if (isDraftOrPending) {
     return (

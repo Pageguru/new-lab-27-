@@ -213,7 +213,23 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
     const dateStr = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-    const randomToken = `TK-${Math.floor(100 + Math.random() * 899)}`;
+    const isCartBooking = Boolean(initialTests && initialTests.length > 1) || selectedTests.length > 1;
+    const isPackageBooking = selectedTests.some(
+      (t) =>
+        t.type === 'package' ||
+        (t as any).isPackage ||
+        t.name.toLowerCase().includes('package') ||
+        t.name.toLowerCase().includes('profile') ||
+        t.name.toLowerCase().includes('checkup')
+    );
+    const bookingChannelSource = isCartBooking
+      ? 'Website Cart Booking'
+      : isPackageBooking
+      ? 'Website Package Booking'
+      : 'Website Online Booking';
+
+    const cleanTokenNum = String(Math.floor(100 + Math.random() * 899));
+    const randomToken = cleanTokenNum;
     const randomUhid = `UHID-W-${Date.now().toString().slice(-6)}`;
 
     const isPaidOnline = paymentOption === 'online_upi';
@@ -244,12 +260,12 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
       paymentStatus,
       status: 'Waiting',
       registeredAt: `Today, ${timeStr}`,
-      bookingSource: 'Website',
+      bookingSource: bookingChannelSource,
       visitType,
       address: visitType === 'Home Collection' ? homeAddress.trim() : undefined,
       preferredTimeSlot: preferredSlot,
       upiTransactionRef: isPaidOnline && upiRefNumber.trim() ? upiRefNumber.trim() : undefined,
-      notes: `🌐 Online Website Booking • ${
+      notes: `🌐 Online Website Booking (${isCartBooking ? 'Multi-Cart' : isPackageBooking ? 'Health Package' : 'Direct Booking'}) • ${
         isPaidOnline ? `Paid via UPI (Ref: ${upiRefNumber || 'Instant Online'})` : 'Pay at Lab Counter'
       } • ${visitType === 'Home Collection' ? `Address: ${homeAddress}` : 'Walk-in at Lab'} • Slot: ${preferredSlot}`,
       labId: activeTenantId !== 'all' ? activeTenantId : 'lab-apex',

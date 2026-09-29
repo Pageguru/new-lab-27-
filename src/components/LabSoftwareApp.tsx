@@ -141,7 +141,12 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         ? (rawTests as string).split(',').map((s) => s.trim()).filter(Boolean)
         : [];
 
-      const tokenNumber = r.tokenNumber || r.tokenNo || `TK-${r.id.replace('rcp-', '')}`;
+      const rawTokenVal = r.tokenNumber || r.tokenNo;
+      const tokenNumber = rawTokenVal
+        ? rawTokenVal
+        : r.id?.startsWith('rcp-') && r.id.replace('rcp-', '').length > 6
+        ? r.id.replace('rcp-', '').slice(-3)
+        : r.id || '101';
       const isReturned = Boolean(r.returnedByTechnician);
       const existingReport = r.reportId ? reports.find((rp) => rp.reportId === r.reportId) : null;
       const isDraft = Boolean(existingReport?.isDraft);

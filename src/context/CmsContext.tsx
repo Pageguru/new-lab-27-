@@ -2203,7 +2203,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [vendorLabsList, setVendorLabsList] = useState<VendorLabDirectoryItem[]>(() => {
     try {
       const saved = localStorage.getItem('cms_vendor_labs_list');
-      return saved ? JSON.parse(saved) : VENDOR_LABS_DIRECTORY;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      return VENDOR_LABS_DIRECTORY;
     } catch {
       return VENDOR_LABS_DIRECTORY;
     }
@@ -2763,11 +2769,42 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 11. Subscribe to Vendor Labs Directory
     const unsubscribeVendorLabs = subscribeToVendorLabs((cloudLabs) => {
-      if (cloudLabs) {
-        setVendorLabsList(cloudLabs);
-        try {
-          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(cloudLabs));
-        } catch {}
+      if (cloudLabs && cloudLabs.length > 0) {
+        setVendorLabsList((prev) => {
+          const next = [...prev];
+          for (const cLab of cloudLabs) {
+            const idx = next.findIndex((l) => l.id === cLab.id);
+            if (idx === -1) {
+              next.push({
+                ...cLab,
+                isWebsiteApproved: cLab.isWebsiteApproved ?? (cLab.status === 'Active'),
+              });
+            } else {
+              const localLab = next[idx];
+              const cloudTime = (cLab as any)._updatedAt ? new Date((cLab as any)._updatedAt).getTime() : 0;
+              const localTime = (localLab as any)._updatedAt ? new Date((localLab as any)._updatedAt).getTime() : 0;
+
+              // CRITICAL: If local lab is marked published ('Active') and cloud still has older/draft data:
+              // Keep the active published state and re-sync to cloud so it never reverts to draft!
+              if (localLab.status === 'Active' && (cLab.status !== 'Active' || !cLab.isWebsiteApproved)) {
+                syncVendorLabToCloud(localLab);
+                continue;
+              }
+
+              if (!localTime || cloudTime >= localTime) {
+                next[idx] = {
+                  ...localLab,
+                  ...cLab,
+                  isWebsiteApproved: cLab.isWebsiteApproved ?? (cLab.status === 'Active' || localLab.status === 'Active'),
+                };
+              }
+            }
+          }
+          try {
+            localStorage.setItem('cms_vendor_labs_list', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
       }
     });
 
@@ -5090,14 +5127,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setVendorStatus = (id: string, status: VendorStatus) => {
     const isApproved = status === 'Active';
+    const nowIso = new Date().toISOString();
     let syncedLab: VendorLabDirectoryItem | null = null;
-    setVendorLabsList((prev) =>
-      prev.map((lab) => {
+    setVendorLabsList((prev) => {
+      const updated = prev.map((lab) => {
         if (lab.id === id) {
           syncedLab = {
             ...lab,
             status,
             isWebsiteApproved: isApproved,
+            _updatedAt: nowIso,
             ...(isApproved
               ? {
                   approvedAt: new Date().toLocaleDateString('en-IN', {
@@ -5115,27 +5154,34 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return syncedLab;
         }
         return lab;
-      })
-    );
+      });
+      try {
+        localStorage.setItem('cms_vendor_labs_list', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     if (syncedLab) {
       syncVendorLabToCloud(syncedLab);
     }
 
-    // Sync with vendorLabSettingsMap
+    // Sync with vendorLabSettingsMap - ensure lab settings exist and are fully synced
     setVendorLabSettingsMap((prev) => {
-      if (prev[id]) {
-        const updatedSetting = {
-          ...prev[id],
-          status,
-          isWebsiteApproved: isApproved,
-        };
-        syncLabSettingsToCloud(id, updatedSetting);
-        return {
-          ...prev,
-          [id]: updatedSetting,
-        };
-      }
-      return prev;
+      const existing = prev[id] || (syncedLab ? buildDefaultSettingsForLab(syncedLab) : DEFAULT_VENDOR_LAB_SETTINGS);
+      const updatedSetting: VendorLabSettings = {
+        ...existing,
+        status,
+        isWebsiteApproved: isApproved,
+        _updatedAt: nowIso,
+      };
+      syncLabSettingsToCloud(id, updatedSetting);
+      const nextMap = {
+        ...prev,
+        [id]: updatedSetting,
+      };
+      try {
+        localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(nextMap));
+      } catch {}
+      return nextMap;
     });
   };
 
