@@ -46,6 +46,7 @@ import {
   KeyRound,
   Image as ImageIcon,
   Users,
+  Maximize2,
   Upload,
   Trash2,
   Plus,
@@ -447,6 +448,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
   const [activeHeroBanner, setActiveHeroBanner] = useState(0);
   const [isHeroPaused, setIsHeroPaused] = useState(false);
+  const heroCarouselRef = React.useRef<HTMLDivElement>(null);
+  const heroCarouselDesktopRef = React.useRef<HTMLDivElement>(null);
+  const touchStartXRef = React.useRef<number | null>(null);
+  const touchEndXRef = React.useRef<number | null>(null);
   const packagesCarouselRef = React.useRef<HTMLDivElement>(null);
   const teamCarouselRef = React.useRef<HTMLDivElement>(null);
 
@@ -476,7 +481,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const handleScrollPackages = (direction: 'left' | 'right') => {
     if (!packagesCarouselRef.current) return;
     const container = packagesCarouselRef.current;
-    const scrollAmount = container.clientWidth * 0.76;
+    const scrollAmount = container.clientWidth * 0.88;
     container.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth'
@@ -576,6 +581,48 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     }, 4500);
     return () => clearInterval(interval);
   }, [isHeroPaused, heroBannersList.length]);
+
+  // Smooth scroll carousel container to active slide
+  useEffect(() => {
+    [heroCarouselRef.current, heroCarouselDesktopRef.current].forEach((container) => {
+      if (container) {
+        const targetCard = container.children[activeHeroBanner] as HTMLElement;
+        if (targetCard) {
+          container.scrollTo({
+            left: targetCard.offsetLeft,
+            behavior: 'smooth',
+          });
+        }
+      }
+    });
+  }, [activeHeroBanner]);
+
+  const handleHeroTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    setIsHeroPaused(true);
+  };
+
+  const handleHeroTouchMove = (e: React.TouchEvent) => {
+    touchEndXRef.current = e.touches[0].clientX;
+  };
+
+  const handleHeroTouchEnd = () => {
+    if (touchStartXRef.current !== null && touchEndXRef.current !== null) {
+      const delta = touchStartXRef.current - touchEndXRef.current;
+      if (Math.abs(delta) > 35) {
+        if (delta > 0) {
+          // swipe left -> next slide
+          setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length);
+        } else {
+          // swipe right -> previous slide
+          setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length);
+        }
+      }
+    }
+    touchStartXRef.current = null;
+    touchEndXRef.current = null;
+    setTimeout(() => setIsHeroPaused(false), 2500);
+  };
 
   // Section 2: Quick Check Report Box State & Inline Report Display
   const [quickReportTab, setQuickReportTab] = useState<'mobile' | 'report_id'>('mobile');
@@ -2061,31 +2108,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 </div>
               )}
               <div className="flex flex-col justify-center min-w-0 flex-1">
-                <div className="overflow-hidden w-full max-w-[125px] xs:max-w-[165px] sm:max-w-[240px] md:max-w-[320px] lg:max-w-[380px] relative select-none">
-                  <div className="animate-brand-marquee flex whitespace-nowrap">
-                    {/* Track 1 */}
-                    <div className="flex items-center shrink-0">
-                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
-                        {labName.toUpperCase()}
-                      </span>
-                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
-                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
-                        {labName.toUpperCase()}
-                      </span>
-                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
-                    </div>
-                    {/* Track 2: Duplicate for Continuous Seamless Infinite Loop */}
-                    <div className="flex items-center shrink-0" aria-hidden="true">
-                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
-                        {labName.toUpperCase()}
-                      </span>
-                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
-                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
-                        {labName.toUpperCase()}
-                      </span>
-                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
-                    </div>
-                  </div>
+                <div className="overflow-hidden w-full max-w-[125px] xs:max-w-[165px] sm:max-w-[240px] md:max-w-[320px] lg:max-w-[380px]">
+                  {React.createElement(
+                    'marquee',
+                    {
+                      direction: 'left',
+                      scrollamount: '4',
+                      behavior: 'scroll',
+                      className: 'text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight block whitespace-nowrap'
+                    },
+                    labName.toUpperCase()
+                  )}
                 </div>
                 <div className="text-[9px] xs:text-[10px] sm:text-[11px] text-slate-500 font-semibold tracking-wide flex items-center gap-1 whitespace-nowrap mt-0.5">
                   <span className="hidden xs:inline">ID:</span>
@@ -2437,125 +2470,242 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       </header>
 
       {/* ========================================================================= */}
-      {/* HERO SECTION: Inspired by Indianlalaji.com Design Architecture            */}
-      {/* Left Column: Headlines, Trust Badge, Key Features & CTAs                   */}
-      {/* Right Column: Clean Image Carousel with Prev/Next Navigation & Indicators */}
+      {/* 1. DESKTOP ONLY HERO: Left 70% Banner Section, Right 30% Check Report Section */}
       {/* ========================================================================= */}
-      <section id="top" className="relative overflow-hidden bg-[#F8FAFC] pt-6 pb-12 sm:pt-10 sm:pb-16 border-b border-slate-200 scroll-mt-20">
-        {/* Subtle Background Radial Gradients */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
-        <div className="absolute bottom-10 left-10 w-80 h-80 bg-teal-100/30 rounded-full blur-3xl pointer-events-none -z-10" />
-
+      <section id="top" className="hidden lg:block bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white py-6 lg:py-8 border-b border-slate-200 scroll-mt-20 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          <div className="grid grid-cols-10 gap-6 xl:gap-8 items-start">
             
-            {/* LEFT SIDE: Content, Highlights & CTAs */}
-            <div className="lg:col-span-6 space-y-6">
-              {/* Trust Badge Pill */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#123B6D]/10 border border-[#123B6D]/15 text-[#123B6D] text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>© Since {labEstablishedYear} • {vendorLabSettings?.nablAccreditationNo || 'NABL Accredited Diagnostics'}</span>
+            {/* LEFT SIDE: Banner Section → 70% Width (7 out of 10 cols) */}
+            <div className="col-span-7 flex flex-col space-y-3">
+              {/* Trust Badge & Quick Info Bar above Banners */}
+              <div className="flex items-center justify-between gap-3 bg-white px-4 py-2.5 rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#123B6D]/10 text-[#123B6D] text-[11px] font-bold shrink-0">
+                    <span>© Since {labEstablishedYear}</span>
+                  </div>
+                  <span className="text-xs font-black text-slate-800 truncate">
+                    {labName}
+                  </span>
+                  <span className="hidden xl:inline-flex text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                    {vendorLabSettings?.nablAccreditationNo || 'NABL Accredited'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={`tel:+91${cleanPhone}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#123B6D] hover:text-[#0F766E] transition"
+                    title="Call Lab Helpline"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="font-extrabold">+91 {labPhone}</span>
+                  </a>
+
+                  {/* Admin Edit Banners Action */}
+                  {(currentUser?.role === 'vendor' || currentUser?.role === 'admin') && (
+                    <button
+                      type="button"
+                      onClick={() => setIsBannerManagerOpen(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold transition cursor-pointer"
+                      title="Edit Promotional Banners"
+                    >
+                      <ImageIcon className="w-3 h-3 text-amber-700" />
+                      <span>Edit Banners</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Main Headline */}
-              <h1 className="text-3xl sm:text-4xl lg:text-[44px] leading-[1.18] lg:leading-[1.12] font-black text-[#123B6D] tracking-tight">
-                {vendorLabSettings?.heroTitle || (
-                  <>
-                    Fast, Accurate &amp;{' '}
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#123B6D] via-[#0F766E] to-teal-600">
-                      Reliable Diagnostics
-                    </span>{' '}
-                    for Your Entire Family
-                  </>
+              {/* Large Promotional Banner Carousel Container (Full 70% Width) */}
+              <div className="relative w-full rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-200/90 bg-slate-950 aspect-[16/9] min-h-[420px] max-h-[475px] group">
+                {/* Auto-sliding Image Carousel Track */}
+                <div
+                  ref={heroCarouselDesktopRef}
+                  onMouseEnter={() => setIsHeroPaused(true)}
+                  onMouseLeave={() => setIsHeroPaused(false)}
+                  className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth w-full h-full"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {heroBannersList.map((bannerUrl, idx) => (
+                    <div
+                      key={idx}
+                      className="w-full shrink-0 snap-center relative bg-slate-950 h-full cursor-pointer"
+                      onClick={() => {
+                        setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
+                        setIsBookingModalOpen(true);
+                      }}
+                      title="Click to Book Health Checkup"
+                    >
+                      <img
+                        src={bannerUrl}
+                        alt={`${labName} Banner ${idx + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
+                        loading={idx === 0 ? 'eager' : 'lazy'}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Navigation Arrows */}
+                {heroBannersList.length > 1 && (
+                  <div className="flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-10">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length);
+                      }}
+                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
+                      aria-label="Previous Slide"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-slate-700" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length);
+                      }}
+                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
+                      aria-label="Next Slide"
+                    >
+                      <ChevronRight className="w-5 h-5 text-slate-700" />
+                    </button>
+                  </div>
                 )}
-              </h1>
 
-              {/* Sub-headline */}
-              <p className="text-base sm:text-lg text-[#475569] leading-relaxed max-w-[540px]">
-                {vendorLabSettings?.heroSubtitle ||
-                  'Experience same-day digital lab reports on WhatsApp, 100% automated barcoded testing, certified pathologist approval, and free doorstep home sample collection.'}
-              </p>
-
-              {/* Key Lab Benefits Checklist - Left-Right 2 Columns on Mobile & Desktop */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 pt-1">
-                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Online Reports</span>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>100% Barcoded Testing</span>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Multi-Department Lab</span>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="leading-tight sm:leading-normal">Doorstep Sample Pickup</span>
+                {/* Floating Quality & Discount Badge */}
+                <div className="absolute bottom-3 left-4 bg-slate-950/75 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/20 text-white text-xs font-bold pointer-events-none flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>NABL Accredited Diagnostics • Accurate Digital Reports</span>
                 </div>
               </div>
 
-              {/* Action Buttons (Desktop Only: Hidden on Mobile View) */}
-              <div className="hidden lg:flex flex-wrap items-center gap-3 pt-2">
-                <button
-                  id="vendor-hero-btn-book"
-                  type="button"
-                  onClick={() => {
-                    setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
-                    setIsBookingModalOpen(true);
-                  }}
-                  className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-7 py-3.5 rounded-xl font-bold text-sm transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                >
-                  <span>Book Health Test</span>
-                  <ArrowRight className="w-4 h-4 text-amber-400" />
-                </button>
+              {/* Pagination Dots Below Banners */}
+              <div className="flex items-center justify-center gap-2 pt-0.5">
+                {heroBannersList.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveHeroBanner(idx)}
+                    className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      activeHeroBanner === idx
+                        ? 'w-8 bg-[#123B6D] shadow-xs'
+                        : 'w-2.5 bg-slate-300 hover:bg-slate-400'
+                    }`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
 
-                <button
-                  id="vendor-hero-btn-check-report"
-                  type="button"
-                  onClick={() => {
-                    const el = document.getElementById('check-report-section');
-                    if (el) {
-                      const yOffset = -75;
-                      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                    }
-                  }}
-                  className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 px-6 py-3.5 rounded-xl font-bold text-sm transition shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                >
-                  <Search className="w-4 h-4 text-[#123B6D]" />
-                  <span>Check Lab Report</span>
-                </button>
-
-                <a
-                  href={`tel:+91${cleanPhone}`}
-                  className="inline-flex items-center gap-2 px-4 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-bold transition border border-slate-200"
-                  title="Call Lab Helpline"
-                >
-                  <Phone className="w-4 h-4 text-amber-600" />
-                  <span>+91 {labPhone}</span>
-                </a>
+              {/* Micro Trust Strip */}
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
+                  <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-xs shrink-0">
+                    ⚡
+                  </div>
+                  <div className="text-[11px] leading-tight">
+                    <span className="font-extrabold text-slate-800 block">Same-Day Reports</span>
+                    <span className="text-slate-500">Fast digital delivery</span>
+                  </div>
+                </div>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center text-xs shrink-0">
+                    🔬
+                  </div>
+                  <div className="text-[11px] leading-tight">
+                    <span className="font-extrabold text-slate-800 block">100% Barcoded</span>
+                    <span className="text-slate-500">Automated analyzers</span>
+                  </div>
+                </div>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-xs shrink-0">
+                    🏠
+                  </div>
+                  <div className="text-[11px] leading-tight">
+                    <span className="font-extrabold text-slate-800 block">Home Collection</span>
+                    <span className="text-slate-500">Free doorstep pickup</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* RIGHT SIDE: Simple Plain Image Carousel with Indianlalaji.com Design */}
-            <div className="lg:col-span-6 relative">
-              <div
-                className="group relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border border-slate-200/90 bg-white"
-                onMouseEnter={() => setIsHeroPaused(true)}
-                onMouseLeave={() => setIsHeroPaused(false)}
-              >
-                {/* Plain Image Canvas with fade transition */}
-                <div className="relative aspect-[4/3] sm:aspect-[16/11] w-full overflow-hidden bg-slate-900 select-none">
-                  {heroBannersList.map((bannerUrl, index) => {
-                    const isActive = index === activeHeroBanner;
-                    return (
+            {/* RIGHT SIDE: “Check & Download Patient Lab Report” Section → 30% Width (3 out of 10 cols) */}
+            <div id="check-report-section-desktop" className="col-span-3">
+              {renderCheckReportCard(false, undefined, 'desktop')}
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 2. MOBILE ONLY LAYOUT (Unchanged - Mobile layout already correct)          */}
+      {/* ========================================================================= */}
+      <div className="lg:hidden">
+        {/* Mobile Section 1: Hero Banner */}
+        <section id="top-mobile" className="bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white py-8 border-b border-slate-200 scroll-mt-20 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="flex flex-col space-y-5 text-left">
+              {/* Trust Badge: © Since & Lab Name */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#123B6D]/10 text-[#123B6D] border border-[#123B6D]/20 text-xs font-bold tracking-wide w-fit shadow-2xs">
+                <span className="text-xs">©</span>
+                <span>Since {labEstablishedYear} • {labName}</span>
+              </div>
+
+              {/* 1. Large, bold headline with highlighted text */}
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-[1.15]">
+                Fast, Accurate &amp;{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#123B6D] via-[#0F766E] to-teal-600">
+                  Reliable Diagnostics
+                </span>{' '}
+                for Your Entire Family
+              </h1>
+
+              {/* 3. Short descriptive paragraph */}
+              <p className="text-sm text-slate-600 leading-relaxed font-normal">
+                Experience same-day digital lab reports on WhatsApp, 100% automated barcoded testing, certified pathologist approval, and free doorstep home sample collection.
+              </p>
+
+              {/* 4. Prominent “Phone Number” CTA button */}
+              <div className="flex flex-wrap items-center gap-3.5 pt-1">
+                <a
+                  href={`tel:+91${cleanPhone}`}
+                  className="inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-extrabold text-sm transition-all duration-300 shadow-lg active:scale-98 group cursor-pointer border border-[#123B6D]/40"
+                  id="hero-phone-cta-btn-mobile"
+                >
+                  <span className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-amber-300 shadow-xs">
+                    <Phone className="w-5 h-5" />
+                  </span>
+                  <div className="text-left leading-tight">
+                    <span className="block text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                      Call / Helpline Number
+                    </span>
+                    <span className="block font-black text-base tracking-wide text-white">
+                      +91 {labPhone}
+                    </span>
+                  </div>
+                </a>
+              </div>
+
+              {/* Mobile Image Carousel */}
+              <div className="flex flex-col items-center w-full pt-2">
+                <div className="relative w-full rounded-3xl overflow-hidden shadow-xl border border-slate-200/90 bg-slate-950 aspect-[16/10] sm:aspect-[16/9] max-h-[460px] group">
+                  <div
+                    ref={heroCarouselRef}
+                    onTouchStart={handleHeroTouchStart}
+                    onTouchMove={handleHeroTouchMove}
+                    onTouchEnd={handleHeroTouchEnd}
+                    onMouseEnter={() => setIsHeroPaused(true)}
+                    onMouseLeave={() => setIsHeroPaused(false)}
+                    className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth w-full h-full"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    {heroBannersList.map((bannerUrl, idx) => (
                       <div
-                        key={index}
-                        className={`absolute inset-0 transition-opacity duration-700 ease-in-out cursor-pointer ${
-                          isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
-                        }`}
+                        key={idx}
+                        className="w-full shrink-0 snap-center relative bg-slate-950 h-full cursor-pointer"
                         onClick={() => {
                           setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
                           setIsBookingModalOpen(true);
@@ -2564,114 +2714,94 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       >
                         <img
                           src={bannerUrl}
-                          alt={`${labName} Banner ${index + 1}`}
-                          className="w-full h-full object-cover object-center"
-                          loading={index === 0 ? 'eager' : 'lazy'}
+                          alt={`${labName} Banner ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                          loading={idx === 0 ? 'eager' : 'lazy'}
                         />
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
 
-                  {/* Subtle Prev / Next Navigation Arrows */}
                   {heroBannersList.length > 1 && (
-                    <>
+                    <div className="flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-10">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setActiveHeroBanner((prev) => (prev === 0 ? heroBannersList.length - 1 : prev - 1));
+                          setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length);
                         }}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/85 hover:bg-white text-slate-800 backdrop-blur-xs border border-slate-200/80 flex items-center justify-center transition shadow-md hover:scale-105 active:scale-95 cursor-pointer opacity-70 group-hover:opacity-100"
-                        aria-label="Previous Image"
+                        className="w-10 h-10 rounded-full bg-white/90 text-slate-800 shadow-md flex items-center justify-center pointer-events-auto active:scale-95 border border-slate-200"
+                        aria-label="Previous Slide"
                       >
                         <ChevronLeft className="w-5 h-5 text-slate-700" />
                       </button>
-
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length);
                         }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/85 hover:bg-white text-slate-800 backdrop-blur-xs border border-slate-200/80 flex items-center justify-center transition shadow-md hover:scale-105 active:scale-95 cursor-pointer opacity-70 group-hover:opacity-100"
-                        aria-label="Next Image"
+                        className="w-10 h-10 rounded-full bg-white/90 text-slate-800 shadow-md flex items-center justify-center pointer-events-auto active:scale-95 border border-slate-200"
+                        aria-label="Next Slide"
                       >
                         <ChevronRight className="w-5 h-5 text-slate-700" />
                       </button>
-                    </>
-                  )}
-
-                  {/* Admin Edit Banners Action */}
-                  {(currentUser?.role === 'vendor' || currentUser?.role === 'admin') && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsBannerManagerOpen(true);
-                      }}
-                      className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-amber-300 border border-white/20 text-xs font-bold transition shadow-md cursor-pointer"
-                      title="Edit Promotional Banners"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5" />
-                      <span>Edit Banners</span>
-                    </button>
+                    </div>
                   )}
                 </div>
 
-                {/* Clean Dot Indicators Below Image */}
-                <div className="py-3 bg-white flex items-center justify-center gap-2 border-t border-slate-100">
-                  {heroBannersList.map((_, index) => (
+                {/* Mobile Pagination Dots */}
+                <div className="flex items-center justify-center gap-2 mt-3.5">
+                  {heroBannersList.map((_, idx) => (
                     <button
-                      key={index}
+                      key={idx}
                       type="button"
-                      onClick={() => setActiveHeroBanner(index)}
-                      className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                        index === activeHeroBanner
-                          ? 'w-7 bg-[#123B6D]'
-                          : 'w-2 bg-slate-300 hover:bg-slate-400'
+                      onClick={() => setActiveHeroBanner(idx)}
+                      className={`h-2.5 rounded-full transition-all duration-300 ${
+                        activeHeroBanner === idx
+                          ? 'w-8 bg-[#123B6D] shadow-xs'
+                          : 'w-2.5 bg-slate-300'
                       }`}
-                      aria-label={`Go to image ${index + 1}`}
+                      aria-label={`Go to slide ${idx + 1}`}
                     />
                   ))}
                 </div>
               </div>
+
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ========================================================================= */}
-      {/* CHECK & DOWNLOAD PATIENT LAB REPORT FORM (Directly Below Hero Section)   */}
-      {/* ========================================================================= */}
-      <section id="check-report-section" className="py-12 sm:py-16 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-20">
-        <span id="check-report-section-desktop" className="sr-only" />
-        <span id="check-report-quick" className="sr-only" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-3">
-              <FileText className="w-3.5 h-3.5 text-[#0F766E]" />
-              <span>Instant Patient Report Portal</span>
+        {/* Mobile Section 2: Fast Patient Report Download Portal */}
+        <section id="check-report-section" className="py-10 bg-slate-50/80 border-b border-slate-200 scroll-mt-20">
+          <span id="check-report-quick" className="sr-only" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="text-center max-w-2xl mx-auto mb-6">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-2">
+                <FileText className="w-3.5 h-3.5 text-[#0F766E]" />
+                <span>Instant Lab Report Access</span>
+              </div>
+              <h2 className="text-2xl font-extrabold text-[#123B6D] tracking-tight">
+                {vendorLabSettings?.reportCheckTitle || 'Check & Download Patient Lab Report'}
+              </h2>
+              {Boolean(vendorLabSettings?.reportCheckSubtitle !== undefined ? vendorLabSettings.reportCheckSubtitle : true) && (
+                <p className="text-xs text-[#64748B] mt-1">
+                  {vendorLabSettings?.reportCheckSubtitle || 'Access your verified diagnostic reports directly using your registered mobile number or Token Number.'}
+                </p>
+              )}
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#123B6D] tracking-tight">
-              {vendorLabSettings?.reportCheckTitle || 'Check & Download Patient Lab Report'}
-            </h2>
-            {Boolean(vendorLabSettings?.reportCheckSubtitle !== undefined ? vendorLabSettings.reportCheckSubtitle : true) && (
-              <p className="text-xs sm:text-sm text-[#64748B] mt-2 max-w-xl mx-auto">
-                {vendorLabSettings?.reportCheckSubtitle || 'Access your verified diagnostic reports directly using your registered 10-digit mobile number or Token Number.'}
-              </p>
-            )}
-          </div>
 
-          <div className="max-w-xl mx-auto">
-            {renderCheckReportCard(false, undefined, 'desktop')}
+            <div className="max-w-xl mx-auto">
+              {renderCheckReportCard(false, undefined, 'mobile')}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* SECTION 3: HEALTH PACKAGES (with Booking Button & Peek Carousel) */}
       <div id="packages-section" className="scroll-mt-24" />
-      <section id="packages" className="py-12 sm:py-16 bg-white border-b border-slate-200 scroll-mt-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="packages" className="py-16 bg-white border-b border-slate-200 scroll-mt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B6D]/10 text-[#123B6D] text-xs font-bold mb-3">
               <span>{vendorLabSettings?.packagesBadge || 'Preventive Health Packages'}</span>
@@ -2725,54 +2855,79 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             };
 
             return (
-              <div className="max-w-5xl mx-auto">
-                {/* Desktop View: Compact Grid */}
-                <div className="hidden md:grid md:grid-cols-3 gap-5 lg:gap-6 items-stretch justify-center">
+              <div className="max-w-6xl mx-auto">
+                {/* Desktop View: Grid (Unchanged) */}
+                <div className="hidden md:grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch justify-center">
                   {vendorPackages.slice(0, 3).map((pkg, idx) => {
                     const pkgImageUrl = getPackageImg(pkg, idx);
 
                     return (
                       <div
                         key={pkg.id || idx}
-                        className="bg-white rounded-2xl border border-slate-200 hover:border-[#123B6D]/40 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group relative h-full w-full"
+                        className="bg-white rounded-3xl border border-slate-200/90 hover:border-[#123B6D]/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group relative h-full w-full"
                       >
-                        {/* Package Cover Image - Compact & Sleek */}
-                        <div className="relative w-full h-36 sm:h-40 bg-slate-100 overflow-hidden shrink-0">
+                        {/* Package Cover Image with Full Screen View Trigger */}
+                        <div className="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
                           <img
                             src={pkgImageUrl}
                             alt={pkg.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
 
                           {/* Popular Badge */}
                           {(pkg.isPopular || idx === 0) && (
-                            <div className="absolute top-2.5 left-2.5 bg-[#F59E0B] text-slate-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                            <div className="absolute top-3 left-3 bg-[#F59E0B] text-slate-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
                               Most Popular
                             </div>
                           )}
+
+                          {/* Full Screen View Icon Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFullScreenImage({ url: pkgImageUrl, title: pkg.name });
+                            }}
+                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 text-white backdrop-blur-xs flex items-center justify-center transition shadow-md cursor-pointer"
+                            title="View full image screen"
+                            aria-label="View full image screen"
+                          >
+                            <Maximize2 className="w-4 h-4 text-white" />
+                          </button>
+
+                          {/* Click Image Hint */}
+                          <button
+                            type="button"
+                            onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                            className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 hover:bg-black/80 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Maximize2 className="w-3 h-3 text-amber-300" />
+                            <span>Full Image View</span>
+                          </button>
                         </div>
 
-                        {/* Card Content - Compact padding */}
-                        <div className="p-4 sm:p-4.5 flex flex-col flex-1 justify-between">
+                        {/* Card Content with Flex-1 to guarantee uniform equal height */}
+                        <div className="p-5 sm:p-6 flex flex-col flex-1 justify-between">
                           <div className="flex-1 flex flex-col">
-                            {/* Package Name */}
-                            <h3 className="text-sm sm:text-base font-black text-[#123B6D] leading-snug mb-2 min-h-[2.4rem] flex items-center">
+                            {/* Sabse upar Package ka naam with equal fixed min-height */}
+                            <h3 className="text-base sm:text-lg font-black text-[#123B6D] leading-snug mb-3 min-h-[3rem] flex items-center">
                               {pkg.name}
                             </h3>
 
-                            {/* Tests List */}
-                            <div className="space-y-1.5 mb-3 flex-1 flex flex-col">
-                              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                            {/* Uske neeche List of Tests with equal fixed height */}
+                            <div className="space-y-2 mb-5 flex-1 flex flex-col">
+                              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                 <span>Included Tests:</span>
                                 <span className="text-[10px] font-bold text-slate-400">
                                   {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                 </span>
                               </div>
-                              <div className="space-y-1 h-28 overflow-y-auto pr-1">
+                              <div className="space-y-1.5 h-48 overflow-y-auto pr-1">
                                 {pkg.features.map((feat, fIdx) => (
-                                  <div key={fIdx} className="flex items-start gap-1.5 text-[11px] sm:text-xs text-slate-700 leading-snug">
+                                  <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
                                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                                     <span className="font-medium text-slate-700">{feat}</span>
                                   </div>
@@ -2781,9 +2936,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                             </div>
                           </div>
 
-                          {/* Price & Book Button */}
-                          <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
-                            <div className="px-3 py-1.5 rounded-lg bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-xs sm:text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                          {/* Uske neeche inline 2 buttons: Price aur Book Test */}
+                          <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5 mt-auto shrink-0">
+                            <div className="px-3.5 py-2.5 rounded-xl bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-sm sm:text-base flex items-center justify-center shrink-0 shadow-2xs">
                               ₹{pkg.priceINR}
                             </div>
 
@@ -2793,7 +2948,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 setSelectedTestOrPackage(`${pkg.name} (₹${pkg.priceINR})`);
                                 setIsBookingModalOpen(true);
                               }}
-                              className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-1.5 px-3 rounded-lg text-xs font-black transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                              className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                             >
                               <span>Book Test</span>
                               <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
@@ -2805,46 +2960,55 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   })}
                 </div>
 
-                {/* Mobile View: Compact Cards with Proper Section Margins */}
+                {/* Mobile View: 1 Package = 100% width, 2+ Packages = 90% card with 10% peek & swipe */}
                 <div className="block md:hidden">
                   {vendorPackages.length === 1 ? (
-                    /* 1 Package: Compact centered card with margin */
-                    <div className="max-w-xs mx-auto">
+                    /* 1 Package: Full screen width (100%) */
+                    <div className="w-full">
                       {(() => {
                         const pkg = vendorPackages[0];
                         const pkgImageUrl = getPackageImg(pkg, 0);
                         return (
                           <div
                             key={pkg.id || 0}
-                            className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-hidden relative w-full"
+                            className="bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative w-full"
                           >
-                            <div className="relative w-full h-36 bg-slate-100 overflow-hidden shrink-0">
+                            <div className="relative w-full h-48 bg-slate-100 overflow-hidden shrink-0">
                               <img
                                 src={pkgImageUrl}
                                 alt={pkg.name}
-                                className="w-full h-full object-cover"
+                                onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                                className="w-full h-full object-cover cursor-pointer"
                                 loading="lazy"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
-                              <div className="absolute top-2.5 left-2.5 bg-[#F59E0B] text-slate-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                              <div className="absolute top-3 left-3 bg-[#F59E0B] text-slate-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
                                 Most Popular
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                                className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5"
+                              >
+                                <Maximize2 className="w-3 h-3 text-amber-300" />
+                                <span>Full View</span>
+                              </button>
                             </div>
-                            <div className="p-3.5 sm:p-4 flex flex-col justify-between">
+                            <div className="p-5 flex flex-col justify-between">
                               <div>
-                                <h3 className="text-sm font-black text-[#123B6D] leading-snug mb-1.5 min-h-[2.2rem] flex items-center">
+                                <h3 className="text-base font-black text-[#123B6D] leading-snug mb-2.5">
                                   {pkg.name}
                                 </h3>
-                                <div className="space-y-1.5 mb-3">
-                                  <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                <div className="space-y-2 mb-4">
+                                  <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                     <span>Included Tests:</span>
                                     <span className="text-[10px] font-bold text-slate-400">
                                       {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                     </span>
                                   </div>
-                                  <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
                                     {pkg.features.map((feat, fIdx) => (
-                                      <div key={fIdx} className="flex items-start gap-1.5 text-xs text-slate-700 leading-snug">
+                                      <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
                                         <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                                         <span className="font-medium text-slate-700">{feat}</span>
                                       </div>
@@ -2852,8 +3016,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                   </div>
                                 </div>
                               </div>
-                              <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2">
-                                <div className="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-[#123B6D] font-black text-xs shadow-2xs">
+                              <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5">
+                                <div className="px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#123B6D] font-black text-base shadow-2xs">
                                   ₹{pkg.priceINR}
                                 </div>
                                 <button
@@ -2862,7 +3026,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     setSelectedTestOrPackage(`${pkg.name} (₹${pkg.priceINR})`);
                                     setIsBookingModalOpen(true);
                                   }}
-                                  className="flex-1 bg-[#123B6D] text-white py-1.5 px-3 rounded-lg text-xs font-black shadow-sm flex items-center justify-center gap-1 active:scale-98"
+                                  className="flex-1 bg-[#123B6D] text-white py-2.5 px-3 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 active:scale-98"
                                 >
                                   <span>Book Test</span>
                                   <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
@@ -2874,11 +3038,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       })()}
                     </div>
                   ) : vendorPackages.length > 1 ? (
-                    /* 2+ Packages: Compact card carousel with clean margins and peek */
+                    /* 2+ Packages: First card 90% width, next card 10% visible on right. Horizontal swipe & click navigation enabled. */
                     <div className="relative">
                       <div
                         ref={packagesCarouselRef}
-                        className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-3 px-1 scroll-smooth touch-pan-x"
+                        className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 pb-2 -mx-4 px-4 scroll-smooth touch-pan-x"
                         style={{
                           scrollbarWidth: 'none',
                           msOverflowStyle: 'none',
@@ -2887,7 +3051,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         onScroll={(e) => {
                           const el = e.currentTarget;
                           const scrollLeft = el.scrollLeft;
-                          const cardWidth = el.offsetWidth * 0.76;
+                          const cardWidth = el.offsetWidth * 0.88;
                           if (cardWidth > 0) {
                             const idx = Math.min(
                               vendorPackages.length - 1,
@@ -2904,53 +3068,64 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           return (
                             <div
                               key={pkg.id || idx}
-                              className="w-[74vw] sm:w-[260px] max-w-[270px] shrink-0 snap-start bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-hidden relative"
+                              className="w-[88vw] shrink-0 snap-start bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative"
                             >
-                              {/* Package Cover Image - Compact & Sleek */}
-                              <div className="relative w-full h-32 bg-slate-100 overflow-hidden shrink-0">
+                              {/* Package Cover Image */}
+                              <div className="relative w-full h-44 bg-slate-100 overflow-hidden shrink-0">
                                 <img
                                   src={pkgImageUrl}
                                   alt={pkg.name}
-                                  className="w-full h-full object-cover"
+                                  onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                                  className="w-full h-full object-cover cursor-pointer"
                                   loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
 
                                 {/* Popular Badge */}
                                 {(pkg.isPopular || idx === 0) && (
-                                  <div className="absolute top-2 left-2 bg-[#F59E0B] text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                                  <div className="absolute top-3 left-3 bg-[#F59E0B] text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
                                     Most Popular
                                   </div>
                                 )}
+
+                                {/* Click Image Hint */}
+                                <button
+                                  type="button"
+                                  onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                                  className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Maximize2 className="w-3 h-3 text-amber-300" />
+                                  <span>Full View</span>
+                                </button>
                               </div>
 
                               {/* Card Content */}
-                              <div className="p-3.5 flex flex-col flex-1 justify-between">
+                              <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between">
                                 <div className="flex-1 flex flex-col">
-                                  <h3 className="text-xs sm:text-sm font-black text-[#123B6D] leading-snug mb-1.5 min-h-[2.2rem] flex items-center">
+                                  <h3 className="text-base font-black text-[#123B6D] leading-snug mb-2 min-h-[2.5rem] flex items-center">
                                     {pkg.name}
                                   </h3>
 
-                                  <div className="space-y-1 mb-3 flex-1 flex flex-col">
-                                    <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                  <div className="space-y-2 mb-4 flex-1 flex flex-col">
+                                    <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                       <span>Included Tests:</span>
-                                      <span className="text-[9px] font-bold text-slate-400">
+                                      <span className="text-[10px] font-bold text-slate-400">
                                         {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                       </span>
                                     </div>
-                                    <div className="space-y-1 h-24 overflow-y-auto pr-1">
+                                    <div className="space-y-1.5 h-36 overflow-y-auto pr-1">
                                       {pkg.features.map((feat, fIdx) => (
-                                        <div key={fIdx} className="flex items-start gap-1.5 text-[11px] text-slate-700 leading-snug">
-                                          <Check className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
-                                          <span className="font-medium text-slate-700 truncate">{feat}</span>
+                                        <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
+                                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                          <span className="font-medium text-slate-700">{feat}</span>
                                         </div>
                                       ))}
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="pt-2 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
-                                  <div className="px-2.5 py-1 rounded-lg bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                                <div className="pt-3 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
+                                  <div className="px-3 py-2 rounded-xl bg-blue-50/90 border border-blue-200 text-[#123B6D] font-black text-sm flex items-center justify-center shrink-0 shadow-2xs">
                                     ₹{pkg.priceINR}
                                   </div>
 
@@ -2960,10 +3135,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       setSelectedTestOrPackage(`${pkg.name} (₹${pkg.priceINR})`);
                                       setIsBookingModalOpen(true);
                                     }}
-                                    className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-1.5 px-2.5 rounded-lg text-xs font-black transition shadow-sm flex items-center justify-center gap-1 active:scale-98 cursor-pointer"
+                                    className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2 px-3 rounded-xl text-xs font-black transition shadow-sm flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
                                   >
                                     <span>Book Test</span>
-                                    <ArrowRight className="w-3 h-3 text-amber-400" />
+                                    <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
                                   </button>
                                 </div>
                               </div>
@@ -2982,7 +3157,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               onClick={() => {
                                 const el = packagesCarouselRef.current;
                                 if (el) {
-                                  const cardW = el.offsetWidth * 0.76;
+                                  const cardW = el.offsetWidth * 0.88;
                                   el.scrollTo({ left: dotIdx * cardW, behavior: 'smooth' });
                                   setActiveMobilePkgIndex(dotIdx);
                                 }
@@ -3447,6 +3622,34 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Laboratory Diagnostic Team Group Photo Banner */}
+            {vendorLabSettings?.teamGroupPhotoUrl && (
+              <div className="mt-4 mb-8 max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 relative group">
+                <img
+                  src={vendorLabSettings.teamGroupPhotoUrl}
+                  alt={`${vendorLabSettings.labName || 'Laboratory'} Diagnostic Team`}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-48 sm:h-64 md:h-72 object-cover object-center group-hover:scale-102 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-4 sm:p-6 text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-emerald-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-xs">
+                      Clinical Diagnostic Team
+                    </span>
+                    <span className="text-xs text-white/90 font-medium">
+                      100% NABL Quality Assured
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base md:text-lg font-black text-white">
+                    {vendorLabSettings.labName} Diagnostic Medical Team
+                  </h3>
+                  <p className="text-xs text-slate-200 line-clamp-1 sm:line-clamp-none mt-0.5">
+                    Pathologists, Biochemists, Microbiologists &amp; Senior Technologists dedicated to accurate patient testing.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {(() => {
               const doctorsList = effectiveTeamDoctors;

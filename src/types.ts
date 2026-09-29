@@ -214,8 +214,6 @@ export interface VendorLabSettings {
   state?: string;
   pincode?: string;
   heroPromoText: string;
-  heroTitle?: string;
-  heroSubtitle?: string;
   emergencyHours: string;
   whatsappTemplate?: string;
   enableDigitalSignature?: boolean;

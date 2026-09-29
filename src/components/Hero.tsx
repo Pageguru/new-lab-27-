@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Globe,
+  Mail,
 } from 'lucide-react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../data/mockData';
@@ -34,6 +36,33 @@ const CAROUSEL_IMAGES = [
   { id: '6', src: barcodeImg, alt: 'Thermal Barcode Sample Station' },
 ];
 
+const ADDON_BOXES = [
+  {
+    id: 'custom-domain',
+    title: 'Custom Domain',
+    badge: 'Branded Web Address',
+    badgeColor: 'bg-blue-50 text-[#123B6D] border-blue-200',
+    iconBg: 'bg-blue-100/80 text-[#123B6D] border-blue-200',
+    icon: Globe,
+    headline: 'www.yourlab.com or yourlab.in',
+    description: 'Connect your own branded domain name with free SSL certificate for instant local patient trust.',
+    features: ['Dedicated Branded URL', 'Free Lifetime SSL (HTTPS)', 'Instant DNS Activation'],
+    btnText: 'Request Domain',
+  },
+  {
+    id: 'pro-email',
+    title: 'Professional Email',
+    badge: 'Business Identity',
+    badgeColor: 'bg-teal-50 text-[#0F766E] border-teal-200',
+    iconBg: 'bg-teal-100/80 text-[#0F766E] border-teal-200',
+    icon: Mail,
+    headline: 'contact@yourlab.com & reports@yourlab.com',
+    description: 'Establish official corporate credibility with branded inboxes, anti-spam protection, and webmail access.',
+    features: ['Branded Inboxes', '99.9% Inbox Delivery', 'Webmail & Mobile Sync'],
+    btnText: 'Get Official Email',
+  },
+];
+
 export const Hero: React.FC<HeroProps> = ({
   onOpenDemo,
   onLaunchApp,
@@ -52,6 +81,18 @@ export const Hero: React.FC<HeroProps> = ({
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Small Box Add-on Slider State (Custom Domain & Professional Email)
+  const [activeAddonIndex, setActiveAddonIndex] = useState(0);
+  const [isAddonHovered, setIsAddonHovered] = useState(false);
+
+  useEffect(() => {
+    if (isAddonHovered) return;
+    const interval = setInterval(() => {
+      setActiveAddonIndex((prev) => (prev === 0 ? 1 : 0));
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [isAddonHovered]);
 
   // Auto-advance slides every 4 seconds when not hovered
   useEffect(() => {
@@ -76,6 +117,9 @@ export const Hero: React.FC<HeroProps> = ({
   const handleNext = () => {
     setCurrentSlideIndex((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
   };
+
+  const currentAddon = ADDON_BOXES[activeAddonIndex];
+  const CurrentAddonIcon = currentAddon.icon;
 
   return (
     <section id="hero-section" className="relative overflow-hidden bg-[#F8FAFC] pt-6 pb-12 sm:pt-10 sm:pb-16 border-b border-slate-200">
@@ -203,6 +247,111 @@ export const Hero: React.FC<HeroProps> = ({
                   />
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Small Box Add-on Slider: Custom Domain & Professional Email (Mobile View & Desktop View) */}
+        <div className="mt-8 pt-6 border-t border-slate-200 flex justify-center">
+          <div
+            className="w-full max-w-xl bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-300 p-4 sm:p-5 relative group"
+            onMouseEnter={() => setIsAddonHovered(true)}
+            onMouseLeave={() => setIsAddonHovered(false)}
+          >
+            {/* Top row: Icon, Title & Badge, Slider Prev/Next Controls */}
+            <div className="flex items-center justify-between gap-3 mb-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border ${currentAddon.iconBg}`}>
+                  <CurrentAddonIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-black text-sm sm:text-base text-slate-900 tracking-tight truncate">
+                      {currentAddon.title}
+                    </h4>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${currentAddon.badgeColor}`}>
+                      {currentAddon.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] sm:text-xs font-mono font-bold text-[#123B6D] truncate">
+                    {currentAddon.headline}
+                  </p>
+                </div>
+              </div>
+
+              {/* Slider Prev / Next Arrows */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveAddonIndex((prev) => (prev === 0 ? ADDON_BOXES.length - 1 : prev - 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition cursor-pointer active:scale-95"
+                  aria-label="Previous Add-on"
+                  title="Previous"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveAddonIndex((prev) => (prev === ADDON_BOXES.length - 1 ? 0 : prev + 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition cursor-pointer active:scale-95"
+                  aria-label="Next Add-on"
+                  title="Next"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-xs text-slate-600 leading-relaxed mb-3">
+              {currentAddon.description}
+            </p>
+
+            {/* Feature Pills / Badges */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
+              {currentAddon.features.map((feat, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1 text-[10.5px] sm:text-[11px] font-semibold text-slate-700 bg-slate-100/90 px-2 sm:px-2.5 py-0.5 rounded-md border border-slate-200"
+                >
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span>{feat}</span>
+                </span>
+              ))}
+            </div>
+
+            {/* Bottom Row: CTA Button + Dot Indicators */}
+            <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-slate-100">
+              {/* Slider Dots */}
+              <div className="flex items-center gap-1.5">
+                {ADDON_BOXES.map((box, idx) => (
+                  <button
+                    key={box.id}
+                    type="button"
+                    onClick={() => setActiveAddonIndex(idx)}
+                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                      idx === activeAddonIndex
+                        ? 'w-6 bg-[#123B6D]'
+                        : 'w-2 bg-slate-300 hover:bg-slate-400'
+                    }`}
+                    aria-label={`Slide ${idx + 1}: ${box.title}`}
+                    title={box.title}
+                  />
+                ))}
+                <span className="text-[10px] text-slate-500 font-semibold ml-1">
+                  {activeAddonIndex + 1}/{ADDON_BOXES.length}
+                </span>
+              </div>
+
+              {/* Action Button */}
+              <button
+                type="button"
+                onClick={() => openRegisterLabModal()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-98 cursor-pointer"
+              >
+                <span>{currentAddon.btnText}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+              </button>
             </div>
           </div>
         </div>
