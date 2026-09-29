@@ -452,6 +452,51 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const heroCarouselDesktopRef = React.useRef<HTMLDivElement>(null);
   const touchStartXRef = React.useRef<number | null>(null);
   const touchEndXRef = React.useRef<number | null>(null);
+  const packagesCarouselRef = React.useRef<HTMLDivElement>(null);
+  const teamCarouselRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollToVendorSection = (targetId: string) => {
+    setMobileMenuOpen(false);
+    setTimeout(() => {
+      let el: HTMLElement | null = null;
+      if (targetId === 'packages') {
+        el = document.getElementById('packages') || document.getElementById('packages-section');
+      } else if (targetId === 'team' || targetId === 'doctors') {
+        el = document.getElementById('team') || document.getElementById('doctors');
+      } else if (targetId === 'tests') {
+        el = document.getElementById('book-test-section') || document.getElementById('test-directory');
+      } else if (targetId === 'booking') {
+        el = document.getElementById('lab-test-health-booking');
+      } else {
+        el = document.getElementById(targetId);
+      }
+      if (el) {
+        const yOffset = -75;
+        const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      }
+    }, 60);
+  };
+
+  const handleScrollPackages = (direction: 'left' | 'right') => {
+    if (!packagesCarouselRef.current) return;
+    const container = packagesCarouselRef.current;
+    const scrollAmount = container.clientWidth * 0.88;
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  const handleScrollTeam = (direction: 'left' | 'right') => {
+    if (!teamCarouselRef.current) return;
+    const container = teamCarouselRef.current;
+    const scrollAmount = container.clientWidth * 0.82;
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
 
   // Admin Banner Upload & Management State
   const [isBannerManagerOpen, setIsBannerManagerOpen] = useState(false);
@@ -2062,9 +2107,18 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   <span>{labName.split(' ')[1]?.charAt(0) || 'L'}</span>
                 </div>
               )}
-              <div className="flex flex-col justify-center min-w-0">
-                <div className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight truncate max-w-[110px] xs:max-w-[150px] sm:max-w-[220px] md:max-w-none">
-                  {labName.toUpperCase()}
+              <div className="flex flex-col justify-center min-w-0 flex-1">
+                <div className="overflow-hidden w-full max-w-[125px] xs:max-w-[165px] sm:max-w-[240px] md:max-w-[320px] lg:max-w-[380px]">
+                  {React.createElement(
+                    'marquee',
+                    {
+                      direction: 'left',
+                      scrollamount: '4',
+                      behavior: 'scroll',
+                      className: 'text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight block whitespace-nowrap'
+                    },
+                    labName.toUpperCase()
+                  )}
                 </div>
                 <div className="text-[9px] xs:text-[10px] sm:text-[11px] text-slate-500 font-semibold tracking-wide flex items-center gap-1 whitespace-nowrap mt-0.5">
                   <span className="hidden xs:inline">ID:</span>
@@ -2079,6 +2133,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           {/* Desktop Navigation Links: Balanced & Clean */}
           <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-xs lg:text-sm font-semibold text-slate-700 whitespace-nowrap">
             <button
+              type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="hover:text-[#123B6D] transition cursor-pointer text-[#123B6D] font-bold whitespace-nowrap py-1"
               id="vendor-nav-home"
@@ -2086,62 +2141,61 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               Home
             </button>
 
-            <a
-              href="#packages"
-              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
+            <button
+              type="button"
+              onClick={() => scrollToVendorSection('packages')}
+              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1 cursor-pointer"
               id="vendor-nav-packages"
             >
               Packages
-            </a>
+            </button>
 
-            <a
-              href="#book-test-section"
-              onClick={(e) => {
-                e.preventDefault();
-                const el = document.getElementById('book-test-section') || document.getElementById('test-directory');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
+            <button
+              type="button"
+              onClick={() => scrollToVendorSection('tests')}
               className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1 cursor-pointer"
               id="vendor-nav-tests"
             >
               Tests
-            </a>
+            </button>
 
-            <a
-              href="#lab-test-health-booking"
-              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
+            <button
+              type="button"
+              onClick={() => scrollToVendorSection('booking')}
+              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1 cursor-pointer"
               id="vendor-nav-booking"
             >
               Booking
-            </a>
+            </button>
 
-            <a
-              href="#about"
-              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
+            <button
+              type="button"
+              onClick={() => scrollToVendorSection('about')}
+              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1 cursor-pointer"
               id="vendor-nav-about"
             >
               About
-            </a>
+            </button>
 
             {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
-              <a
-                href="#doctors"
-                className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
+              <button
+                type="button"
+                onClick={() => scrollToVendorSection('team')}
+                className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1 cursor-pointer"
                 id="vendor-nav-team"
               >
                 Team
-              </a>
+              </button>
             )}
 
-            <a
-              href="#contact"
-              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1"
+            <button
+              type="button"
+              onClick={() => scrollToVendorSection('contact')}
+              className="hover:text-[#123B6D] transition text-slate-700 hover:font-bold whitespace-nowrap py-1 cursor-pointer"
               id="vendor-nav-contact"
             >
               Contact
-            </a>
+            </button>
           </nav>
 
           {/* Action Items: Mobile (Report + Test + Menu) | Desktop (Language + QR + Report + Test + Login) */}
@@ -2280,200 +2334,125 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   </button>
                 </div>
 
-                {/* Primary Quick Action Buttons */}
-                <div className="p-3.5 bg-slate-50 border-b border-slate-200 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      const el = document.getElementById('check-report-section');
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth' });
-                      } else {
-                        handleCheckReport();
-                      }
-                    }}
-                    className="py-2.5 px-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#0F766E] border border-teal-200 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-2xs active:scale-98 cursor-pointer"
-                  >
-                    <FileText className="w-4 h-4 text-[#0F766E]" />
-                    <span>Report Portal</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      const el = document.getElementById('lab-test-health-booking');
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth' });
-                      } else {
-                        setSelectedTestOrPackage(
-                          vendorPackages[0] ? `${vendorPackages[0].name} (₹${vendorPackages[0].priceINR})` : 'Full Body Health Checkup (₹999)'
-                        );
-                        setIsBookingModalOpen(true);
-                      }
-                    }}
-                    className="py-2.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-2xs active:scale-98 cursor-pointer"
-                  >
-                    <Calendar className="w-4 h-4 text-slate-950" />
-                    <span>Book Test</span>
-                  </button>
-                </div>
-
-                {/* Scrollable Navigation Links (Home, Packages, Tests, About, Team, Contact) */}
-                <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-1 text-sm font-semibold text-slate-700">
+                {/* Scrollable Navigation Links (Home, Packages, Tests, About, Team, Contact) - Clean Text Only, Zero Icons */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1.5 text-sm font-semibold text-slate-700">
                   <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-1">
-                    Quick Links
+                    Navigation Menu
                   </div>
 
                   {/* 1. Home */}
                   <button
+                    type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
+                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-slate-100 transition text-slate-800 font-bold cursor-pointer"
                   >
-                    <span className="w-7 h-7 rounded-lg bg-blue-50 text-[#123B6D] flex items-center justify-center text-xs">🏠</span>
-                    <span>Home</span>
+                    Home
                   </button>
 
                   {/* 2. Packages */}
-                  <a
-                    href="#packages"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('packages')}
+                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-slate-100 transition text-slate-800 font-bold cursor-pointer"
                   >
-                    <span className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-xs">📦</span>
-                    <span>Packages</span>
-                  </a>
+                    Packages
+                  </button>
 
                   {/* 3. Tests */}
-                  <a
-                    href="#book-test-section"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setMobileMenuOpen(false);
-                      const el = document.getElementById('book-test-section') || document.getElementById('test-directory');
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('tests')}
+                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-slate-100 transition text-slate-800 font-bold cursor-pointer"
                   >
-                    <span className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-xs">🔬</span>
-                    <span>Tests Directory</span>
-                  </a>
+                    Tests Directory
+                  </button>
 
                   {/* 3b. Lab Test & Health Booking */}
-                  <a
-                    href="#lab-test-health-booking"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('booking')}
+                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-slate-100 transition text-slate-800 font-bold cursor-pointer"
                   >
-                    <span className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs">📝</span>
-                    <span>Book Test Online</span>
-                  </a>
+                    Book Test Online
+                  </button>
 
                   {/* 4. About */}
-                  <a
-                    href="#about"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('about')}
+                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-slate-100 transition text-slate-800 font-bold cursor-pointer"
                   >
-                    <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs">ℹ️</span>
-                    <span>About</span>
-                  </a>
+                    About Us
+                  </button>
 
                   {/* 5. Team */}
                   {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
-                    <a
-                      href="#doctors"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
+                    <button
+                      type="button"
+                      onClick={() => scrollToVendorSection('team')}
+                      className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-slate-100 transition text-slate-800 font-bold cursor-pointer"
                     >
-                      <span className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center text-xs">👨‍⚕️</span>
-                      <span>Team (Pathologists)</span>
-                    </a>
+                      Team (Pathologists)
+                    </button>
                   )}
 
                   {/* 6. Contact */}
-                  <a
-                    href="#contact"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-slate-100 transition flex items-center gap-3 text-slate-800 font-bold cursor-pointer"
-                  >
-                    <span className="w-7 h-7 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center text-xs">📍</span>
-                    <span>Contact &amp; Location</span>
-                  </a>
-
-                  {/* Payment QR Button in Drawer */}
                   <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('contact')}
+                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-slate-100 transition text-slate-800 font-bold cursor-pointer"
+                  >
+                    Contact &amp; Location
+                  </button>
+
+                  {/* Payment QR Button in Drawer - Text Only */}
+                  <button
+                    type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
                       setIsPaymentQrModalOpen(true);
                     }}
-                    className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-amber-50 text-amber-900 border border-amber-200 transition flex items-center justify-between text-xs font-bold cursor-pointer mt-2"
+                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-amber-50 text-amber-900 border border-amber-200 transition text-xs font-bold cursor-pointer mt-2 flex items-center justify-between"
                   >
-                    <span className="flex items-center gap-2.5">
-                      <QrCode className="w-4 h-4 text-amber-600" />
-                      <span>Lab Payment QR Code</span>
-                    </span>
+                    <span>Lab Payment QR Code (UPI)</span>
                     <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-black">
                       UPI
                     </span>
                   </button>
                 </div>
 
-                {/* Drawer Footer Actions (8. Staff Login, 9. T&C, Language, Call Support) */}
+                {/* Drawer Footer Actions (Staff Login, T&C, Call Support) */}
                 <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-2.5">
-                  {/* 8. Staff Login */}
+                  {/* Staff Login - Text Only */}
                   <button
+                    type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
                       openLoginModal('vendor');
                     }}
                     className="w-full py-2.5 px-3.5 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white font-bold text-xs flex items-center justify-between shadow-xs transition cursor-pointer"
                   >
-                    <span className="flex items-center gap-2">
-                      <KeyRound className="w-4 h-4 text-amber-300" />
-                      <span>Staff Login (Admin / Tech / Rec)</span>
-                    </span>
+                    <span>Staff Login (Admin / Tech / Rec)</span>
                     <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded font-black">
                       Portal
                     </span>
                   </button>
 
-                  {/* 9. Terms & Conditions Modal Opener */}
+                  {/* Terms & Conditions Modal Opener - Text Only */}
                   <button
+                    type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
                       setIsTermsModalOpen(true);
                     }}
                     className="w-full py-2 px-3 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-semibold text-xs flex items-center justify-between transition cursor-pointer"
                   >
-                    <span className="flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Terms &amp; Conditions (T&amp;C)</span>
-                    </span>
+                    <span>Terms &amp; Conditions (T&amp;C)</span>
                     <span className="text-slate-400 text-xs font-bold">View →</span>
                   </button>
-
-                  {/* Language Selector */}
-                  <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-white border border-slate-200">
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                      <Globe className="w-3.5 h-3.5 text-[#123B6D]" />
-                      <span>Language / भाषा:</span>
-                    </span>
-                    <select
-                      aria-label="Select website language"
-                      value={language}
-                      onChange={(e) => onSelectLanguage?.(e.target.value as Language)}
-                      className="bg-transparent text-slate-800 text-xs font-bold focus:outline-none cursor-pointer pr-1"
-                    >
-                      <option value="en">English</option>
-                      <option value="hi">हिंदी</option>
-                      <option value="pa">ਪੰਜਾਬੀ</option>
-                    </select>
-                  </div>
 
                   {/* Call Helpline Direct */}
                   <a
@@ -2481,7 +2460,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     onClick={() => setMobileMenuOpen(false)}
                     className="block text-center py-2 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs border border-slate-200 shadow-2xs"
                   >
-                    📞 Call Lab Helpline: +91 {cleanPhone}
+                    Call Lab Helpline: +91 {cleanPhone}
                   </a>
                 </div>
               </div>
@@ -2820,7 +2799,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       </div>
 
       {/* SECTION 3: HEALTH PACKAGES (with Booking Button & Peek Carousel) */}
-      <section id="packages" className="py-16 bg-white border-b border-slate-200 scroll-mt-20">
+      <div id="packages-section" className="scroll-mt-24" />
+      <section id="packages" className="py-16 bg-white border-b border-slate-200 scroll-mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-8">
           <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B6D]/10 text-[#123B6D] text-xs font-bold mb-3">
@@ -3058,9 +3038,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       })()}
                     </div>
                   ) : vendorPackages.length > 1 ? (
-                    /* 2+ Packages: First card 90% width, next card 10% visible on right. Horizontal swipe enabled. */
-                    <div>
+                    /* 2+ Packages: First card 90% width, next card 10% visible on right. Horizontal swipe & click navigation enabled. */
+                    <div className="relative">
                       <div
+                        ref={packagesCarouselRef}
                         className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 pb-2 -mx-4 px-4 scroll-smooth touch-pan-x"
                         style={{
                           scrollbarWidth: 'none',
@@ -3111,7 +3092,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
-                                  className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5"
+                                  className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer"
                                 >
                                   <Maximize2 className="w-3 h-3 text-amber-300" />
                                   <span>Full View</span>
@@ -3154,7 +3135,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       setSelectedTestOrPackage(`${pkg.name} (₹${pkg.priceINR})`);
                                       setIsBookingModalOpen(true);
                                     }}
-                                    className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2 px-3 rounded-xl text-xs font-black transition shadow-sm flex items-center justify-center gap-1.5 active:scale-98"
+                                    className="flex-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2 px-3 rounded-xl text-xs font-black transition shadow-sm flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
                                   >
                                     <span>Book Test</span>
                                     <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
@@ -3166,25 +3147,52 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         })}
                       </div>
 
-                      {/* Mobile Swipe Pagination Dots & Hint */}
+                      {/* Mobile Swipe Pagination Dots & Scroll Controls */}
                       <div className="flex items-center justify-between mt-3 px-1">
                         <div className="flex items-center gap-1.5">
                           {vendorPackages.map((_, dotIdx) => (
-                            <div
+                            <button
                               key={dotIdx}
-                              className={`h-1.5 rounded-full transition-all duration-300 ${
+                              type="button"
+                              onClick={() => {
+                                const el = packagesCarouselRef.current;
+                                if (el) {
+                                  const cardW = el.offsetWidth * 0.88;
+                                  el.scrollTo({ left: dotIdx * cardW, behavior: 'smooth' });
+                                  setActiveMobilePkgIndex(dotIdx);
+                                }
+                              }}
+                              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
                                 activeMobilePkgIndex === dotIdx
                                   ? 'w-6 bg-[#123B6D]'
-                                  : 'w-1.5 bg-slate-300'
+                                  : 'w-2 bg-slate-300 hover:bg-slate-400'
                               }`}
+                              aria-label={`Scroll to package ${dotIdx + 1}`}
                             />
                           ))}
                         </div>
-                        <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                          <span>Swipe to explore</span>
-                          <span className="text-[#123B6D] font-bold">
-                            ({activeMobilePkgIndex + 1}/{vendorPackages.length})
+
+                        {/* Prev & Next Click Buttons */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleScrollPackages('left')}
+                            className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-700 transition cursor-pointer active:scale-95"
+                            aria-label="Previous package"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="text-[11px] font-semibold text-slate-500">
+                            {activeMobilePkgIndex + 1}/{vendorPackages.length}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => handleScrollPackages('right')}
+                            className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-700 transition cursor-pointer active:scale-95"
+                            aria-label="Next package"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -3574,7 +3582,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
       {/* SECTION 6: QUALIFIED TEAM SECTION (Pathologists, Biochemists & Senior Lab Technicians) */}
       {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
-        <section id="doctors" className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-20">
+        <>
+          <div id="team" className="scroll-mt-24" />
+          <section id="doctors" className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-slate-200 scroll-mt-24">
           <div className="max-w-4xl sm:max-w-6xl mx-auto px-4 sm:px-6">
             {/* Section Header */}
             <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
@@ -3768,8 +3778,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       </div>
                     ) : doctorsList.length > 1 ? (
                       /* 2+ Team Members: First card 80% width, next card 20% visible on right. Horizontal swipe enabled. */
-                      <div className="w-full">
+                      <div className="w-full relative">
                         <div
+                          ref={teamCarouselRef}
                           className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 scroll-smooth touch-pan-x"
                           style={{
                             scrollbarWidth: 'none',
@@ -3794,25 +3805,52 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           {doctorsList.map((doc, idx) => renderDoctorCard(doc, idx, true, false))}
                         </div>
 
-                        {/* Mobile Swipe Pagination Dots & Hint */}
-                        <div className="flex items-center justify-between mt-3 px-0.5">
+                        {/* Mobile Swipe Pagination Dots & Scroll Controls */}
+                        <div className="flex items-center justify-between mt-3 px-1">
                           <div className="flex items-center gap-1.5">
                             {doctorsList.map((_, dotIdx) => (
-                              <div
+                              <button
                                 key={dotIdx}
-                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                type="button"
+                                onClick={() => {
+                                  const el = teamCarouselRef.current;
+                                  if (el) {
+                                    const cardW = el.offsetWidth * 0.8;
+                                    el.scrollTo({ left: dotIdx * cardW, behavior: 'smooth' });
+                                    setActiveMobileDoctorIndex(dotIdx);
+                                  }
+                                }}
+                                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
                                   activeMobileDoctorIndex === dotIdx
                                     ? 'w-6 bg-[#123B6D]'
-                                    : 'w-1.5 bg-slate-300'
+                                    : 'w-2 bg-slate-300 hover:bg-slate-400'
                                 }`}
+                                aria-label={`Scroll to team member ${dotIdx + 1}`}
                               />
                             ))}
                           </div>
-                          <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                            <span>Swipe to explore</span>
-                            <span className="text-[#123B6D] font-bold">
-                              ({activeMobileDoctorIndex + 1}/{doctorsList.length})
+
+                          {/* Prev & Next Click Buttons */}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleScrollTeam('left')}
+                              className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-700 transition cursor-pointer active:scale-95"
+                              aria-label="Previous team member"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-[11px] font-semibold text-slate-500">
+                              {activeMobileDoctorIndex + 1}/{doctorsList.length}
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => handleScrollTeam('right')}
+                              className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-700 transition cursor-pointer active:scale-95"
+                              aria-label="Next team member"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -3824,6 +3862,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           })()}
         </div>
       </section>
+      </>
       )}
 
       {/* 9. Minimal Contact Us Section */}
@@ -4211,46 +4250,51 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   </button>
                 </li>
                 <li>
-                  <a
-                    href="#packages"
-                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('packages')}
+                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block text-left cursor-pointer"
                   >
                     Packages
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#book-test-section"
-                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('tests')}
+                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block text-left cursor-pointer"
                   >
                     Tests
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#about"
-                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('about')}
+                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block text-left cursor-pointer"
                   >
                     About Us
-                  </a>
+                  </button>
                 </li>
                 {Boolean(effectiveTeamDoctors && effectiveTeamDoctors.length > 0) && (
                   <li>
-                    <a
-                      href="#doctors"
-                      className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block"
+                    <button
+                      type="button"
+                      onClick={() => scrollToVendorSection('team')}
+                      className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block text-left cursor-pointer"
                     >
                       Team
-                    </a>
+                    </button>
                   </li>
                 )}
                 <li>
-                  <a
-                    href="#contact"
-                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block"
+                  <button
+                    type="button"
+                    onClick={() => scrollToVendorSection('contact')}
+                    className="hover:text-[#123B6D] hover:font-bold transition text-slate-600 block text-left cursor-pointer"
                   >
                     Contact Us
-                  </a>
+                  </button>
                 </li>
               </ul>
             </div>

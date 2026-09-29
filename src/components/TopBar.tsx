@@ -93,7 +93,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Lab Shop Active</span>
+                <span>Lab Active</span>
               </span>
               <button
                 type="button"
