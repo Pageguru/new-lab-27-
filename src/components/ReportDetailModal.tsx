@@ -3,7 +3,6 @@ import {
   X,
   Edit3,
   Trash2,
-  ExternalLink,
   Lock,
 } from 'lucide-react';
 import { LabReport } from '../types';
@@ -24,7 +23,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   onClose,
   onEditReport,
   onDeleteReport,
-  onOpenPatientPortal,
+  onOpenPatientPortal: _onOpenPatientPortal,
 }) => {
   if (!isOpen || !report) return null;
 
@@ -41,13 +40,6 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
     }
   };
 
-  const handleOpenPortal = () => {
-    if (onOpenPatientPortal) {
-      onClose();
-      onOpenPatientPortal(report.reportId, report.mobile);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
       <div className="bg-slate-900 w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-700 overflow-hidden flex flex-col max-h-[96vh]">
@@ -61,18 +53,6 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {onOpenPatientPortal && (
-              <button
-                type="button"
-                onClick={handleOpenPortal}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                title="View in Patient Portal"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Patient Portal View</span>
-              </button>
-            )}
-
             {onEditReport && (
               report.sentToReceptionDesk ? (
                 <div
