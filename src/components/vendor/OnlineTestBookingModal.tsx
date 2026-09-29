@@ -79,6 +79,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
   const [paymentOption, setPaymentOption] = useState<'online_upi' | 'pay_at_branch'>('online_upi');
   const [upiRefNumber, setUpiRefNumber] = useState('');
   const [copiedUpi, setCopiedUpi] = useState(false);
+  const [isDownloadingQr, setIsDownloadingQr] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -297,6 +298,68 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
   const qrCodeUrl =
     vendorLabSettings?.qrCode1Url ||
     `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(dynamicUpiUri)}`;
+
+  // Robust QR Code Image Downloader with Cross-Origin & Blob Support
+  const handleDownloadQr = async () => {
+    setIsDownloadingQr(true);
+    const safeName = (merchantName || 'Lab').replace(/[^a-zA-Z0-9]/g, '-');
+    const fileName = `UPI-QR-${safeName}-Rs${totalAmount}.png`;
+
+    try {
+      if (qrCodeUrl.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = qrCodeUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => setIsDownloadingQr(false), 1200);
+        return;
+      }
+
+      const response = await fetch(qrCodeUrl, { mode: 'cors' });
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+        setIsDownloadingQr(false);
+      }, 1200);
+    } catch {
+      // Fallback: draw image to canvas then download as data URL
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 300;
+        canvas.height = img.naturalHeight || 300;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          const dataUrl = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        setIsDownloadingQr(false);
+      };
+      img.onerror = () => {
+        window.open(qrCodeUrl, '_blank');
+        setIsDownloadingQr(false);
+      };
+      img.src = qrCodeUrl;
+    }
+  };
 
   // When booking is submitted, display the exact Reception Dashboard Token & Invoice Modal
   if (currentStep === 3 && confirmedEntry) {
@@ -796,7 +859,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                       )}
                     </div>
                     <span className="text-[10px] text-slate-500">
-                      Scan QR or Pay via UPI App (GPay/PhonePe/Paytm)
+                      Scan QR via any UPI App (GPay/PhonePe/Paytm)
                     </span>
                   </button>
                 </div>
@@ -826,44 +889,37 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                     />
                   </div>
 
-                  {/* Mobile Direct Pay Button & Download QR Button */}
-                  <div className="flex items-center gap-2 w-full">
-                    <a
-                      href={dynamicUpiUri}
-                      className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
-                      title="Open UPI App directly (GPay/PhonePe/Paytm)"
-                    >
-                      <Smartphone className="w-3.5 h-3.5" />
-                      <span>Pay via UPI App</span>
-                    </a>
+                  {/* Functional Download QR Button (Without "Pay via UPI App") */}
+                  <div className="w-full">
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const link = document.createElement('a');
-                        link.href = qrCodeUrl;
-                        link.download = `UPI-QR-${merchantName.replace(/\s+/g, '-')}.png`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                      }}
-                      className="py-2 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      title="Download QR code to phone gallery"
+                      onClick={handleDownloadQr}
+                      disabled={isDownloadingQr}
+                      className="w-full py-2.5 px-4 rounded-xl border-2 border-emerald-600/40 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-xs active:scale-98 disabled:opacity-75"
+                      title="Download QR code to your phone gallery"
                     >
-                      <Download className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Download QR</span>
+                      {isDownloadingQr ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-600 animate-pulse" />
+                          <span>Saving QR to Device...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 text-emerald-700" />
+                          <span>Download QR Code (₹{totalAmount})</span>
+                        </>
+                      )}
                     </button>
                   </div>
 
-                  {/* Mobile Instruction Note */}
-                  <div className="w-full bg-amber-50/90 border border-amber-200/90 p-2 rounded-xl text-left text-[11px] text-amber-950 space-y-0.5">
-                    <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
-                      <Smartphone className="w-3 h-3 text-amber-700" />
-                      <span>Mobile Payment Help:</span>
+                  {/* Helper Note */}
+                  <div className="w-full bg-slate-100/90 border border-slate-200 p-2.5 rounded-xl text-left text-[11px] text-slate-800 space-y-0.5">
+                    <div className="font-extrabold flex items-center gap-1.5 text-slate-900">
+                      <QrCode className="w-3.5 h-3.5 text-[#0F766E]" />
+                      <span>How to Pay:</span>
                     </div>
-                    <p className="text-[10px] text-amber-800 leading-snug">
-                      Tap <strong>"Pay via UPI App"</strong> to launch GPay/PhonePe directly without scanning, or copy the UPI ID below. Once paid, paste the 12-digit UTR to get your token.
+                    <p className="text-[10px] text-slate-600 leading-snug">
+                      Scan this QR code using any UPI app (GPay, PhonePe, Paytm, BHIM) or tap <strong>&ldquo;Download QR Code&rdquo;</strong> to upload &amp; pay from your gallery. Once paid, enter your 12-digit UTR number below.
                     </p>
                   </div>
 

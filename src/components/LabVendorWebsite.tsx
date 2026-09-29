@@ -2061,17 +2061,31 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 </div>
               )}
               <div className="flex flex-col justify-center min-w-0 flex-1">
-                <div className="overflow-hidden w-full max-w-[125px] xs:max-w-[165px] sm:max-w-[240px] md:max-w-[320px] lg:max-w-[380px]">
-                  {React.createElement(
-                    'marquee',
-                    {
-                      direction: 'left',
-                      scrollamount: '4',
-                      behavior: 'scroll',
-                      className: 'text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight block whitespace-nowrap'
-                    },
-                    labName.toUpperCase()
-                  )}
+                <div className="overflow-hidden w-full max-w-[125px] xs:max-w-[165px] sm:max-w-[240px] md:max-w-[320px] lg:max-w-[380px] relative select-none">
+                  <div className="animate-brand-marquee flex whitespace-nowrap">
+                    {/* Track 1 */}
+                    <div className="flex items-center shrink-0">
+                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
+                        {labName.toUpperCase()}
+                      </span>
+                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
+                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
+                        {labName.toUpperCase()}
+                      </span>
+                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
+                    </div>
+                    {/* Track 2: Duplicate for Continuous Seamless Infinite Loop */}
+                    <div className="flex items-center shrink-0" aria-hidden="true">
+                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
+                        {labName.toUpperCase()}
+                      </span>
+                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
+                      <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-[#123B6D] leading-tight">
+                        {labName.toUpperCase()}
+                      </span>
+                      <span className="mx-2 sm:mx-3 text-amber-500 font-black text-xs sm:text-sm select-none">★</span>
+                    </div>
+                  </div>
                 </div>
                 <div className="text-[9px] xs:text-[10px] sm:text-[11px] text-slate-500 font-semibold tracking-wide flex items-center gap-1 whitespace-nowrap mt-0.5">
                   <span className="hidden xs:inline">ID:</span>
