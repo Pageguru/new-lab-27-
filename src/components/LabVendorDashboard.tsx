@@ -139,7 +139,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   >('banners');
   const [testSubTab, setTestSubTab] = useState<'list' | 'add'>('list');
   const [packageSubTab, setPackageSubTab] = useState<'list' | 'add'>('list');
-  const [formSubTab, setFormSubTab] = useState<'bookings' | 'contacts'>('bookings');
+  const [formSubTab, setFormSubTab] = useState<'bookings' | 'contacts'>('contacts');
   const [dashboardSubTab, setDashboardSubTab] = useState<'reception' | 'technician' | 'overview'>('reception');
   const [domainSubTab, setDomainSubTab] = useState<'add' | 'list'>('add');
   const [settingsSubTab, setSettingsSubTab] = useState<
@@ -1323,13 +1323,14 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                 )}
               </div>
 
-              {/* SECTION 4: FORM (1. BOOKING SUBMISSION LIST > DELETE / TRANSFER TO RECEPTION DESK, 2. CONTACT FORM > READ / DELETE) */}
+              {/* SECTION 4: FORM (CONTACT FORM > READ / DELETE) */}
               <div className="rounded-xl border border-sky-300/80 bg-sky-50/50 overflow-hidden shadow-2xs">
                 {/* Accordion Header */}
                 <button
                   type="button"
                   onClick={() => {
                     setActiveTab('forms');
+                    setFormSubTab('contacts');
                     toggleSidebarSection('forms');
                   }}
                   className={`w-full px-3 py-2.5 flex items-center justify-between gap-2 text-left transition cursor-pointer ${
@@ -1346,7 +1347,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                       activeTab === 'forms' ? 'bg-white/20 text-white' : 'bg-white/80 text-slate-800'
                     }`}>
-                      {vendorBookings.length + contactSubmissions.length} Forms
+                      {contactSubmissions.length} Inquiries
                     </span>
                     {isFormsMenuOpen ? (
                       <ChevronDown className={`w-4 h-4 ${activeTab === 'forms' ? 'text-white' : 'text-slate-800'}`} />
@@ -1356,37 +1357,10 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                   </div>
                 </button>
 
-                {/* Sub-Items: 1. booking submission list > delete /transfer to Reception desk, 2. Contact form > read/ delete */}
+                {/* Sub-Items: Contact form > read/ delete */}
                 {isFormsMenuOpen && (
                   <div className="p-1.5 space-y-1 bg-white/95 border-t border-sky-200/70">
-                    {/* 1. booking submission list > delete /transfer to Reception desk */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('forms');
-                        setFormSubTab('bookings');
-                        setIsMobileSidebarOpen(false);
-                      }}
-                      className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
-                        activeTab === 'forms' && formSubTab === 'bookings'
-                          ? 'bg-[#123B6D] text-white shadow-2xs font-black'
-                          : 'text-slate-700 hover:bg-sky-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <CalendarCheck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'forms' && formSubTab === 'bookings' ? 'text-amber-400' : 'text-teal-600'}`} />
-                        <span className="truncate">1. Booking Submission List</span>
-                      </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                        activeTab === 'forms' && formSubTab === 'bookings'
-                          ? 'bg-amber-400 text-slate-950 font-black'
-                          : 'bg-teal-50 text-teal-800 border border-teal-200'
-                      }`}>
-                        Delete / Transfer
-                      </span>
-                    </button>
-
-                    {/* 2. Contact form > read/ delete */}
+                    {/* Contact form > read/ delete */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1402,7 +1376,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                     >
                       <div className="flex items-center gap-2 truncate">
                         <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'forms' && formSubTab === 'contacts' ? 'text-amber-400' : 'text-blue-600'}`} />
-                        <span className="truncate">2. Contact Form</span>
+                        <span className="truncate">Contact Form Inquiries</span>
                       </div>
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         activeTab === 'forms' && formSubTab === 'contacts'
