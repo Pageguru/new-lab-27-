@@ -53,28 +53,28 @@ import { ReportDetailModal } from './ReportDetailModal';
 import { generateThermalReceiptPdf, buildReceiptInvoicePdf, getReceiptPdfFilename, downloadReportPdf } from '../utils/pdfGenerator';
 import { safePrint } from '../utils/printHelper';
 
-// Clean token number extraction (e.g. "TK-232" -> "232", "232" -> "232", timestamps -> clean 3-digit number)
+// Format token number to standard format (e.g. "TK-626")
 export const getDisplayTokenNumber = (tokenRaw?: string, fallbackId?: string): string => {
-  if (!tokenRaw && !fallbackId) return '101';
+  if (!tokenRaw && !fallbackId) return 'TK-101';
   let raw = String(tokenRaw || fallbackId || '').trim();
   if (raw.startsWith('rcp-')) {
     raw = raw.replace('rcp-', '');
   }
-  // Strip ellipsis if present
   raw = raw.replace(/\.{2,}/g, '');
+  if (raw.startsWith('#')) {
+    raw = raw.replace('#', '').trim();
+  }
   // If long timestamp, extract the last 3 digits
   if (raw.replace(/\D/g, '').length > 6) {
     const digits = raw.replace(/\D/g, '');
-    return digits.slice(-3);
+    return `TK-${digits.slice(-3)}`;
   }
-  // Strip TK- or TK or # prefix if present to display the pure token number
+  // If it starts with TK- or TK or TK_, format properly
   if (/^TK[-_\s]?/i.test(raw)) {
-    return raw.replace(/^TK[-_\s]?/i, '');
+    const num = raw.replace(/^TK[-_\s]?/i, '').trim();
+    return `TK-${num}`;
   }
-  if (raw.startsWith('#')) {
-    return raw.replace('#', '');
-  }
-  return raw;
+  return `TK-${raw}`;
 };
 
 // Detect if this test was booked directly from the website (Package, Cart, Booking Form)
@@ -99,7 +99,7 @@ export const getWebsiteBookingMeta = (entry: ReceptionPatientEntry) => {
   if (!isWebsite) return null;
 
   let category = 'Website Booking';
-  let badgeDetail = 'Direct Web';
+  let badgeDetail = 'Cart / Package / Booking Form';
 
   if (source.includes('package') || notes.includes('package') || notes.includes('checkup') || notes.includes('profile')) {
     category = 'Package Booking';
@@ -2158,7 +2158,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                             </span>
                             <Globe className="w-4 h-4 text-red-100 shrink-0" />
                             <span className="uppercase tracking-wider text-[11px] font-black drop-shadow-xs">
-                              Direct Website Booking • {websiteMeta.category}
+                              Website Booking
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -2179,12 +2179,12 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                         <div className="flex items-center justify-between gap-2.5 pb-2 border-b border-slate-100">
                           {/* Left: Token Number + Phone No. (+ Patient Name & Details) */}
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="bg-[#123B6D] text-white text-xs font-black px-2.5 py-1 rounded-lg shrink-0 font-mono tracking-wide shadow-2xs flex items-center gap-1.5 border border-[#1e4e8c]">
-                              <span className="text-[10px] text-teal-200 font-sans font-extrabold uppercase tracking-wider">
-                                Token Number
-                              </span>
-                              <span className="text-white text-sm font-black font-mono">
-                                #{displayToken}
+                            <div
+                              className="bg-[#123B6D] text-white px-2.5 py-1 rounded-lg shrink-0 font-mono shadow-2xs flex items-center border border-[#1e4e8c]"
+                              title={`Token: ${displayToken}`}
+                            >
+                              <span className="text-white text-sm font-black font-mono tracking-wide">
+                                {displayToken}
                               </span>
                             </div>
                             <div className="min-w-0">
@@ -2232,50 +2232,48 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                         {/* Right: Status Flow & Primary Actions */}
                         <div className="shrink-0 flex items-center gap-1.5">
                           {isReportReady ? (
-                            isPaidInFull ? (
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDownloadPatientReport(entry)}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition cursor-pointer active:scale-95 group"
-                                  title="Download Official Medical Report PDF"
-                                >
-                                  <Download className="w-3.5 h-3.5 text-white" />
-                                  <span>Download Report</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleViewPatientReport(entry)}
-                                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer"
-                                  title="View / Print Full Report"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-emerald-700" />
-                                  <span className="hidden sm:inline">View</span>
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs"
-                                  title="Report Ready — Update payment to Full Payment to unlock Download Report"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>Report Ready</span>
-                                  <span className="text-[10px] bg-amber-200/90 text-amber-950 px-1.5 py-0.5 rounded font-black">
-                                    Due: ₹{entry.dueAmount}
-                                  </span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCollectPayment(entry)}
-                                  className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer shadow-2xs"
-                                  title="Update payment status"
-                                >
-                                  <IndianRupee className="w-3 h-3" />
-                                  <span>Update Payment</span>
-                                </button>
-                              </div>
-                            )
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isPaidInFull) {
+                                    handleDownloadPatientReport(entry);
+                                  } else {
+                                    showToast('⚠️ Payment pending: Please update to Full Payment to download report.');
+                                    handleOpenCollectPayment(entry);
+                                  }
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition cursor-pointer active:scale-95 group"
+                                title={
+                                  isPaidInFull
+                                    ? 'Download Official Medical Report PDF'
+                                    : `Download Report (Payment pending - Due: ₹${entry.dueAmount})`
+                                }
+                              >
+                                <Download className="w-3.5 h-3.5 text-white" />
+                                <span>Download Report</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isPaidInFull) {
+                                    handleViewPatientReport(entry);
+                                  } else {
+                                    showToast('⚠️ Payment pending: Please update to Full Payment to view report.');
+                                    handleOpenCollectPayment(entry);
+                                  }
+                                }}
+                                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer"
+                                title={
+                                  isPaidInFull
+                                    ? 'View / Print Full Report'
+                                    : `View Report (Payment pending - Due: ₹${entry.dueAmount})`
+                                }
+                              >
+                                <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                                <span className="hidden sm:inline">View</span>
+                              </button>
+                            </div>
                           ) : isInLab ? (
                             <span className="bg-blue-50 text-[#123B6D] border border-blue-200 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
                               <FlaskConical className="w-3.5 h-3.5 text-[#123B6D]" />
@@ -2366,86 +2364,61 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                           )}
                         </div>
 
-                        {/* Right: Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {/* When Report is Ready:
-                              - Receptionist can ONLY update payment status.
-                              - Once full payment is completed, payment cannot be edited again.
-                              - Once full payment is completed, card will show a Download Report button.
-                          */}
-                          {isReportReady ? (
-                            isPaidInFull ? (
-                              <button
-                                type="button"
-                                onClick={() => handleDownloadPatientReport(entry)}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                                title="Download Official Medical Report PDF"
-                              >
-                                <Download className="w-3.5 h-3.5 text-white" />
-                                <span>Download Report</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCollectPayment(entry)}
-                                className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                                title="Update Payment Status (Remaining Due: ₹{entry.dueAmount})"
-                              >
-                                <IndianRupee className="w-3.5 h-3.5 text-teal-700" />
-                                <span>Update Payment</span>
-                              </button>
-                            )
-                          ) : (
-                            /* When Report is NOT ready yet */
-                            <>
-                              {!isLockedForEdit && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEdit(entry)}
-                                  className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                                  title="Edit Patient Details & Billing"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5 text-blue-700" />
-                                  <span>Edit</span>
-                                </button>
-                              )}
-                              {!isPaidInFull && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCollectPayment(entry)}
-                                  className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                                  title="Update Payment Status (Remaining Due: ₹{entry.dueAmount})"
-                                >
-                                  <IndianRupee className="w-3.5 h-3.5 text-teal-700" />
-                                  <span>Update Payment</span>
-                                </button>
-                              )}
-                            </>
-                          )}
+                        {/* Right: Actions — Edit | Update Payment | Delete | Print (Icon-only with clear tooltips, NO text labels) */}
+                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                          {/* 1. Edit */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(entry)}
+                            className="p-1.5 sm:p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 flex items-center justify-center"
+                            title="Edit Patient Details & Tests"
+                            aria-label="Edit"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-700" />
+                          </button>
 
-                          {/* Delete button (with confirmation) */}
+                          {/* 2. Update Payment */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCollectPayment(entry)}
+                            className={`p-1.5 sm:p-2 rounded-lg border transition cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 flex items-center justify-center ${
+                              isPaidInFull
+                                ? 'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200'
+                                : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'
+                            }`}
+                            title={
+                              isPaidInFull
+                                ? 'Update Payment (Full Payment • Due ₹0)'
+                                : `Update Payment (Remaining Due: ₹${entry.dueAmount})`
+                            }
+                            aria-label="Update Payment"
+                          >
+                            <IndianRupee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </button>
+
+                          {/* 3. Delete */}
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(entry)}
-                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            className="p-1.5 sm:p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 flex items-center justify-center"
                             title="Delete Patient Entry"
+                            aria-label="Delete"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Delete</span>
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-700" />
                           </button>
 
-                          {/* Thermal Slip / Receipt Print */}
+                          {/* 4. Print */}
                           <button
                             type="button"
                             onClick={() => {
                               setSelectedReceipt(entry);
                               setIsReceiptModalOpen(true);
                             }}
-                            title="Print / View Receipt & Slip"
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-teal-100 hover:text-teal-800 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            className="p-1.5 sm:p-2 bg-slate-100 hover:bg-teal-50 hover:text-teal-800 text-slate-700 border border-slate-200 hover:border-teal-200 rounded-lg transition cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 flex items-center justify-center"
+                            title="Print Receipt & Token Slip"
+                            aria-label="Print"
                           >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>Print</span>
+                            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       </div>
@@ -2492,7 +2465,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                 Generated Token Number
               </div>
               <div className="text-4xl sm:text-5xl font-black text-[#123B6D] tracking-tight font-mono my-1">
-                #{getDisplayTokenNumber(selectedReceipt.tokenNumber || selectedReceipt.tokenNo, selectedReceipt.id)}
+                {getDisplayTokenNumber(selectedReceipt.tokenNumber || selectedReceipt.tokenNo, selectedReceipt.id)}
               </div>
               <div className="flex items-center justify-center gap-2 text-xs text-slate-600 font-medium">
                 <span>UHID: <strong className="font-mono text-slate-800">{selectedReceipt.uhid}</strong></span>

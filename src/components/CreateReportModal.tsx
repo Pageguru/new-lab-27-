@@ -329,13 +329,16 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     const testsFromReceipt = extractTestsFromPatientOrReceipt(activePatient, activeReceptionEntry);
     setPatientReceiptTests(testsFromReceipt);
 
-    const token =
+    const rawToken =
       activeReceptionEntry?.tokenNumber ||
       activeReceptionEntry?.tokenNo ||
       activePatient?.tokenNumber ||
       activePatient?.tokenNo ||
       '';
-    setReceiptToken(token);
+    const formattedToken = rawToken
+      ? (/^TK[-_\s]?/i.test(rawToken) ? `TK-${rawToken.replace(/^TK[-_\s]?/i, '')}` : `TK-${rawToken}`)
+      : '';
+    setReceiptToken(formattedToken);
 
     const total = activeReceptionEntry?.totalAmount ?? activePatient?.totalBill ?? 0;
     const due = activeReceptionEntry?.dueAmount ?? activePatient?.dueAmount ?? 0;
@@ -502,8 +505,11 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
         const foundTests = extractTestsFromPatientOrReceipt(found, foundRec);
         setPatientReceiptTests(foundTests);
 
-        const token = foundRec?.tokenNumber || foundRec?.tokenNo || found.tokenNumber || found.tokenNo || '';
-        setReceiptToken(token);
+        const rawToken = foundRec?.tokenNumber || foundRec?.tokenNo || found.tokenNumber || found.tokenNo || '';
+        const formattedToken = rawToken
+          ? (/^TK[-_\s]?/i.test(rawToken) ? `TK-${rawToken.replace(/^TK[-_\s]?/i, '')}` : `TK-${rawToken}`)
+          : '';
+        setReceiptToken(formattedToken);
 
         const total = foundRec?.totalAmount ?? found.totalBill ?? 0;
         const due = foundRec?.dueAmount ?? found.dueAmount ?? 0;

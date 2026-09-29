@@ -1,18 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   X,
   Edit3,
   Trash2,
   ExternalLink,
-  Download,
-  Printer,
-  MessageSquare,
-  CheckCircle2,
   Lock,
 } from 'lucide-react';
 import { LabReport } from '../types';
 import { CanonicalPdfViewer } from './CanonicalPdfViewer';
-import { downloadReportPdf, printCanonicalReportPdf } from '../utils/pdfGenerator';
 
 interface ReportDetailModalProps {
   report: LabReport | null;
@@ -31,8 +26,6 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   onDeleteReport,
   onOpenPatientPortal,
 }) => {
-  const [downloadSuccessToast, setDownloadSuccessToast] = useState<string | null>(null);
-
   if (!isOpen || !report) return null;
 
   const handleEdit = () => {
@@ -53,40 +46,6 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
       onClose();
       onOpenPatientPortal(report.reportId, report.mobile);
     }
-  };
-
-  const handleDownloadPdf = async () => {
-    try {
-      await downloadReportPdf(report);
-      setDownloadSuccessToast('Report PDF downloaded successfully');
-      setTimeout(() => setDownloadSuccessToast(null), 3500);
-    } catch (err) {
-      console.error('Download error:', err);
-    }
-  };
-
-  const handlePrint = async () => {
-    try {
-      await printCanonicalReportPdf(report);
-      setDownloadSuccessToast('Print job initiated');
-      setTimeout(() => setDownloadSuccessToast(null), 3500);
-    } catch (err) {
-      console.error('Print error:', err);
-    }
-  };
-
-  const handleShareWhatsApp = () => {
-    const cleanPhone = (report.mobile || '').replace(/\D/g, '');
-    const currentOrigin =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : 'https://labreport.online';
-    const reportLink = `${currentOrigin}/?report=${encodeURIComponent(report.reportId)}`;
-    const msg = `Namaste ${report.patientName},\nYour diagnostic test report (${report.reportId}) from ${report.labName || 'Apex Diagnostic Laboratory'} is ready.\nView & Download verified PDF: ${reportLink}\nThank you!`;
-    const targetUrl = cleanPhone
-      ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`
-      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-    window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -168,60 +127,21 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
           />
         </div>
 
-        {/* ACTION BUTTONS (STRICTLY BELOW THE REPORT) */}
+        {/* FOOTER (STRICTLY BELOW THE REPORT) */}
         <div className="bg-white border-t border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span className="font-bold text-slate-800">
               {report.patientName} <span className="font-normal text-slate-500">({report.ageGender})</span>
             </span>
-            {downloadSuccessToast && (
-              <span className="flex items-center gap-1 text-emerald-700 font-bold ml-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                {downloadSuccessToast}
-              </span>
-            )}
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* 1. Download PDF Button */}
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              className="bg-[#0F766E] hover:bg-[#0d655e] text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
-              title="Download Official Medical Report PDF"
-            >
-              <Download className="w-4 h-4 text-emerald-300" />
-              <span>Download PDF</span>
-            </button>
-
-            {/* 2. Print Report Button */}
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
-              title="Print Report on A4"
-            >
-              <Printer className="w-4 h-4 text-amber-300" />
-              <span>Print Report</span>
-            </button>
-
-            {/* 3. Share on WhatsApp Button */}
-            <button
-              type="button"
-              onClick={handleShareWhatsApp}
-              className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
-              title="Share report on WhatsApp"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>Share on WhatsApp</span>
-            </button>
-
+          <div className="flex items-center gap-2.5">
             {/* Close Button */}
             <button
               type="button"
               onClick={onClose}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border border-slate-200"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer border border-slate-300 active:scale-95"
             >
               Close
             </button>
