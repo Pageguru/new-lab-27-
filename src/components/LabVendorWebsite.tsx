@@ -47,6 +47,8 @@ import {
   Image as ImageIcon,
   Users,
   Maximize2,
+  ZoomIn,
+  ZoomOut,
   Upload,
   Trash2,
   Plus,
@@ -398,7 +400,14 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const [copiedWebsiteUrl, setCopiedWebsiteUrl] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [policyModalTab, setPolicyModalTab] = useState<PolicyTabType>('terms');
-  const [fullScreenImage, setFullScreenImage] = useState<{ url: string; title: string } | null>(null);
+  const [fullScreenImage, setFullScreenImage] = useState<{
+    url: string;
+    title: string;
+    price?: number;
+    testsCount?: number;
+    features?: string[];
+  } | null>(null);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Close modals on Escape key
@@ -406,7 +415,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (isReportModalOpen) setIsReportModalOpen(false);
-        if (fullScreenImage) setFullScreenImage(null);
+        if (fullScreenImage) {
+          setFullScreenImage(null);
+          setIsImageZoomed(false);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -2760,7 +2772,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
             return (
               <div className="max-w-6xl mx-auto">
-                {/* Desktop View: Grid (Unchanged) */}
+                {/* Desktop View: Grid */}
                 <div className="hidden md:grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch justify-center">
                   {vendorPackages.slice(0, 3).map((pkg, idx) => {
                     const pkgImageUrl = getPackageImg(pkg, idx);
@@ -2771,12 +2783,21 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         className="bg-white rounded-3xl border border-slate-200/90 hover:border-[#123B6D]/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group relative h-full w-full"
                       >
                         {/* Package Cover Image with Full Screen View Trigger */}
-                        <div className="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0">
+                        <div className="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0 group/cover">
                           <img
                             src={pkgImageUrl}
                             alt={pkg.name}
-                            onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
+                            onClick={() => {
+                              setIsImageZoomed(false);
+                              setFullScreenImage({
+                                url: pkgImageUrl,
+                                title: pkg.name,
+                                price: pkg.priceINR,
+                                testsCount: pkg.testsCount || pkg.features.length,
+                                features: pkg.features,
+                              });
+                            }}
+                            className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-500 cursor-pointer"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
@@ -2793,9 +2814,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setFullScreenImage({ url: pkgImageUrl, title: pkg.name });
+                              setIsImageZoomed(false);
+                              setFullScreenImage({
+                                url: pkgImageUrl,
+                                title: pkg.name,
+                                price: pkg.priceINR,
+                                testsCount: pkg.testsCount || pkg.features.length,
+                                features: pkg.features,
+                              });
                             }}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 text-white backdrop-blur-xs flex items-center justify-center transition shadow-md cursor-pointer"
+                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/55 hover:bg-black/85 text-white backdrop-blur-xs flex items-center justify-center transition shadow-md cursor-pointer active:scale-95"
                             title="View full image screen"
                             aria-label="View full image screen"
                           >
@@ -2805,8 +2833,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           {/* Click Image Hint */}
                           <button
                             type="button"
-                            onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
-                            className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 hover:bg-black/80 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 transition cursor-pointer"
+                            onClick={() => {
+                              setIsImageZoomed(false);
+                              setFullScreenImage({
+                                url: pkgImageUrl,
+                                title: pkg.name,
+                                price: pkg.priceINR,
+                                testsCount: pkg.testsCount || pkg.features.length,
+                                features: pkg.features,
+                              });
+                            }}
+                            className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 hover:bg-black/85 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 shadow-xs"
                           >
                             <Maximize2 className="w-3 h-3 text-amber-300" />
                             <span>Full Image View</span>
@@ -2822,14 +2859,14 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                             </h3>
 
                             {/* Uske neeche List of Tests with equal fixed height */}
-                            <div className="space-y-2 mb-5 flex-1 flex flex-col">
+                            <div className="space-y-2 mb-3 flex-1 flex flex-col">
                               <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                 <span>Included Tests:</span>
                                 <span className="text-[10px] font-bold text-slate-400">
                                   {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                 </span>
                               </div>
-                              <div className="space-y-1.5 h-48 overflow-y-auto pr-1">
+                              <div className="space-y-1.5 h-44 overflow-y-auto pr-1">
                                 {pkg.features.map((feat, fIdx) => (
                                   <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
                                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
@@ -2838,6 +2875,32 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 ))}
                               </div>
                             </div>
+
+                            {/* Card me > Full image ka view Feature Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsImageZoomed(false);
+                                setFullScreenImage({
+                                  url: pkgImageUrl,
+                                  title: pkg.name,
+                                  price: pkg.priceINR,
+                                  testsCount: pkg.testsCount || pkg.features.length,
+                                  features: pkg.features,
+                                });
+                              }}
+                              className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
+                              title={`View full promotional image & poster for ${pkg.name}`}
+                            >
+                              <span className="flex items-center gap-1.5 font-bold">
+                                <Eye className="w-4 h-4 text-teal-600 group-hover/viewbtn:scale-110 transition-transform" />
+                                <span>Full Image View</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#0F766E] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200/60 group-hover/viewbtn:translate-x-0.5 transition-transform">
+                                <span>View Poster</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </span>
+                            </button>
                           </div>
 
                           {/* Uske neeche inline 2 buttons: Price aur Book Test */}
@@ -2877,11 +2940,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                             key={pkg.id || 0}
                             className="bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative w-full"
                           >
-                            <div className="relative w-full h-48 bg-slate-100 overflow-hidden shrink-0">
+                            <div className="relative w-full h-48 bg-slate-100 overflow-hidden shrink-0 group/cover">
                               <img
                                 src={pkgImageUrl}
                                 alt={pkg.name}
-                                onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                                onClick={() => {
+                                  setIsImageZoomed(false);
+                                  setFullScreenImage({
+                                    url: pkgImageUrl,
+                                    title: pkg.name,
+                                    price: pkg.priceINR,
+                                    testsCount: pkg.testsCount || pkg.features.length,
+                                    features: pkg.features,
+                                  });
+                                }}
                                 className="w-full h-full object-cover cursor-pointer"
                                 loading="lazy"
                               />
@@ -2891,11 +2963,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               </div>
                               <button
                                 type="button"
-                                onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
-                                className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5"
+                                onClick={() => {
+                                  setIsImageZoomed(false);
+                                  setFullScreenImage({
+                                    url: pkgImageUrl,
+                                    title: pkg.name,
+                                    price: pkg.priceINR,
+                                    testsCount: pkg.testsCount || pkg.features.length,
+                                    features: pkg.features,
+                                  });
+                                }}
+                                className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
                               >
                                 <Maximize2 className="w-3 h-3 text-amber-300" />
-                                <span>Full View</span>
+                                <span>Full Image View</span>
                               </button>
                             </div>
                             <div className="p-5 flex flex-col justify-between">
@@ -2903,14 +2984,14 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 <h3 className="text-base font-black text-[#123B6D] leading-snug mb-2.5">
                                   {pkg.name}
                                 </h3>
-                                <div className="space-y-2 mb-4">
+                                <div className="space-y-2 mb-3">
                                   <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                     <span>Included Tests:</span>
                                     <span className="text-[10px] font-bold text-slate-400">
                                       {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
                                     </span>
                                   </div>
-                                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                                     {pkg.features.map((feat, fIdx) => (
                                       <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
                                         <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
@@ -2919,6 +3000,32 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     ))}
                                   </div>
                                 </div>
+
+                                {/* Card me > Full image ka view Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsImageZoomed(false);
+                                    setFullScreenImage({
+                                      url: pkgImageUrl,
+                                      title: pkg.name,
+                                      price: pkg.priceINR,
+                                      testsCount: pkg.testsCount || pkg.features.length,
+                                      features: pkg.features,
+                                    });
+                                  }}
+                                  className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
+                                  title={`View full promotional image & poster for ${pkg.name}`}
+                                >
+                                  <span className="flex items-center gap-1.5 font-bold">
+                                    <Eye className="w-4 h-4 text-teal-600 group-hover/viewbtn:scale-110 transition-transform" />
+                                    <span>Full Image View</span>
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#0F766E] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200/60 group-hover/viewbtn:translate-x-0.5 transition-transform">
+                                    <span>View Poster</span>
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  </span>
+                                </button>
                               </div>
                               <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5">
                                 <div className="px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#123B6D] font-black text-base shadow-2xs">
@@ -2975,11 +3082,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               className="w-[88vw] shrink-0 snap-start bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative"
                             >
                               {/* Package Cover Image */}
-                              <div className="relative w-full h-44 bg-slate-100 overflow-hidden shrink-0">
+                              <div className="relative w-full h-44 bg-slate-100 overflow-hidden shrink-0 group/cover">
                                 <img
                                   src={pkgImageUrl}
                                   alt={pkg.name}
-                                  onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
+                                  onClick={() => {
+                                    setIsImageZoomed(false);
+                                    setFullScreenImage({
+                                      url: pkgImageUrl,
+                                      title: pkg.name,
+                                      price: pkg.priceINR,
+                                      testsCount: pkg.testsCount || pkg.features.length,
+                                      features: pkg.features,
+                                    });
+                                  }}
                                   className="w-full h-full object-cover cursor-pointer"
                                   loading="lazy"
                                 />
@@ -2995,11 +3111,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 {/* Click Image Hint */}
                                 <button
                                   type="button"
-                                  onClick={() => setFullScreenImage({ url: pkgImageUrl, title: pkg.name })}
-                                  className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/55 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer"
+                                  onClick={() => {
+                                    setIsImageZoomed(false);
+                                    setFullScreenImage({
+                                      url: pkgImageUrl,
+                                      title: pkg.name,
+                                      price: pkg.priceINR,
+                                      testsCount: pkg.testsCount || pkg.features.length,
+                                      features: pkg.features,
+                                    });
+                                  }}
+                                  className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
                                 >
                                   <Maximize2 className="w-3 h-3 text-amber-300" />
-                                  <span>Full View</span>
+                                  <span>Full Image View</span>
                                 </button>
                               </div>
 
@@ -3010,7 +3135,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     {pkg.name}
                                   </h3>
 
-                                  <div className="space-y-2 mb-4 flex-1 flex flex-col">
+                                  <div className="space-y-2 mb-3 flex-1 flex flex-col">
                                     <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                       <span>Included Tests:</span>
                                       <span className="text-[10px] font-bold text-slate-400">
@@ -3026,6 +3151,32 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       ))}
                                     </div>
                                   </div>
+
+                                  {/* Card me > Full image ka view Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsImageZoomed(false);
+                                      setFullScreenImage({
+                                        url: pkgImageUrl,
+                                        title: pkg.name,
+                                        price: pkg.priceINR,
+                                        testsCount: pkg.testsCount || pkg.features.length,
+                                        features: pkg.features,
+                                      });
+                                    }}
+                                    className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
+                                    title={`View full promotional image & poster for ${pkg.name}`}
+                                  >
+                                    <span className="flex items-center gap-1.5 font-bold">
+                                      <Eye className="w-4 h-4 text-teal-600 group-hover/viewbtn:scale-110 transition-transform" />
+                                      <span>Full Image View</span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#0F766E] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200/60 group-hover/viewbtn:translate-x-0.5 transition-transform">
+                                      <span>View Poster</span>
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    </span>
+                                  </button>
                                 </div>
 
                                 <div className="pt-3 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
@@ -5034,39 +5185,114 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200"
-          onClick={() => setFullScreenImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-2.5 sm:p-4 md:p-6 animate-in fade-in duration-200"
+          onClick={() => {
+            setFullScreenImage(null);
+            setIsImageZoomed(false);
+          }}
         >
           <div
-            className="relative max-w-4xl w-full max-h-[92vh] flex flex-col items-center justify-center animate-in zoom-in-95 duration-200"
+            className="relative max-w-4xl w-full max-h-[96vh] flex flex-col items-center justify-between bg-slate-900 border border-slate-700/80 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Close Button & Title */}
-            <div className="w-full flex items-center justify-between mb-3 px-2">
-              <h3 className="text-white text-sm sm:text-base font-extrabold truncate pr-4">
-                {fullScreenImage.title}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setFullScreenImage(null)}
-                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition cursor-pointer shrink-0"
-                aria-label="Close full image view"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            {/* Top Close Button & Title Bar */}
+            <div className="w-full flex items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/30">
+                  <Eye className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-white text-sm sm:text-base font-extrabold truncate">
+                    {fullScreenImage.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    {fullScreenImage.price && (
+                      <span className="font-extrabold text-amber-400">₹{fullScreenImage.price}</span>
+                    )}
+                    {fullScreenImage.testsCount && (
+                      <span>• {fullScreenImage.testsCount} Tests Included</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Zoom toggle button */}
+                <button
+                  type="button"
+                  onClick={() => setIsImageZoomed(!isImageZoomed)}
+                  className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer border border-slate-700"
+                  title={isImageZoomed ? 'Zoom Out' : 'Zoom In'}
+                >
+                  {isImageZoomed ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
+                </button>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFullScreenImage(null);
+                    setIsImageZoomed(false);
+                  }}
+                  className="w-9 h-9 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-300 flex items-center justify-center transition cursor-pointer border border-slate-700"
+                  aria-label="Close full image view"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* High-Res Full Image Container */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black max-h-[75vh] w-full flex items-center justify-center">
+            <div className="relative rounded-xl overflow-auto my-3 bg-black/60 max-h-[60vh] sm:max-h-[66vh] w-full flex items-center justify-center border border-slate-800">
               <img
                 src={fullScreenImage.url}
                 alt={fullScreenImage.title}
-                className="w-full h-auto max-h-[75vh] object-contain"
+                onClick={() => setIsImageZoomed(!isImageZoomed)}
+                className={`transition-all duration-300 object-contain cursor-zoom-in ${
+                  isImageZoomed
+                    ? 'scale-150 sm:scale-175 cursor-zoom-out origin-center my-10'
+                    : 'w-full h-auto max-h-[60vh] sm:max-h-[66vh]'
+                }`}
               />
             </div>
-            <p className="text-slate-400 text-xs mt-3 text-center">
-              Tap anywhere outside or press ✕ to close full image screen
-            </p>
+
+            {/* Bottom Actions Bar */}
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800 text-xs">
+              <p className="text-slate-400 text-[11px] sm:text-xs">
+                💡 Click image or zoom button to magnify • Press Esc to close
+              </p>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={fullScreenImage.url}
+                  download={`${fullScreenImage.title.replace(/\s+/g, '_')}_poster.jpg`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold transition cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Save Image</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTestOrPackage(
+                      fullScreenImage.price
+                        ? `${fullScreenImage.title} (₹${fullScreenImage.price})`
+                        : fullScreenImage.title
+                    );
+                    setFullScreenImage(null);
+                    setIsImageZoomed(false);
+                    setIsBookingModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#123B6D] to-[#0F766E] hover:from-[#0e2c52] hover:to-[#0d5f58] text-white font-extrabold shadow-md transition cursor-pointer active:scale-98"
+                >
+                  <span>Book This Package</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -847,9 +847,9 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                     onClick={() => {
                       setMainRole('super_admin');
                       setLoginError('');
-                      setEmailOrPhone('rkmehra331996@gmail.com');
-                      setPassword('Asdfzxcv@336699');
-                      setPinCode('331996');
+                      setEmailOrPhone('');
+                      setPassword('');
+                      setPinCode('');
                     }}
                     className={`p-3.5 rounded-xl border text-left transition flex flex-col gap-1.5 cursor-pointer ${
                       mainRole === 'super_admin'
@@ -911,25 +911,6 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
 
               {/* Login Form for SuperAdmin / Admin (labowner) */}
               <form onSubmit={handleMainWebsiteLogin} className="space-y-3.5 pt-1">
-                {mainRole === 'super_admin' && (
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Crown className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                      <span className="font-bold truncate">rkmehra331996@gmail.com (PIN: 331996)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmailOrPhone('rkmehra331996@gmail.com');
-                        setPassword('Asdfzxcv@336699');
-                        setPinCode('331996');
-                      }}
-                      className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shrink-0 transition active:scale-95 cursor-pointer shadow-2xs"
-                    >
-                      ⚡ Auto-Fill
-                    </button>
-                  </div>
-                )}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     {mainRole === 'super_admin'
@@ -946,7 +927,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                       onChange={(e) => setEmailOrPhone(e.target.value)}
                       placeholder={
                         mainRole === 'super_admin'
-                          ? 'rkmehra331996@gmail.com'
+                          ? 'Super admin email address'
                           : '10-digit mobile number or owner email'
                       }
                       className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none placeholder:text-slate-400 font-medium"
@@ -966,7 +947,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                       autoComplete="off"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder={mainRole === 'super_admin' ? '••••••••' : 'Enter password'}
+                      placeholder={mainRole === 'super_admin' ? 'Enter Super Admin password' : 'Enter password'}
                       className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none placeholder:text-slate-400"
                     />
                     <button
@@ -986,7 +967,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                       <span>6-Digit Security PIN *</span>
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      {mainRole === 'super_admin' ? 'Master PIN: 331996' : '6 numeric digits'}
+                      6 numeric digits
                     </span>
                   </label>
                   <input
@@ -996,7 +977,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                     autoComplete="off"
                     value={pinCode}
                     onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder={mainRole === 'super_admin' ? '331996' : '6-digit security PIN'}
+                    placeholder="6-digit security PIN"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none font-mono tracking-widest placeholder:text-slate-400"
                   />
                 </div>
