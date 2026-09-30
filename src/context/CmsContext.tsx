@@ -5671,10 +5671,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           isWebsiteApproved: false,
           badge: 'Draft - Pending Admin Approval',
         }));
-        setVendorLabsList(draftWebsites);
-        try {
-          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(draftWebsites));
-        } catch {}
+        setVendorLabsList((prev) => {
+          const draftIds = new Set(draftWebsites.map((d) => d.id));
+          const rest = prev.filter((p) => !draftIds.has(p.id));
+          const next = [...draftWebsites, ...rest];
+          try {
+            localStorage.setItem('cms_vendor_labs_list', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+        draftWebsites.forEach((w) => syncVendorLabToCloud(w));
         count = draftWebsites.length;
       }
       // 2. Settings map - also mark settings status as Draft

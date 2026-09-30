@@ -656,6 +656,15 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
               Download or upload backups of all websites.
             </p>
 
+            <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3 text-xs text-amber-950 flex items-start gap-2.5">
+              <span className="font-bold shrink-0 bg-amber-400 text-slate-950 text-[10px] uppercase font-black px-2 py-0.5 rounded-full mt-0.5">
+                Draft &amp; Publish Flow
+              </span>
+              <span className="text-[11px] leading-relaxed">
+                Backup load karne par sabhi websites pehle <strong>Website Draft</strong> tab mein save hongi. Vahan se aap manually review aur <strong>Publish (पब्लिश करें)</strong> kar sakte hain.
+              </span>
+            </div>
+
             {/* Snapshot Details Summary */}
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
               <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
@@ -766,10 +775,10 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
                 onClick={handleTriggerAllWebsitesUpload}
                 disabled={isProcessingAllUpload}
                 className="flex-1 py-3 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm cursor-pointer group/btn disabled:opacity-50"
-                title="Upload backups of all websites"
+                title="Upload backups of all websites (Saves to Website Draft queue)"
               >
                 <Upload className="w-4 h-4 group-hover/btn:-translate-y-0.5 transition-transform" />
-                <span>Upload</span>
+                <span>{isProcessingAllUpload ? 'Loading to Draft...' : 'Upload (Load to Draft)'}</span>
               </button>
             </div>
             <div className="text-[11px] text-center text-slate-500 mt-2.5">
