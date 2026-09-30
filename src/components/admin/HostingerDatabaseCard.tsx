@@ -77,13 +77,26 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
           </div>
         </div>
 
-        <button
-          onClick={handleDownloadSql}
-          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0"
-        >
-          <Download className="w-4 h-4 text-slate-950" />
-          <span>Download Hostinger SQL Dump (.sql)</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <a
+            href="/indianalala_hostinger_build.zip"
+            download="indianalala_hostinger_build.zip"
+            onClick={() => showToast('📦 Downloading ready Hostinger build zip package...')}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0 text-decoration-none"
+          >
+            <Download className="w-4 h-4 text-emerald-100" />
+            <span>📦 Download Ready Build Zip (Ready for Hostinger)</span>
+          </a>
+
+          <button
+            type="button"
+            onClick={handleDownloadSql}
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0"
+          >
+            <Download className="w-4 h-4 text-slate-950" />
+            <span>Download SQL Dump (.sql)</span>
+          </button>
+        </div>
       </div>
 
       {/* 4 Step Setup Guide in Hindi */}
