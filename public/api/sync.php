@@ -49,23 +49,23 @@ function fetchCollectionData($collection) {
             if (is_array($rows) && count($rows) > 0) {
                 $processed = [];
                 foreach ($rows as $row) {
-                    // Normalize JSON fields
+                    // Normalize JSON fields - frontend data takes precedence over empty database defaults
                     if (isset($row['settingsJson']) && $row['settingsJson']) {
                         $extra = json_decode($row['settingsJson'], true);
                         if (is_array($extra)) {
-                            $row = array_merge($extra, $row);
+                            $row = array_merge($row, $extra);
                         }
                     }
                     if (isset($row['data']) && $row['data']) {
                         $extra = json_decode($row['data'], true);
                         if (is_array($extra)) {
-                            $row = array_merge($extra, $row);
+                            $row = array_merge($row, $extra);
                         }
                     }
                     if (isset($row['sectionsJson']) && $row['sectionsJson']) {
                         $extra = json_decode($row['sectionsJson'], true);
                         if (is_array($extra)) {
-                            $row = array_merge($extra, $row);
+                            $row = array_merge($row, $extra);
                         }
                     }
                     if (isset($row['selectedTests']) && is_string($row['selectedTests'])) {
@@ -196,19 +196,19 @@ function persistDocToMySql($collection, $id, $data) {
                 ':tokenNumber' => $data['tokenNumber'] ?? ($data['tokenNo'] ?? $id),
                 ':uhid' => $data['uhid'] ?? '',
                 ':barcode' => $data['barcode'] ?? null,
-                ':patientName' => $data['patientName'] ?? 'Walk-In Patient',
-                ':patientAge' => isset($data['patientAge']) ? (int)$data['patientAge'] : null,
-                ':patientGender' => $data['patientGender'] ?? 'Other',
-                ':patientMobile' => $data['patientMobile'] ?? ($data['mobile'] ?? ''),
-                ':patientEmail' => $data['patientEmail'] ?? null,
-                ':patientAddress' => $data['patientAddress'] ?? null,
-                ':referredBy' => $data['referredBy'] ?? 'Self Walk-In',
-                ':selectedTests' => json_encode($data['selectedTests'] ?? [], JSON_UNESCAPED_UNICODE),
+                ':patientName' => $data['patientName'] ?? ($data['name'] ?? 'Walk-In Patient'),
+                ':patientAge' => isset($data['age']) ? (int)$data['age'] : (isset($data['patientAge']) ? (int)$data['patientAge'] : null),
+                ':patientGender' => $data['gender'] ?? ($data['patientGender'] ?? 'Other'),
+                ':patientMobile' => $data['mobile'] ?? ($data['patientMobile'] ?? ''),
+                ':patientEmail' => $data['patientEmail'] ?? ($data['email'] ?? null),
+                ':patientAddress' => $data['patientAddress'] ?? ($data['address'] ?? null),
+                ':referredBy' => $data['referringDoctor'] ?? ($data['referredBy'] ?? 'Self Walk-In'),
+                ':selectedTests' => json_encode($data['tests'] ?? ($data['selectedTests'] ?? []), JSON_UNESCAPED_UNICODE),
                 ':totalAmount' => (float)($data['totalAmount'] ?? ($data['total'] ?? 0)),
                 ':paidAmount' => (float)($data['paidAmount'] ?? ($data['paid'] ?? 0)),
                 ':dueAmount' => (float)($data['dueAmount'] ?? 0),
-                ':discount' => (float)($data['discount'] ?? 0),
-                ':paymentMethod' => $data['paymentMethod'] ?? 'Cash',
+                ':discount' => (float)($data['discountINR'] ?? ($data['discount'] ?? 0)),
+                ':paymentMethod' => $data['paymentMode'] ?? ($data['paymentMethod'] ?? 'Cash'),
                 ':paymentStatus' => $data['paymentStatus'] ?? 'Full Payment',
                 ':status' => $data['status'] ?? 'Registered',
                 ':registeredAt' => $data['registeredAt'] ?? date('c'),

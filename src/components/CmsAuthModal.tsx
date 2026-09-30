@@ -131,8 +131,8 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
   // Role selections
   // For Lab Website: Lab Admin, Receptionist, Technician
   const [labRole, setLabRole] = useState<LabAuthRole>('vendor');
-  // For Main Website: SuperAdmin, Admin (labowner)
-  const [mainRole, setMainRole] = useState<MainAuthRole>('super_admin');
+  // For Main Website: SuperAdmin, Admin (labowner) — Default to lab owner for immediate vendor access
+  const [mainRole, setMainRole] = useState<MainAuthRole>('vendor_owner');
 
   // Login form fields
   const [selectedLabId, setSelectedLabId] = useState<string>(() => selectedVendorLabId || 'lab-apex');
@@ -217,6 +217,7 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
     } else {
       if (targetLoginRole === 'admin') setMainRole('super_admin');
       else if (targetLoginRole === 'vendor') setMainRole('vendor_owner');
+      else setMainRole('vendor_owner');
 
       setLoginError('');
     }
@@ -422,12 +423,20 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
       // Auto-resolve laboratory if owner or staff credentials belong to a different registered lab
       const cleanInput = emailOrPhone.trim().toLowerCase();
       const cleanDigits = cleanInput.replace(/\D/g, '');
-      const matchedLab = vendorLabsList.find(
-        (l) =>
-          (cleanDigits.length >= 7 && (l.phone || '').replace(/\D/g, '').endsWith(cleanDigits)) ||
-          (l.email && l.email.toLowerCase() === cleanInput) ||
-          l.id.toLowerCase() === cleanInput
-      );
+      const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+
+      const matchedLab = vendorLabsList.find((l) => {
+        const lDigits = (l.phone || '').replace(/\D/g, '');
+        const lLast10 = lDigits.length >= 10 ? lDigits.slice(-10) : lDigits;
+        if (cleanDigits.length >= 7 && (lLast10 === last10 || lDigits.endsWith(cleanDigits) || cleanDigits.endsWith(lDigits))) {
+          return true;
+        }
+        if (l.email && l.email.toLowerCase().trim() === cleanInput) return true;
+        if (l.id.toLowerCase() === cleanInput || l.id.toLowerCase().replace('lab-', '') === cleanInput.replace('lab-', '')) return true;
+        if (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === cleanInput) return true;
+        if (l.name.toLowerCase().includes(cleanInput) || cleanInput.includes(l.name.toLowerCase())) return true;
+        return false;
+      });
       const targetLab = matchedLab ? matchedLab.id : (selectedLabId || selectedVendorLabId || 'lab-apex');
 
       const result = login(
@@ -471,18 +480,42 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
     setIsSubmitting(true);
 
     setTimeout(() => {
-      const targetRole = mainRole === 'super_admin' ? 'admin' : 'vendor';
-      
-      // Auto-resolve laboratory based on owner credentials
       const cleanInput = emailOrPhone.trim().toLowerCase();
       const cleanDigits = cleanInput.replace(/\D/g, '');
-      const matchedLab = vendorLabsList.find(
-        (l) =>
-          (cleanDigits.length >= 7 && (l.phone || '').replace(/\D/g, '').endsWith(cleanDigits)) ||
-          (l.email && l.email.toLowerCase() === cleanInput) ||
-          l.id.toLowerCase() === cleanInput
-      );
-      const targetLab = mainRole === 'super_admin' ? 'all' : (matchedLab ? matchedLab.id : selectedLabId || selectedVendorLabId || 'lab-apex');
+      const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+
+      const isSuperAdminEmail =
+        cleanInput === 'rkmehra331996@gmail.com' ||
+        cleanInput === 'admin@indianlalaji.com' ||
+        cleanInput === 'admin' ||
+        cleanInput === 'superadmin' ||
+        cleanInput === 'super_admin' ||
+        cleanInput === 'rkmehra331996' ||
+        cleanInput === 'mehra';
+
+      // Auto-detect role: If Super Admin email entered, use 'admin'; otherwise if 10-digit phone or vendor credentials, use 'vendor'
+      let targetRole: 'admin' | 'vendor' = mainRole === 'super_admin' ? 'admin' : 'vendor';
+      if (isSuperAdminEmail) {
+        targetRole = 'admin';
+      } else if (cleanDigits.length >= 7 || !cleanInput.includes('@')) {
+        targetRole = 'vendor';
+      }
+      
+      // Auto-resolve laboratory based on owner credentials
+      const matchedLab = vendorLabsList.find((l) => {
+        const lDigits = (l.phone || '').replace(/\D/g, '');
+        const lLast10 = lDigits.length >= 10 ? lDigits.slice(-10) : lDigits;
+        if (cleanDigits.length >= 7 && (lLast10 === last10 || lDigits.endsWith(cleanDigits) || cleanDigits.endsWith(lDigits))) {
+          return true;
+        }
+        if (l.email && l.email.toLowerCase().trim() === cleanInput) return true;
+        if (l.id.toLowerCase() === cleanInput || l.id.toLowerCase().replace('lab-', '') === cleanInput.replace('lab-', '')) return true;
+        if (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === cleanInput) return true;
+        if (l.name.toLowerCase().includes(cleanInput) || cleanInput.includes(l.name.toLowerCase())) return true;
+        return false;
+      });
+
+      const targetLab = targetRole === 'admin' ? 'all' : (matchedLab ? matchedLab.id : selectedLabId || selectedVendorLabId || 'lab-apex');
 
       const result = login(
         targetRole,
@@ -799,23 +832,22 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                   </div>
                 </div>
 
-                {/* 6-Digit PIN (Only for Lab Admin / Owner) */}
+                {/* 6-Digit PIN (Only for Lab Admin / Owner - Optional) */}
                 {labRole === 'vendor' && (
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         <Hash className="w-3 h-3 text-[#123B6D]" />
-                        <span>6-Digit Security PIN *</span>
+                        <span>6-Digit Security PIN (Default: 123456)</span>
                       </span>
-                      <span className="text-[10px] text-slate-400">Required for Lab Owner</span>
+                      <span className="text-[10px] text-slate-400">Optional</span>
                     </label>
                     <input
                       type="password"
                       maxLength={6}
-                      required
                       value={pinCode}
                       onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="6 numeric digits (e.g. 123456)"
+                      placeholder="6 numeric digits (default: 123456)"
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none font-mono tracking-widest placeholder:text-slate-400"
                     />
                   </div>
@@ -1019,20 +1051,19 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                   <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                     <span className="flex items-center gap-1">
                       <Hash className="w-3 h-3 text-[#123B6D]" />
-                      <span>6-Digit Security PIN *</span>
+                      <span>6-Digit Security PIN (Default: 123456)</span>
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      6 numeric digits
+                      Optional
                     </span>
                   </label>
                   <input
                     type="password"
                     maxLength={6}
-                    required
                     autoComplete="off"
                     value={pinCode}
                     onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="6-digit security PIN"
+                    placeholder="6-digit security PIN (default: 123456)"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none font-mono tracking-widest placeholder:text-slate-400"
                   />
                 </div>

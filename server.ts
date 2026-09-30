@@ -194,11 +194,12 @@ async function startServer() {
     });
   });
 
-  // 2. Fetch all sync data
+  // 2. Fetch all sync data or collection
   app.get(['/api/sync', '/api/sync.php'], (req, res) => {
     const action = req.query.action;
     if (action === 'ping') {
       res.json({
+        status: 'success',
         success: true,
         mode: 'express_dev',
         message: 'IndianLalaji Hostinger Backend Emulation Active',
@@ -208,10 +209,77 @@ async function startServer() {
       return;
     }
 
-    const data = readDevDb();
+    const store = readDevDb();
+    const lastUpdatedTime = new Date(store._lastUpdated || Date.now()).getTime();
+
+    if (action === 'check_updates') {
+      const since = parseFloat(req.query.since as string) || 0;
+      const hasUpdates = lastUpdatedTime > since;
+      res.json({
+        status: 'success',
+        success: true,
+        serverTime: Date.now(),
+        lastUpdated: lastUpdatedTime,
+        hasUpdates,
+        updatedCollections: hasUpdates ? Object.keys(store).filter((k) => !k.startsWith('_')) : [],
+        storageMode: 'file'
+      });
+      return;
+    }
+
+    // Build unified canonical data with both snake_case and camelCase keys
+    const canonicalData: Record<string, any> = {
+      reception_entries: store.reception_entries || store.receptionEntries || [],
+      lab_reports: store.lab_reports || store.reports || [],
+      vendor_bookings: store.vendor_bookings || store.bookings || [],
+      lab_staff: store.lab_staff || store.staff || [],
+      lab_settings: store.lab_settings || store.labSettingsMap || {},
+      lab_tests: store.lab_tests || store.tests || [],
+      lab_packages: store.lab_packages || store.packages || [],
+      lab_doctors: store.lab_doctors || store.doctors || [],
+      vendor_branches: store.vendor_branches || store.branches || [],
+      vendor_labs: store.vendor_labs || store.vendorLabs || [],
+      company_settings: store.company_settings || store.companySettings || null,
+      portal_sections: store.portal_sections || store.portalSections || null,
+      domain_requests: store.domain_requests || store.domainRequests || [],
+      contact_submissions: store.contact_submissions || store.contactSubmissions || [],
+      pricing_plans: store.pricing_plans || store.pricingPlans || [],
+      plan_requests: store.plan_requests || store.planRequests || [],
+      // Also provide camelCase aliases
+      receptionEntries: store.reception_entries || store.receptionEntries || [],
+      reports: store.lab_reports || store.reports || [],
+      bookings: store.vendor_bookings || store.bookings || [],
+      staff: store.lab_staff || store.staff || [],
+      labSettingsMap: store.lab_settings || store.labSettingsMap || {},
+      tests: store.lab_tests || store.tests || [],
+      packages: store.lab_packages || store.packages || [],
+      doctors: store.lab_doctors || store.doctors || [],
+      branches: store.vendor_branches || store.branches || [],
+      vendorLabs: store.vendor_labs || store.vendorLabs || [],
+      companySettings: store.company_settings || store.companySettings || null,
+      portalSections: store.portal_sections || store.portalSections || null,
+    };
+
+    if (action === 'get_collection') {
+      const collection = req.query.collection as string;
+      const data = canonicalData[collection] || store[collection] || [];
+      res.json({
+        status: 'success',
+        success: true,
+        collection,
+        data,
+        serverTime: Date.now()
+      });
+      return;
+    }
+
     res.json({
+      status: 'success',
       success: true,
-      data,
+      data: canonicalData,
+      serverTime: Date.now(),
+      lastUpdated: lastUpdatedTime,
+      storageMode: 'file',
       timestamp: new Date().toISOString()
     });
   });
@@ -220,49 +288,74 @@ async function startServer() {
   app.post(['/api/sync', '/api/sync.php'], (req, res) => {
     const body = req.body;
     if (!body || !body.collection) {
-      res.status(400).json({ success: false, error: 'collection is required' });
+      res.status(400).json({ status: 'error', success: false, error: 'collection is required' });
       return;
     }
 
     const { collection, data, action = 'save', id } = body;
     const store = readDevDb();
 
-    if (collection === 'labSettingsMap') {
+    // Map alias to primary keys
+    const isLabSettings = collection === 'lab_settings' || collection === 'labSettingsMap';
+    const isCompanySettings = collection === 'company_settings' || collection === 'companySettings';
+    const isPortalSections = collection === 'portal_sections' || collection === 'portalSections';
+
+    if (isLabSettings) {
+      if (!store.lab_settings) store.lab_settings = {};
       if (!store.labSettingsMap) store.labSettingsMap = {};
       if (typeof data === 'object' && data !== null) {
-        Object.assign(store.labSettingsMap, data);
+        const labId = id || data.labId || data.id;
+        if (labId) {
+          store.lab_settings[labId] = { ...(store.lab_settings[labId] || {}), ...data };
+          store.labSettingsMap[labId] = { ...(store.labSettingsMap[labId] || {}), ...data };
+        } else {
+          Object.assign(store.lab_settings, data);
+          Object.assign(store.labSettingsMap, data);
+        }
       }
-    } else if (collection === 'companySettings' || collection === 'portalSections') {
-      store[collection] = data;
+    } else if (isCompanySettings) {
+      store.company_settings = data;
+      store.companySettings = data;
+    } else if (isPortalSections) {
+      store.portal_sections = data;
+      store.portalSections = data;
     } else {
-      if (!Array.isArray(store[collection])) {
-        store[collection] = [];
+      const key = collection;
+      if (!Array.isArray(store[key])) {
+        store[key] = [];
       }
 
       if (action === 'delete') {
-        const targetId = id || data?.id;
+        const targetId = id || data?.id || data?.reportId;
         if (targetId) {
-          store[collection] = store[collection].filter((item: any) => item.id !== targetId);
+          store[key] = store[key].filter((item: any) => (item.id || item.reportId || item.labId) !== targetId);
         }
       } else {
-        if (data && data.id) {
-          const idx = store[collection].findIndex((item: any) => item.id === data.id);
+        const targetId = id || data?.id || data?.reportId;
+        if (data && targetId) {
+          const idx = store[key].findIndex((item: any) => (item.id || item.reportId || item.labId) === targetId);
           if (idx >= 0) {
-            store[collection][idx] = { ...store[collection][idx], ...data };
+            store[key][idx] = { ...store[key][idx], ...data, _updatedAt: new Date().toISOString() };
           } else {
-            store[collection].unshift(data);
+            store[key].unshift({ ...data, _updatedAt: new Date().toISOString() });
           }
         } else if (Array.isArray(data)) {
-          store[collection] = data;
+          store[key] = data;
+        } else if (data) {
+          store[key].unshift(data);
         }
       }
     }
 
     const saved = writeDevDb(store);
     res.json({
+      status: saved ? 'success' : 'error',
       success: saved,
-      message: saved ? 'Saved to central Hostinger storage' : 'Failed to write data',
+      action,
       collection,
+      id,
+      serverTime: Date.now(),
+      message: saved ? 'Saved to central Hostinger storage' : 'Failed to write data',
       timestamp: new Date().toISOString()
     });
   });

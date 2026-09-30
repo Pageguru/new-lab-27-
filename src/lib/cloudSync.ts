@@ -28,6 +28,7 @@ import {
   PlanRenewalRequest
 } from '../types';
 import { optimizeDataUrl } from '../utils/imageOptimizer';
+import { storeInVault } from '../utils/credentialVault';
 import {
   idbSaveCollection,
   idbGetCollection,
@@ -101,48 +102,80 @@ export const sanitizeForFirestore = sanitizeForHostingerDb;
 // -----------------------------------------------------------------------------
 // Hostinger API Connection & Multi-Device Polling Engine
 // -----------------------------------------------------------------------------
-function getApiBaseUrl(): string {
+
+// Canonical alias mapping between frontend camelCase/legacy keys and Hostinger database collection names
+const ALIAS_MAP: Record<string, string> = {
+  receptionEntries: COLLECTIONS.RECEPTION_ENTRIES,
+  reports: COLLECTIONS.LAB_REPORTS,
+  bookings: COLLECTIONS.BOOKINGS,
+  staff: COLLECTIONS.STAFF,
+  labSettingsMap: COLLECTIONS.LAB_SETTINGS,
+  tests: COLLECTIONS.TESTS,
+  packages: COLLECTIONS.PACKAGES,
+  doctors: COLLECTIONS.DOCTORS,
+  branches: COLLECTIONS.BRANCHES,
+  vendorLabs: COLLECTIONS.VENDOR_LABS,
+  companySettings: COLLECTIONS.COMPANY_SETTINGS,
+  portalSections: COLLECTIONS.PORTAL_SECTIONS,
+  domainRequests: COLLECTIONS.DOMAIN_REQUESTS,
+  contactSubmissions: COLLECTIONS.CONTACT_SUBMISSIONS,
+  pricingPlans: COLLECTIONS.PRICING_PLANS,
+  planRequests: COLLECTIONS.PLAN_REQUESTS,
+};
+
+function getPrimaryApiBase(): string {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    // If running on local developer dev server (localhost:3000) or AI Studio preview/dev environment:
-    if (
-      host === 'localhost' ||
-      host === '127.0.0.1' ||
-      host.includes('run.app') ||
-      host.includes('webcontainer') ||
-      host.includes('googleusercontent.com')
-    ) {
+
+    // 1. If running on actual Hostinger domain (or any lab subdomain like apex.indianlalaji.com):
+    if (host.endsWith('indianlalaji.com') || host.endsWith('indianalala.com')) {
       return window.location.origin;
     }
-    if (import.meta.env.VITE_HOSTINGER_API_URL) {
-      return import.meta.env.VITE_HOSTINGER_API_URL;
+
+    // 2. Explicit environment variable
+    const envUrl = (import.meta as any).env?.VITE_HOSTINGER_API_URL;
+    if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+      let clean = envUrl.trim();
+      if (clean.includes('indianalala.com')) {
+        clean = clean.replace('indianalala.com', 'indianlalaji.com');
+      }
+      return clean;
     }
-    // If the browser is running on indianalala.com or indianlalaji.com or any of its subdomains:
-    if (host.endsWith('indianalala.com') || host.endsWith('indianlalaji.com')) {
-      return window.location.origin;
+
+    // 3. For AI Studio preview environments (run.app, webcontainer, etc.):
+    // Connect to the shared Hostinger production backend so preview devices and mobile phones sync with the live database!
+    if (host.includes('run.app') || host.includes('webcontainer') || host.includes('googleusercontent.com')) {
+      return 'https://indianlalaji.com';
     }
+
+    // 4. Default to current window origin (localhost or dev proxy)
     return window.location.origin;
   }
-  return '';
+  return 'https://indianlalaji.com';
 }
 
-async function callHostingerApi(endpoint: string, options?: RequestInit): Promise<any> {
+function buildApiUrl(base: string, endpoint: string): string {
+  let cleanBase = (base || '').trim();
+  cleanBase = cleanBase.replace(/\/+$/, '');
+  // Strip trailing /api/sync.php or /api/sync or /api so endpoint is never doubled
+  cleanBase = cleanBase.replace(/\/api\/sync(?:\.php)?\/?$/, '');
+  cleanBase = cleanBase.replace(/\/api\/?$/, '');
+
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const sep = cleanEndpoint.includes('?') ? '&' : '?';
+  const cacheBuster = `_ts=${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  return `${cleanBase}${cleanEndpoint}${sep}${cacheBuster}`;
+}
+
+async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any> {
+  let controller: AbortController | null = null;
+  let timeoutId: any = null;
+  if (typeof AbortController !== 'undefined') {
+    controller = new AbortController();
+    timeoutId = setTimeout(() => controller?.abort(), 5000);
+  }
+
   try {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      return null;
-    }
-    const base = getApiBaseUrl();
-    const sep = endpoint.includes('?') ? '&' : '?';
-    const cacheBuster = `_ts=${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const url = `${base}${endpoint}${sep}${cacheBuster}`;
-
-    let controller: AbortController | null = null;
-    let timeoutId: any = null;
-    if (typeof AbortController !== 'undefined') {
-      controller = new AbortController();
-      timeoutId = setTimeout(() => controller?.abort(), 6000);
-    }
-
     const res = await fetch(url, {
       cache: 'no-store',
       signal: controller?.signal,
@@ -156,10 +189,39 @@ async function callHostingerApi(endpoint: string, options?: RequestInit): Promis
     });
     if (timeoutId) clearTimeout(timeoutId);
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+      return null;
     }
     return await res.json();
-  } catch (err) {
+  } catch {
+    if (timeoutId) clearTimeout(timeoutId);
+    return null;
+  }
+}
+
+async function callHostingerApi(endpoint: string, options?: RequestInit): Promise<any> {
+  try {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return null;
+    }
+
+    const primaryBase = getPrimaryApiBase();
+    const primaryUrl = buildApiUrl(primaryBase, endpoint);
+    const result = await fetchWithTimeout(primaryUrl, options);
+    if (result && (result.status === 'success' || result.success === true || result.status === 'online')) {
+      return result;
+    }
+
+    // Automatic fallback to local origin if primary base was external and failed (e.g. offline/network failure)
+    if (typeof window !== 'undefined' && primaryBase !== window.location.origin) {
+      const fallbackUrl = buildApiUrl(window.location.origin, endpoint);
+      const fallbackResult = await fetchWithTimeout(fallbackUrl, options);
+      if (fallbackResult) {
+        return fallbackResult;
+      }
+    }
+
+    return result;
+  } catch {
     return null;
   }
 }
@@ -302,6 +364,8 @@ const ALL_CORE_COLLECTIONS = [
   COLLECTIONS.DOMAIN_REQUESTS,
 ];
 
+let isPollingInProgress = false;
+
 /**
  * Normalizes collection data into the format expected by state and subscriptions
  */
@@ -311,22 +375,45 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
   // 1. LAB_SETTINGS: Must be a Map keyed by labId (e.g. { 'lab-kumarlab-2960': { ... } })
   if (collection === COLLECTIONS.LAB_SETTINGS) {
     const map: Record<string, VendorLabSettings> = {};
-    if (Array.isArray(rawData)) {
-      for (const item of rawData) {
-        const id = item?.labId || item?.id;
-        if (id && id !== '0') {
-          map[id] = item;
-        }
+    const items = Array.isArray(rawData) ? rawData : (typeof rawData === 'object' && rawData !== null ? Object.values(rawData) : []);
+    for (const rawItem of items) {
+      if (!rawItem || typeof rawItem !== 'object') continue;
+      let cleanItem: any = { ...rawItem };
+
+      // Unpack settingsJson if provided as string
+      if (typeof cleanItem.settingsJson === 'string' && cleanItem.settingsJson.trim()) {
+        try {
+          const extra = JSON.parse(cleanItem.settingsJson);
+          if (extra && typeof extra === 'object') {
+            cleanItem = { ...extra, ...cleanItem };
+          }
+        } catch {}
       }
-      return map;
-    } else if (typeof rawData === 'object' && rawData !== null) {
-      for (const [key, item] of Object.entries(rawData)) {
-        const realId = (item as any)?.labId || (item as any)?.id || key;
-        if (realId && realId !== '0') {
-          map[realId] = item as VendorLabSettings;
-        }
+
+      // Unpack sections if provided as string
+      if (typeof cleanItem.sections === 'string') {
+        try {
+          cleanItem.sections = JSON.parse(cleanItem.sections);
+        } catch {}
       }
-      return map;
+
+      const id = cleanItem.labId || cleanItem.id;
+      if (id && id !== '0') {
+        // Automatically save credentials to vault
+        if (cleanItem.phone) {
+          storeInVault({
+            labId: id,
+            labName: cleanItem.labName || cleanItem.name,
+            phone: cleanItem.phone,
+            password: cleanItem.ownerPassword || cleanItem.password || 'owner123',
+            pin: cleanItem.ownerPin || cleanItem.pin || '123456',
+            email: cleanItem.email,
+            slug: cleanItem.domainPreview ? cleanItem.domainPreview.split('.')[0] : id.replace('lab-', ''),
+            ownerName: cleanItem.ownerName,
+          }, false);
+        }
+        map[id] = cleanItem as VendorLabSettings;
+      }
     }
     return map;
   }
@@ -343,7 +430,90 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
     return rawData;
   }
 
-  // 4. All other collections are arrays
+  // 4. RECEPTION_ENTRIES: Array with proper data types
+  if (collection === COLLECTIONS.RECEPTION_ENTRIES && Array.isArray(rawData)) {
+    return rawData.map((raw: any) => {
+      let item = { ...raw };
+      if (typeof item.data === 'string' && item.data.trim()) {
+        try {
+          const extra = JSON.parse(item.data);
+          if (extra && typeof extra === 'object') item = { ...item, ...extra };
+        } catch {}
+      }
+      let parsedTests = item.tests;
+      if (!Array.isArray(parsedTests)) {
+        if (Array.isArray(item.selectedTests)) parsedTests = item.selectedTests;
+        else if (typeof item.selectedTests === 'string') {
+          try { parsedTests = JSON.parse(item.selectedTests); } catch { parsedTests = []; }
+        } else parsedTests = [];
+      }
+      return {
+        ...item,
+        id: item.id || item.uhid,
+        patientName: item.patientName || item.name || 'Walk-In Patient',
+        mobile: item.mobile || item.patientMobile || '',
+        gender: item.gender || item.patientGender || 'Other',
+        referringDoctor: item.referringDoctor || item.referredBy || 'Self Walk-In',
+        tests: parsedTests,
+        paymentMode: item.paymentMode || item.paymentMethod || 'Cash',
+        totalAmount: Number(item.totalAmount) || 0,
+        paidAmount: Number(item.paidAmount) || 0,
+        dueAmount: Number(item.dueAmount) || 0,
+        discountINR: Number(item.discountINR || item.discount) || 0,
+        _syncStatus: 'synced',
+        _syncedAt: item._syncedAt || new Date().toISOString(),
+      };
+    });
+  }
+
+  // 5. LAB_REPORTS: Array with parsed items
+  if (collection === COLLECTIONS.LAB_REPORTS && Array.isArray(rawData)) {
+    return rawData.map((raw: any) => {
+      let item = { ...raw };
+      if (typeof item.data === 'string' && item.data.trim()) {
+        try {
+          const extra = JSON.parse(item.data);
+          if (extra && typeof extra === 'object') item = { ...item, ...extra };
+        } catch {}
+      }
+      let parsedItems = item.items;
+      if (typeof parsedItems === 'string') {
+        try { parsedItems = JSON.parse(parsedItems); } catch { parsedItems = []; }
+      }
+      return {
+        ...item,
+        reportId: item.reportId || item.id,
+        items: Array.isArray(parsedItems) ? parsedItems : [],
+        verified: Boolean(item.verified),
+        isDraft: Boolean(item.isDraft),
+        isCancelled: Boolean(item.isCancelled || item.cancelled),
+        _syncStatus: 'synced',
+        _syncedAt: item._syncedAt || new Date().toISOString(),
+      };
+    });
+  }
+
+  // 6. VENDOR_LABS: Register in vault and normalize
+  if (collection === COLLECTIONS.VENDOR_LABS && Array.isArray(rawData)) {
+    return rawData.map((raw: any) => {
+      const item = { ...raw };
+      if (item.phone) {
+        storeInVault({
+          labId: item.id,
+          labName: item.name,
+          phone: item.phone,
+          password: item.password || 'owner123',
+          pin: item.pin || '123456',
+          email: item.email,
+          slug: item.domainPreview ? item.domainPreview.split('.')[0] : item.id.replace('lab-', ''),
+          ownerName: item.ownerName,
+        }, false);
+      }
+      return item;
+    });
+  }
+
+  // 7. All other collections
   if (Array.isArray(rawData)) {
     return rawData;
   }
@@ -355,6 +525,8 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
  * Checks Hostinger server for any updates made by other devices and synchronizes automatically
  */
 export async function pollHostingerServerUpdates(force: boolean = false): Promise<void> {
+  if (isPollingInProgress) return;
+  isPollingInProgress = true;
   try {
     // 1. On initial load or explicit force refresh: fetch all collections in one fast unified request
     if (!isInitialSyncDone || force) {
@@ -394,6 +566,8 @@ export async function pollHostingerServerUpdates(force: boolean = false): Promis
     }
   } catch (err) {
     // Silent fail in background polling
+  } finally {
+    isPollingInProgress = false;
   }
 }
 
