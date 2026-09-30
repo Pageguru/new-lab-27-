@@ -78,6 +78,9 @@ import {
   deleteBranchFromCloud,
   subscribeToBranches,
   forceRefreshAllFromHostinger,
+  syncAllWithHostinger,
+  getPendingOfflineCount,
+  subscribeOfflineQueueCount,
 } from '../lib/cloudSync';
 
 export const DEFAULT_VENDOR_SECTIONS: VendorWebsiteSections = {
@@ -1979,6 +1982,8 @@ interface CmsContextType {
   cloudSyncStatus: 'synced' | 'syncing' | 'offline';
   lastCloudSyncTime: string;
   refreshCloudData: () => Promise<void>;
+  pendingOfflineSyncCount: number;
+  triggerManualSync: () => Promise<{ success: boolean; message: string; count: number }>;
 }
 
 const CmsContext = createContext<CmsContextType | null>(null);
@@ -2373,6 +2378,14 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
   const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>('Just now');
+  const [pendingOfflineSyncCount, setPendingOfflineSyncCount] = useState<number>(() => getPendingOfflineCount());
+
+  useEffect(() => {
+    const unsub = subscribeOfflineQueueCount((count) => {
+      setPendingOfflineSyncCount(count);
+    });
+    return unsub;
+  }, []);
 
   // Master Raw Stores (Isolated by labId)
   const [allReports, setAllReports] = useState<LabReport[]>(() => {
@@ -2862,6 +2875,59 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setLastCloudSyncTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
     } catch {
       setCloudSyncStatus('offline');
+    }
+  };
+
+  // Dedicated "Sync Now" Engine for all Dashboards (Reception, Technician, Admin, Super Admin)
+  const triggerManualSync = async (): Promise<{ success: boolean; message: string; count: number }> => {
+    setCloudSyncStatus('syncing');
+    try {
+      const syncResult = await syncAllWithHostinger();
+      const [cloudSettings, cloudReports, cloudEntries] = await Promise.all([
+        fetchAllLabSettingsFromCloud(),
+        fetchReportsFromServer(),
+        fetchReceptionEntriesFromServer(),
+      ]);
+      if (cloudSettings && Object.keys(cloudSettings).length > 0) {
+        setVendorLabSettingsMap((prev) => ({
+          ...prev,
+          ...cloudSettings,
+        }));
+      }
+      if (cloudReports && cloudReports.length > 0) {
+        setAllReports(cloudReports);
+      }
+      if (cloudEntries && cloudEntries.length > 0) {
+        setAllReceptionEntries(cloudEntries);
+      }
+
+      const remaining = getPendingOfflineCount();
+      setPendingOfflineSyncCount(remaining);
+
+      if (syncResult.success) {
+        setIsCloudConnected(true);
+        setCloudSyncStatus('synced');
+        setLastCloudSyncTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+        return {
+          success: true,
+          message: syncResult.message,
+          count: syncResult.syncedOfflineCount,
+        };
+      } else {
+        setCloudSyncStatus(typeof navigator !== 'undefined' && navigator.onLine ? 'synced' : 'offline');
+        return {
+          success: false,
+          message: syncResult.message,
+          count: syncResult.syncedOfflineCount,
+        };
+      }
+    } catch (err: any) {
+      setCloudSyncStatus('offline');
+      return {
+        success: false,
+        message: `Sync failed: ${err?.message || 'Check network connection'}`,
+        count: 0,
+      };
     }
   };
 
@@ -5754,6 +5820,8 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cloudSyncStatus,
         lastCloudSyncTime,
         refreshCloudData,
+        pendingOfflineSyncCount,
+        triggerManualSync,
       }}
     >
       {children}

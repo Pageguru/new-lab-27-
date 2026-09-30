@@ -50,6 +50,7 @@ import { EditReceptionEntryModal } from './EditReceptionEntryModal';
 import { CollectRemainingPaymentModal } from './CollectRemainingPaymentModal';
 import { DayEndCashClosingModal } from './reception/DayEndCashClosingModal';
 import { ReportDetailModal } from './ReportDetailModal';
+import { SyncNowButton } from './SyncNowButton';
 import { generateThermalReceiptPdf, buildReceiptInvoicePdf, getReceiptPdfFilename, downloadReportPdf } from '../utils/pdfGenerator';
 import { safePrint } from '../utils/printHelper';
 
@@ -1178,8 +1179,11 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
             </div>
           </div>
 
-          {/* Action Buttons: Lab Owner return (if admin) + Staff Logout */}
+          {/* Action Buttons: Sync Now + Lab Owner return (if admin) + Staff Logout */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Hostinger MySQL Sync Button */}
+            <SyncNowButton variant="teal" />
+
             {/* If Admin is inspecting Reception Desk, provide quick return to Lab Owner CMS */}
             {currentUser?.role === 'admin' && (
               <button

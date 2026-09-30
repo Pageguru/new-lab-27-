@@ -85,6 +85,7 @@ import { VendorStaffManagementTab } from './vendor/VendorStaffManagementTab';
 import { VendorBackupReportsTab } from './vendor/VendorBackupReportsTab';
 import { VendorTechSupportTab } from './vendor/VendorTechSupportTab';
 import { DoctorCommissionModal } from './vendor/DoctorCommissionModal';
+import { SyncNowButton } from './SyncNowButton';
 
 interface LabVendorDashboardProps {
   onNavigateView: (view: AppView) => void;

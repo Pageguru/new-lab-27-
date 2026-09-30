@@ -9,8 +9,6 @@ import {
   Check,
   Eye,
   LogOut,
-  RefreshCw,
-  HelpCircle,
   Layers,
   IndianRupee,
   Phone,
@@ -23,7 +21,6 @@ import {
   X,
   TrendingUp,
   Building2,
-  SlidersHorizontal,
   AlertTriangle,
   FlaskConical,
   Clock,
@@ -37,9 +34,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
-import { AppView, PricingPlan, CompanyFeature, CompanyFaq, CompanyStat, LabManagementFeature } from '../types';
+import { AppView, PricingPlan, CompanyFeature, LabManagementFeature } from '../types';
 import { VendorManagementTab } from './admin/VendorManagementTab';
-import { WebsiteSectionsTab } from './admin/WebsiteSectionsTab';
 import { HostingerDatabaseCard } from './admin/HostingerDatabaseCard';
 
 interface CompanyAdminDashboardProps {
@@ -68,15 +64,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     updateLabManagementFeature,
     deleteLabManagementFeature,
     resetLabManagementFeatures,
-    companyFaqs,
-    addCompanyFaq,
-    updateCompanyFaq,
-    deleteCompanyFaq,
-    companyStats,
-    updateCompanyStat,
-    resetAllToDefaults,
     vendorLabsList,
-    portalSections,
     superAdminTenantScope,
     setSuperAdminTenantScope,
     isCloudConnected,
@@ -90,10 +78,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     deleteDomainRequest,
   } = useCms();
 
-  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'website_edit' | 'domain_requests';
+  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'domain_requests';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
-  type HomeSubTab = 'pricing' | 'cloud_sync' | 'settings' | 'features' | 'faqs' | 'stats';
+  type HomeSubTab = 'pricing' | 'cloud_sync' | 'settings' | 'features';
   const [homeSubTab, setHomeSubTab] = useState<HomeSubTab>('pricing');
   const activeTab = homeSubTab;
 
@@ -134,7 +122,6 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
   const draftLabsCount = vendorLabsList.filter(
     (v) => v.status === 'Draft' || !v.isWebsiteApproved
   ).length;
-  const activeSectionsCount = Object.values(portalSections).filter(Boolean).length;
 
   // Edit / Add Modal States
   const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
@@ -169,14 +156,6 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
   });
   const [featureSubSection, setFeatureSubSection] = useState<'modules' | 'highlights'>('modules');
   const [labFeatureSearch, setLabFeatureSearch] = useState('');
-
-  const [editingFaq, setEditingFaq] = useState<CompanyFaq | null>(null);
-  const [isNewFaqModal, setIsNewFaqModal] = useState(false);
-  const [faqForm, setFaqForm] = useState<Omit<CompanyFaq, 'id'>>({
-    question: '',
-    answer: '',
-    category: 'General',
-  });
 
   // Settings local form
   const [settingsForm, setSettingsForm] = useState({ ...companySettings });
@@ -435,58 +414,6 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     });
   };
 
-  // FAQ Handlers
-  const handleOpenAddFaq = () => {
-    setFaqForm({
-      question: 'Can I import patient records from Excel / CSV?',
-      answer: 'Yes! The desktop and cloud app allows 1-click import and export of patient logs, doctor lists, and test catalogs in Excel format.',
-      category: 'Features',
-    });
-    setIsNewFaqModal(true);
-  };
-
-  const handleSaveNewFaq = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!faqForm.question) return;
-    addCompanyFaq(faqForm);
-    setIsNewFaqModal(false);
-    showToast('FAQ added successfully!');
-  };
-
-  const handleOpenEditFaq = (faq: CompanyFaq) => {
-    setEditingFaq(faq);
-    setFaqForm({
-      question: faq.question,
-      answer: faq.answer,
-      category: faq.category,
-    });
-  };
-
-  const handleSaveEditFaq = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingFaq) return;
-    updateCompanyFaq(editingFaq.id, faqForm);
-    setEditingFaq(null);
-    showToast('FAQ updated successfully!');
-  };
-
-  const handleDeleteFaq = (id: string) => {
-    const faqItem = companyFaqs.find((f) => f.id === id);
-    setDeleteConfirm({
-      isOpen: true,
-      title: 'Delete FAQ',
-      message: 'Are you sure you want to delete this?',
-      itemDetails: faqItem?.question ? `Question: "${faqItem.question}"` : 'Selected FAQ Item',
-      confirmText: 'Yes',
-      cancelText: 'No',
-      onConfirm: () => {
-        deleteCompanyFaq(id);
-        showToast('FAQ deleted.');
-        setDeleteConfirm(null);
-      },
-    });
-  };
-
   // Settings Save
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -496,66 +423,59 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-800">
-      {/* Top Header & Menu Bar: Brand Name | Home | Labs | Our Clients | Website Edit | Logout */}
-      <header className="bg-[#123B6D] text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Brand Name */}
-          <div className="flex items-center gap-3">
+      {/* Minimalist Inline Header: Brand | Nav Links | Logout */}
+      <header className="bg-[#0e294b] text-white sticky top-0 z-40 border-b border-slate-700/60 shadow-xs backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-12 flex items-center justify-between gap-3">
+          {/* Brand & Portal Back (Inline) */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <button
               type="button"
               id="admin-btn-back"
               onClick={() => onNavigateView('website')}
-              className="bg-white/15 hover:bg-white/25 active:scale-95 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border border-white/20 cursor-pointer shrink-0"
-              title="Back to Public Home Portal"
+              className="bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white px-2 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 border border-white/15 cursor-pointer shrink-0"
+              title="Back to Public Portal"
             >
-              <ArrowLeft className="w-4 h-4 text-amber-300" />
+              <ArrowLeft className="w-3.5 h-3.5 text-amber-300" />
               <span className="hidden sm:inline">Portal</span>
             </button>
 
+            <div className="h-4 w-px bg-white/20 hidden sm:block shrink-0"></div>
+
             <div
               onClick={() => setActiveMenu('home')}
-              className="flex items-center gap-2.5 cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 group"
               title="Super Admin Dashboard Home"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+              <div className="w-6 h-6 rounded-md bg-amber-400 text-slate-950 flex items-center justify-center font-black text-[11px] shadow-2xs shrink-0">
                 HQ
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-sm sm:text-base tracking-tight text-white">
-                    {companySettings.companyName || 'INDIANLALAJI.COM'}
-                  </span>
-                  <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black uppercase tracking-wider hidden sm:inline-block">
-                    Super Admin
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-300 hidden md:block">
-                  {companySettings.superAdminDomain || 'indianlalaji.com'} • Central Control
-                </p>
-              </div>
+              <span className="font-bold text-xs sm:text-[13px] tracking-tight text-white group-hover:text-amber-300 transition truncate max-w-[140px] sm:max-w-none">
+                {companySettings.companyName || 'INDIANLALAJI.COM'}
+              </span>
+              <span className="text-[9px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider hidden sm:inline-block">
+                Super Admin
+              </span>
+              <span className="text-[11px] text-slate-400 hidden xl:inline">
+                • {companySettings.superAdminDomain || 'indianlalaji.com'}
+              </span>
             </div>
           </div>
 
-          {/* Menu Bar Items: Home | Labs | Our Clients | Website Edit | Logout */}
-          <nav className="flex items-center gap-1 sm:gap-2">
+          {/* Inline Navigation Items */}
+          <nav className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {/* Home */}
             <button
               type="button"
               id="menu-btn-home"
               onClick={() => setActiveMenu('home')}
-              className={`px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeMenu === 'home'
-                  ? 'bg-amber-400 text-slate-950 shadow-md scale-102'
-                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <Home className="w-4 h-4" />
+              <Home className="w-3.5 h-3.5" />
               <span>Home</span>
-              {activeMenu === 'home' && (
-                <span className="bg-slate-950 text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shadow-2xs">
-                  ✓ Active
-                </span>
-              )}
             </button>
 
             {/* Labs (Pending Labs) */}
@@ -563,47 +483,43 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               type="button"
               id="menu-btn-labs"
               onClick={() => setActiveMenu('labs')}
-              className={`px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 cursor-pointer relative ${
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 relative ${
                 activeMenu === 'labs'
-                  ? 'bg-amber-400 text-slate-950 shadow-md scale-102'
-                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <Clock className="w-4 h-4" />
+              <Clock className="w-3.5 h-3.5" />
               <span>Labs</span>
               {pendingCount > 0 && (
-                <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-2xs">
+                <span className="bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full leading-none">
                   {pendingCount}
-                </span>
-              )}
-              {activeMenu === 'labs' && (
-                <span className="bg-slate-950 text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shadow-2xs">
-                  ✓ Active
                 </span>
               )}
             </button>
 
-            {/* Our Clients (Published / Live Clients) */}
+            {/* Our Clients */}
             <button
               type="button"
               id="menu-btn-clients"
               onClick={() => setActiveMenu('clients')}
-              className={`px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeMenu === 'clients'
-                  ? 'bg-amber-400 text-slate-950 shadow-md scale-102'
-                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <Building2 className="w-4 h-4" />
+              <Building2 className="w-3.5 h-3.5" />
               <span>Our Clients</span>
-              <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full hidden sm:inline-block">
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden sm:inline-block leading-none ${
+                  activeMenu === 'clients'
+                    ? 'bg-slate-900 text-amber-300'
+                    : 'bg-white/15 text-slate-200'
+                }`}
+              >
                 {liveClientsCount}
               </span>
-              {activeMenu === 'clients' && (
-                <span className="bg-slate-950 text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shadow-2xs">
-                  ✓ Active
-                </span>
-              )}
             </button>
 
             {/* Complete Laboratory Management Features Tab */}
@@ -615,39 +531,23 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 setHomeSubTab('features');
                 setFeatureSubSection('modules');
               }}
-              className={`px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeMenu === 'home' && homeSubTab === 'features' && featureSubSection === 'modules'
-                  ? 'bg-amber-400 text-slate-950 shadow-md scale-102'
-                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <FlaskConical className="w-4 h-4" />
-              <span>Lab Features ({labManagementFeatures?.length || 18})</span>
-              {activeMenu === 'home' && homeSubTab === 'features' && featureSubSection === 'modules' && (
-                <span className="bg-slate-950 text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shadow-2xs">
-                  ✓ Edit
-                </span>
-              )}
-            </button>
-
-            {/* Website Edit (Website Sections) */}
-            <button
-              type="button"
-              id="menu-btn-website-edit"
-              onClick={() => setActiveMenu('website_edit')}
-              className={`px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 cursor-pointer ${
-                activeMenu === 'website_edit'
-                  ? 'bg-amber-400 text-slate-950 shadow-md scale-102'
-                  : 'text-slate-200 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span>Website Edit</span>
-              {activeMenu === 'website_edit' && (
-                <span className="bg-slate-950 text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shadow-2xs">
-                  ✓ Active
-                </span>
-              )}
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span>Lab Features</span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden sm:inline-block leading-none ${
+                  activeMenu === 'home' && homeSubTab === 'features' && featureSubSection === 'modules'
+                    ? 'bg-slate-900 text-amber-300'
+                    : 'bg-white/15 text-slate-200'
+                }`}
+              >
+                {labManagementFeatures?.length || 18}
+              </span>
             </button>
 
             {/* Domain Requests Tab */}
@@ -655,32 +555,33 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               type="button"
               id="menu-btn-domain-requests"
               onClick={() => setActiveMenu('domain_requests')}
-              className={`px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 activeMenu === 'domain_requests'
-                  ? 'bg-amber-400 text-slate-950 shadow-md scale-102'
-                  : 'text-slate-200 hover:text-white hover:bg-white/10'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <Globe className="w-4 h-4" />
-              <span>Domain Requests</span>
+              <Globe className="w-3.5 h-3.5" />
+              <span>Domains</span>
               {allDomainRequests.filter((r) => r.status === 'Pending').length > 0 ? (
-                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
-                  {allDomainRequests.filter((r) => r.status === 'Pending').length} New
+                <span className="bg-amber-500 text-slate-950 text-[9px] font-bold px-1.5 py-0.2 rounded-full leading-none animate-pulse">
+                  {allDomainRequests.filter((r) => r.status === 'Pending').length}
                 </span>
               ) : (
-                <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden sm:inline-block">
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden sm:inline-block leading-none ${
+                    activeMenu === 'domain_requests'
+                      ? 'bg-slate-900 text-amber-300'
+                      : 'bg-white/15 text-slate-200'
+                  }`}
+                >
                   {allDomainRequests.length}
-                </span>
-              )}
-              {activeMenu === 'domain_requests' && (
-                <span className="bg-slate-950 text-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shadow-2xs">
-                  ✓ Active
                 </span>
               )}
             </button>
 
             {/* Separator */}
-            <div className="h-6 w-px bg-white/20 mx-1 hidden sm:block"></div>
+            <div className="h-4 w-px bg-white/15 mx-0.5 hidden sm:block shrink-0"></div>
 
             {/* Logout */}
             <button
@@ -690,10 +591,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 logout();
                 onNavigateView('website');
               }}
-              className="px-3 py-2 rounded-xl text-xs sm:text-sm font-black text-rose-200 hover:text-white hover:bg-rose-600/30 transition flex items-center gap-1.5 cursor-pointer border border-rose-400/30"
+              className="px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-rose-200 hover:text-white hover:bg-rose-500/20 transition flex items-center gap-1 cursor-pointer border border-rose-400/25 shrink-0"
               title="Logout from Super Admin Dashboard"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
               <span>Logout</span>
             </button>
           </nav>
@@ -760,7 +661,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
             </div>
 
             {/* Quick KPI Overview Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Card 1: Pending Labs */}
               <div
                 onClick={() => setActiveMenu('labs')}
@@ -805,29 +706,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 </div>
               </div>
 
-              {/* Card 3: Website Sections */}
-              <div
-                onClick={() => setActiveMenu('website_edit')}
-                className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:border-[#123B6D] hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Website Edit
-                  </span>
-                  <div className="p-2 rounded-xl bg-blue-50 text-[#123B6D] group-hover:scale-110 transition-transform">
-                    <SlidersHorizontal className="w-5 h-5" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-3xl font-black text-slate-900">{activeSectionsCount} / 24</div>
-                  <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
-                    <span>Website Sections Active</span>
-                    <span className="font-bold text-[#123B6D] group-hover:underline">Edit Sections →</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 4: Cloud DB & Sync */}
+              {/* Card 3: Cloud DB & Sync */}
               <div
                 onClick={() => setHomeSubTab('cloud_sync')}
                 className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:border-teal-500 hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
@@ -951,53 +830,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                   <FlaskConical className="w-3.5 h-3.5 text-amber-400" />
                   <span>Complete Lab Features ({labManagementFeatures?.length || 18})</span>
                 </button>
-
-                <button
-                  onClick={() => setHomeSubTab('faqs')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                    homeSubTab === 'faqs'
-                      ? 'bg-[#123B6D] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>FAQs ({companyFaqs.length})</span>
-                </button>
-
-                <button
-                  onClick={() => setHomeSubTab('stats')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                    homeSubTab === 'stats'
-                      ? 'bg-[#123B6D] text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>Stats ({companyStats.length})</span>
-                </button>
               </div>
-
-              <button
-                onClick={() => {
-                  setDeleteConfirm({
-                    isOpen: true,
-                    title: 'Reset Factory Demo Defaults',
-                    message: 'Are you sure you want to delete this?',
-                    itemDetails: 'Reset all Company & Vendor data back to initial demo defaults',
-                    confirmText: 'Yes',
-                    cancelText: 'No',
-                    onConfirm: () => {
-                      resetAllToDefaults();
-                      showToast('Reset back to factory demo defaults.');
-                      setDeleteConfirm(null);
-                    },
-                  });
-                }}
-                className="text-slate-500 hover:text-slate-800 text-xs px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition flex items-center gap-1 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-                <span>Reset Demo Defaults</span>
-              </button>
             </div>
 
             {/* Sub-tab content when activeMenu === 'home' */}
@@ -1440,68 +1273,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
           </div>
         )}
 
-        {/* 3. FAQS TAB */}
-        {activeTab === 'faqs' && (
-          <div className="space-y-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-extrabold text-[#123B6D]">
-                  Frequently Asked Questions (FAQs)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Add answers to queries asked by lab owners, doctors, and lab technicians.
-                </p>
-              </div>
-              <button
-                onClick={handleOpenAddFaq}
-                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-              >
-                <Plus className="w-4 h-4 text-amber-400" />
-                <span>Add FAQ</span>
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {companyFaqs.map((faq) => (
-                <div
-                  key={faq.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase">
-                          {faq.category}
-                        </span>
-                        <h3 className="font-extrabold text-sm text-slate-900">{faq.question}</h3>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-1 pl-1 leading-relaxed">{faq.answer}</p>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={() => handleOpenEditFaq(faq)}
-                        className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
-                        title="Edit FAQ"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-blue-600" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFaq(faq.id)}
-                        className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold"
-                        title="Delete FAQ"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 4. COMPANY BRANDING & HERO SETTINGS */}
+        {/* 3. COMPANY BRANDING & HERO SETTINGS */}
         {activeTab === 'settings' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
             <h2 className="text-base font-extrabold text-[#123B6D] mb-1">
@@ -1642,49 +1414,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
           </div>
         )}
 
-        {/* 5. STATS & COUNTERS */}
-        {activeTab === 'stats' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
-            <div>
-              <h2 className="text-base font-extrabold text-[#123B6D]">
-                Platform Numbers & Trust Metrics
-              </h2>
-              <p className="text-xs text-slate-500">
-                Edit the milestone stats displayed in the trust strip of the homepage.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {companyStats.map((stat) => (
-                <div key={stat.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="text-[11px] font-bold uppercase text-slate-500">{stat.label}</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Display Value</label>
-                      <input
-                        type="text"
-                        value={stat.value}
-                        onChange={(e) => updateCompanyStat(stat.id, { value: e.target.value })}
-                        className="w-full p-1.5 rounded-lg border border-slate-300 font-extrabold text-sm text-[#123B6D]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Subtext</label>
-                      <input
-                        type="text"
-                        value={stat.subtext}
-                        onChange={(e) => updateCompanyStat(stat.id, { subtext: e.target.value })}
-                        className="w-full p-1.5 rounded-lg border border-slate-300 text-xs text-slate-600"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 6. LIVE CLOUD DB & SYNC INSPECTOR */}
+        {/* 4. LIVE CLOUD DB & SYNC INSPECTOR */}
         {activeTab === 'cloud_sync' && (
           <div className="space-y-6 animate-in fade-in-50 duration-200">
             {/* Hostinger MySQL Database Card */}
@@ -1900,17 +1630,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
       </div>
     )}
 
-    {/* VIEW 4: WEBSITE EDIT (Website Sections) */}
-    {activeMenu === 'website_edit' && (
-      <div className="animate-in fade-in-50 duration-200">
-        <WebsiteSectionsTab
-          onNavigateView={onNavigateView}
-          showToast={showToast}
-        />
-      </div>
-    )}
-
-    {/* VIEW 5: DOMAIN REQUESTS (Vendor Custom Domain Approvals) */}
+    {/* VIEW 4: DOMAIN REQUESTS (Vendor Custom Domain Approvals) */}
     {activeMenu === 'domain_requests' && (
       <div className="space-y-6 animate-in fade-in-50 duration-200">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -2416,79 +2136,6 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                   className="bg-[#123B6D] text-white px-4 py-1.5 rounded-xl font-bold hover:bg-[#0e2c52] cursor-pointer shadow-xs"
                 >
                   {editingLabFeature ? 'Save Changes' : 'Add Module'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {(isNewFaqModal || editingFaq) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <h3 className="font-extrabold text-sm text-[#123B6D]">
-                {editingFaq ? 'Edit FAQ' : 'Add FAQ'}
-              </h3>
-              <button
-                onClick={() => {
-                  setIsNewFaqModal(false);
-                  setEditingFaq(null);
-                }}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={editingFaq ? handleSaveEditFaq : handleSaveNewFaq} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Question</label>
-                <input
-                  type="text"
-                  required
-                  value={faqForm.question}
-                  onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
-                  className="w-full p-2 rounded-lg border border-slate-300 font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category</label>
-                <input
-                  type="text"
-                  value={faqForm.category}
-                  onChange={(e) => setFaqForm({ ...faqForm, category: e.target.value })}
-                  className="w-full p-2 rounded-lg border border-slate-300"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Answer</label>
-                <textarea
-                  rows={4}
-                  required
-                  value={faqForm.answer}
-                  onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
-                  className="w-full p-2 rounded-lg border border-slate-300 leading-relaxed"
-                />
-              </div>
-
-              <div className="pt-3 flex justify-end gap-2 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNewFaqModal(false);
-                    setEditingFaq(null);
-                  }}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-[#123B6D] text-white px-4 py-1.5 rounded-lg font-bold hover:bg-[#0e2c52]"
-                >
-                  Save FAQ
                 </button>
               </div>
             </form>

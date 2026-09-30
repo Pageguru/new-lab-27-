@@ -108,13 +108,24 @@ function getApiBaseUrl(): string {
 
 async function callHostingerApi(endpoint: string, options?: RequestInit): Promise<any> {
   try {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return null;
+    }
     const base = getApiBaseUrl();
     const sep = endpoint.includes('?') ? '&' : '?';
     const cacheBuster = `_ts=${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const url = `${base}${endpoint}${sep}${cacheBuster}`;
 
+    let controller: AbortController | null = null;
+    let timeoutId: any = null;
+    if (typeof AbortController !== 'undefined') {
+      controller = new AbortController();
+      timeoutId = setTimeout(() => controller?.abort(), 6000);
+    }
+
     const res = await fetch(url, {
       cache: 'no-store',
+      signal: controller?.signal,
       ...options,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -123,6 +134,7 @@ async function callHostingerApi(endpoint: string, options?: RequestInit): Promis
         ...(options?.headers || {}),
       },
     });
+    if (timeoutId) clearTimeout(timeoutId);
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -328,6 +340,174 @@ export async function forceRefreshAllFromHostinger(): Promise<void> {
   await pollHostingerServerUpdates(true);
 }
 
+// -----------------------------------------------------------------------------
+// Offline Mode & Local Database Synchronization Queue
+// -----------------------------------------------------------------------------
+export interface OfflineQueueItem {
+  id: string;
+  collection: string;
+  docId: string;
+  action: 'save' | 'delete';
+  data?: any;
+  timestamp: number;
+}
+
+const OFFLINE_QUEUE_KEY = 'hostinger_offline_sync_queue';
+type QueueSubscriber = (count: number) => void;
+const queueSubscribers = new Set<QueueSubscriber>();
+
+export function getOfflineSyncQueue(): OfflineQueueItem[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveOfflineSyncQueue(queue: OfflineQueueItem[]) {
+  try {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    notifyQueueChange();
+  } catch {}
+}
+
+export function addToOfflineSyncQueue(item: Omit<OfflineQueueItem, 'id' | 'timestamp'>) {
+  const queue = getOfflineSyncQueue();
+  const existingIdx = queue.findIndex(
+    (q) => q.collection === item.collection && q.docId === item.docId
+  );
+  const queueItem: OfflineQueueItem = {
+    ...item,
+    id: `${item.collection}_${item.docId}_${Date.now()}`,
+    timestamp: Date.now(),
+  };
+  if (existingIdx !== -1) {
+    queue[existingIdx] = queueItem;
+  } else {
+    queue.push(queueItem);
+  }
+  saveOfflineSyncQueue(queue);
+}
+
+export function removeFromOfflineSyncQueue(collection: string, docId: string) {
+  const queue = getOfflineSyncQueue().filter(
+    (q) => !(q.collection === collection && q.docId === docId)
+  );
+  saveOfflineSyncQueue(queue);
+}
+
+export function clearOfflineSyncQueue() {
+  saveOfflineSyncQueue([]);
+}
+
+export function getPendingOfflineCount(): number {
+  return getOfflineSyncQueue().length;
+}
+
+export function subscribeOfflineQueueCount(cb: QueueSubscriber): () => void {
+  queueSubscribers.add(cb);
+  cb(getOfflineSyncQueue().length);
+  return () => {
+    queueSubscribers.delete(cb);
+  };
+}
+
+function notifyQueueChange() {
+  const count = getOfflineSyncQueue().length;
+  queueSubscribers.forEach((cb) => {
+    try {
+      cb(count);
+    } catch {}
+  });
+}
+
+/**
+ * Flushes all pending offline queued items directly to Hostinger MySQL database
+ */
+export async function flushOfflineSyncQueue(): Promise<{ syncedCount: number; errors: number }> {
+  const queue = getOfflineSyncQueue();
+  if (queue.length === 0) {
+    return { syncedCount: 0, errors: 0 };
+  }
+
+  let syncedCount = 0;
+  let errors = 0;
+  const remaining: OfflineQueueItem[] = [];
+
+  for (const item of queue) {
+    try {
+      const res = await callHostingerApi('/api/sync.php', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: item.action,
+          collection: item.collection,
+          id: item.docId,
+          data: item.data,
+        }),
+      });
+      if (res && (res.status === 'success' || res.success)) {
+        syncedCount++;
+      } else {
+        remaining.push(item);
+        errors++;
+      }
+    } catch {
+      remaining.push(item);
+      errors++;
+    }
+  }
+
+  saveOfflineSyncQueue(remaining);
+  return { syncedCount, errors };
+}
+
+/**
+ * Universal Bidirectional Sync: Flushes local offline mutations + pulls latest Hostinger MySQL data
+ */
+export async function syncAllWithHostinger(): Promise<{
+  success: boolean;
+  syncedOfflineCount: number;
+  message: string;
+}> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const count = getOfflineSyncQueue().length;
+    return {
+      success: false,
+      syncedOfflineCount: 0,
+      message: `Offline Mode: No active internet connection. ${count} item(s) are stored safely in your local application database.`,
+    };
+  }
+
+  // 1. Flush offline sync queue
+  const { syncedCount } = await flushOfflineSyncQueue();
+
+  // 2. Refresh full database from Hostinger server
+  try {
+    await pollHostingerServerUpdates(true);
+  } catch {}
+
+  const remaining = getOfflineSyncQueue().length;
+  if (remaining === 0) {
+    return {
+      success: true,
+      syncedOfflineCount: syncedCount,
+      message:
+        syncedCount > 0
+          ? `Successfully synchronized ${syncedCount} offline record(s) with Hostinger MySQL database!`
+          : `Hostinger MySQL database is completely synchronized and up-to-date!`,
+    };
+  } else {
+    return {
+      success: false,
+      syncedOfflineCount: syncedCount,
+      message: `Synchronized ${syncedCount} record(s), with ${remaining} pending. Will retry automatically.`,
+    };
+  }
+}
+
 // Start continuous multi-device sync background heartbeat (every 1.5 seconds)
 function startMultiDeviceSyncHeartbeat() {
   if (isPollingActive || typeof window === 'undefined') return;
@@ -346,7 +526,8 @@ function startMultiDeviceSyncHeartbeat() {
     pollHostingerServerUpdates(true);
   });
   window.addEventListener('online', () => {
-    pollHostingerServerUpdates(true);
+    // Automatically flush queue and pull updates on internet restoration!
+    syncAllWithHostinger();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
@@ -472,16 +653,32 @@ async function saveDocumentToHostinger(collection: string, id: string, itemData:
     } catch {}
   }
 
-  // 2. Persist to Hostinger server/database
-  await callHostingerApi('/api/sync.php', {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'save',
+  // 2. Persist to Hostinger server/database (or enqueue in local offline queue)
+  let savedOnline = false;
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    const res = await callHostingerApi('/api/sync.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'save',
+        collection,
+        id,
+        data: sanitized,
+      }),
+    });
+    if (res && (res.status === 'success' || res.success)) {
+      savedOnline = true;
+      removeFromOfflineSyncQueue(collection, id);
+    }
+  }
+
+  if (!savedOnline) {
+    addToOfflineSyncQueue({
       collection,
-      id,
+      docId: id,
+      action: 'save',
       data: sanitized,
-    }),
-  });
+    });
+  }
 }
 
 async function deleteDocumentFromHostinger(collection: string, id: string): Promise<void> {
@@ -504,15 +701,30 @@ async function deleteDocumentFromHostinger(collection: string, id: string): Prom
     } catch {}
   }
 
-  // 2. Delete on Hostinger server
-  await callHostingerApi('/api/sync.php', {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'delete',
+  // 2. Delete on Hostinger server (or enqueue in local offline queue)
+  let deletedOnline = false;
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    const res = await callHostingerApi('/api/sync.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'delete',
+        collection,
+        id,
+      }),
+    });
+    if (res && (res.status === 'success' || res.success)) {
+      deletedOnline = true;
+      removeFromOfflineSyncQueue(collection, id);
+    }
+  }
+
+  if (!deletedOnline) {
+    addToOfflineSyncQueue({
       collection,
-      id,
-    }),
-  });
+      docId: id,
+      action: 'delete',
+    });
+  }
 }
 
 // -----------------------------------------------------------------------------

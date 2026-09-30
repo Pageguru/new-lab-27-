@@ -45,6 +45,7 @@ import {
 import { Patient, TestItem, LabReport, ReportItem, ReceptionPatientEntry } from '../types';
 import { CreateReportModal } from './CreateReportModal';
 import { ReportDetailModal } from './ReportDetailModal';
+import { SyncNowButton } from './SyncNowButton';
 import { useCms } from '../context/CmsContext';
 import { TEST_TEMPLATES, checkIsAbnormal } from '../data/testTemplates';
 import { DashboardFooter } from './DashboardFooter';
@@ -872,9 +873,12 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
             </div>
           </div>
 
-          {/* Right Side Header Actions: Logout Option for Staff Side Login */}
-          {!isEmbedded && (
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Right Side Header Actions: Sync Now + Logout Option */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Hostinger MySQL Sync Button */}
+            <SyncNowButton variant="blue" />
+
+            {!isEmbedded && (
               <button
                 type="button"
                 id="tech-header-logout-btn"
