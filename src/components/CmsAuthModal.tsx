@@ -73,6 +73,36 @@ export const INDIAN_STATES = [
   'Puducherry',
 ];
 
+export const REGISTRATION_PACKAGES = [
+  {
+    id: '1-month',
+    name: '1 Month',
+    priceINR: 1499,
+    duration: '30 Days',
+    badge: 'Starter & Flexible',
+    badgeColor: 'bg-blue-100 text-[#123B6D] border-blue-200',
+    description: 'Billed monthly • Complete software access',
+  },
+  {
+    id: '3-months',
+    name: '3 Months',
+    priceINR: 3999,
+    duration: '90 Days',
+    badge: 'Most Popular',
+    badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
+    description: '₹1,333/month • Billed quarterly',
+  },
+  {
+    id: '1-year',
+    name: '1 Year',
+    priceINR: 11999,
+    duration: '365 Days',
+    badge: 'Best Value',
+    badgeColor: 'bg-indigo-100 text-indigo-900 border-indigo-200',
+    description: '₹999/month • Maximum annual savings',
+  },
+];
+
 export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
   isOpen,
   onClose,
@@ -92,6 +122,8 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
     setAuthModalTab,
     registerNewLab,
     selectVendorLab,
+    selectedRegistrationPackage,
+    setSelectedRegistrationPackage,
   } = useCms();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -117,6 +149,8 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
   // Details:
   //   Lab Name*
   //   State*
+  // Package Selection:
+  //   1 Month | 3 Months | 1 Year (Auto-filled on package click)
   // Owner & Login:
   //   Mobile Number* — 10 digits
   //   Password* — 5 characters + 5 numbers
@@ -127,6 +161,7 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
   // -------------------------------------------------------------
   const [createLabName, setCreateLabName] = useState('');
   const [createState, setCreateState] = useState('Punjab');
+  const [createPackage, setCreatePackage] = useState<string>('3 Months');
   const [createMobile, setCreateMobile] = useState('');
   const [createPassword, setCreatePassword] = useState('');
   const [createPin, setCreatePin] = useState('');
@@ -143,7 +178,22 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
     pin: string;
     labId: string;
     domainUrl: string;
+    subscriptionPlan?: string;
   } | null>(null);
+
+  // Auto-fill Package Selection field when selectedRegistrationPackage changes or modal opens
+  useEffect(() => {
+    if (selectedRegistrationPackage) {
+      const lower = selectedRegistrationPackage.toLowerCase();
+      if (lower.includes('1 month') || lower.includes('starter') || lower.includes('monthly')) {
+        setCreatePackage('1 Month');
+      } else if (lower.includes('year') || lower.includes('annual') || lower.includes('12')) {
+        setCreatePackage('1 Year');
+      } else {
+        setCreatePackage('3 Months');
+      }
+    }
+  }, [selectedRegistrationPackage, isOpen]);
 
   // Sync tab with context when modal opens or target role changes
   useEffect(() => {
@@ -212,12 +262,14 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
     password?: string;
     pin?: string;
     labId?: string;
+    subscriptionPlan?: string;
   }) => {
     const lab = params?.labName || createLabName.trim();
     const st = params?.state || createState;
     const ph = (params?.phone || createMobile).replace(/\D/g, '').slice(-10);
     const pass = params?.password || createPassword.trim();
     const pCode = params?.pin || createPin.trim();
+    const pkg = params?.subscriptionPlan || createPackage || '3 Months';
 
     if (!lab) {
       setCreateError('Please enter the Lab Name first to share credentials.');
@@ -237,6 +289,7 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
 ━━━━━━━━━━━━━━━━━━━━━━
 *Lab Name:* ${lab}
 *State:* ${st}
+*Selected Package:* ${pkg}
 
 🔐 *OWNER LOGIN DETAILS:*
 • *Mobile Number / ID:* ${ph}
@@ -318,6 +371,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
         pin: createPin.trim(),
         ownerName: `${createLabName.trim()} Admin`,
         city: createState,
+        subscriptionPlan: createPackage,
       });
 
       const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://indianlalaji.com';
@@ -332,6 +386,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
         pin: createPin.trim(),
         labId: lab.id,
         domainUrl,
+        subscriptionPlan: createPackage,
       });
 
       setIsSubmitting(false);
@@ -1092,6 +1147,15 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                         <span className="text-[10px] font-bold text-slate-400 block uppercase">Assigned Role</span>
                         <strong className="text-emerald-700 text-sm">Admin (labowner)</strong>
                       </div>
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200 sm:col-span-2">
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Package Selection</span>
+                        <strong className="text-[#123B6D] text-sm flex items-center gap-1.5">
+                          <span>{createdLabData.subscriptionPlan || '3 Months'}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-[#123B6D] border border-blue-200">
+                            100% Features Active
+                          </span>
+                        </strong>
+                      </div>
                     </div>
 
                     {/* Dedicated Lab Website Link */}
@@ -1151,6 +1215,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                         setCreateMobile('');
                         setCreatePassword('');
                         setCreatePin('');
+                        setCreatePackage(selectedRegistrationPackage || '3 Months');
                       }}
                       className="text-xs text-slate-500 hover:text-slate-800 font-bold hover:underline cursor-pointer"
                     >
@@ -1213,7 +1278,87 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                     </div>
                   </div>
 
-                  {/* GROUP 2: Owner & Login */}
+                  {/* GROUP 2: Package Selection (3 package options: 1 Month, 3 Months, 1 Year) */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        <span>Package Selection <span className="text-rose-600">*</span></span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                        100% Features Included
+                      </span>
+                    </div>
+
+                    {/* 3 Interactive Package Option Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {REGISTRATION_PACKAGES.map((pkg) => {
+                        const isSelected = createPackage === pkg.name;
+                        return (
+                          <button
+                            key={pkg.id}
+                            type="button"
+                            onClick={() => {
+                              setCreatePackage(pkg.name);
+                              setSelectedRegistrationPackage(pkg.name);
+                            }}
+                            className={`p-3 rounded-xl border text-left transition-all relative cursor-pointer ${
+                              isSelected
+                                ? 'border-[#123B6D] bg-white ring-2 ring-[#123B6D]/20 shadow-xs'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                            }`}
+                          >
+                            {pkg.badge && (
+                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md absolute top-2 right-2 border ${pkg.badgeColor}`}>
+                                {pkg.badge}
+                              </span>
+                            )}
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                isSelected ? 'border-[#123B6D] bg-[#123B6D]' : 'border-slate-300'
+                              }`}>
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </div>
+                              <span className="font-extrabold text-xs text-slate-900">{pkg.name}</span>
+                            </div>
+                            <div className="text-base font-black text-[#123B6D] mt-1">
+                              ₹{pkg.priceINR.toLocaleString('en-IN')}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                              {pkg.description}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Form Input / Dropdown for Package Selection Field */}
+                    <div>
+                      <label htmlFor="package-selection-field" className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Package Selection Field (पैकेज चयन) <span className="text-rose-600">*</span>
+                      </label>
+                      <select
+                        id="package-selection-field"
+                        name="packageSelection"
+                        required
+                        value={createPackage}
+                        onChange={(e) => {
+                          setCreatePackage(e.target.value);
+                          setSelectedRegistrationPackage(e.target.value);
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none font-bold text-[#123B6D]"
+                      >
+                        <option value="1 Month">1 Month — ₹1,499 (Starter &amp; Flexible)</option>
+                        <option value="3 Months">3 Months — ₹3,999 (Quarterly • Most Popular)</option>
+                        <option value="1 Year">1 Year — ₹11,999 (Annual • Best Value)</option>
+                      </select>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Selected package is automatically configured for your laboratory setup and invoices.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* GROUP 3: Owner & Login */}
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                     <div className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                       <User className="w-4 h-4 text-[#123B6D]" />

@@ -164,7 +164,7 @@ export const DEFAULT_PRICING_PLANS: PricingPlan[] = [
   },
   {
     id: 'plan-3months',
-    name: '3 Month',
+    name: '3 Months',
     target: 'Quarterly • Most Popular',
     duration: '3 Months',
     priceINR: 3999,
@@ -1797,7 +1797,9 @@ interface CmsContextType {
     role?: UserRole | 'admin' | 'technician' | 'reception' | 'vendor',
     initialTab?: 'login' | 'register'
   ) => void;
-  openRegisterLabModal: () => void;
+  openRegisterLabModal: (selectedPackage?: string | React.MouseEvent) => void;
+  selectedRegistrationPackage: string;
+  setSelectedRegistrationPackage: (pkg: string) => void;
   registerNewLab: (payload: {
     labName: string;
     state: string;
@@ -4249,7 +4251,19 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsAuthModalOpen(true);
   };
 
-  const openRegisterLabModal = () => {
+  const [selectedRegistrationPackage, setSelectedRegistrationPackage] = useState<string>('3 Months');
+
+  const openRegisterLabModal = (selectedPackage?: string | React.MouseEvent) => {
+    if (typeof selectedPackage === 'string') {
+      const lower = selectedPackage.toLowerCase();
+      if (lower.includes('1 month') || lower.includes('starter') || lower.includes('monthly')) {
+        setSelectedRegistrationPackage('1 Month');
+      } else if (lower.includes('year') || lower.includes('annual') || lower.includes('12')) {
+        setSelectedRegistrationPackage('1 Year');
+      } else {
+        setSelectedRegistrationPackage('3 Months');
+      }
+    }
     openLoginModal(undefined, 'register');
   };
 
@@ -5598,6 +5612,8 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetLoginRole,
         openLoginModal,
         openRegisterLabModal,
+        selectedRegistrationPackage,
+        setSelectedRegistrationPackage,
 
         staffAccounts,
         allStaffAccounts,

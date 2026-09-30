@@ -224,7 +224,7 @@ export const PricingSection: React.FC<PricingSectionProps> = () => {
 
                   <div className="mt-6 pt-5 border-t border-slate-100 space-y-2">
                     <button
-                      onClick={() => openRegisterLabModal()}
+                      onClick={() => openRegisterLabModal(activeMobilePlan.name)}
                       className={`w-full py-3.5 rounded-xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer ${
                         isHighlighted
                           ? 'bg-[#123B6D] hover:bg-[#0e2c52] text-white shadow-md active:scale-98'
@@ -371,7 +371,7 @@ export const PricingSection: React.FC<PricingSectionProps> = () => {
 
                 <div className="mt-8 pt-6 border-t border-slate-100 space-y-2.5">
                   <button
-                    onClick={() => openRegisterLabModal()}
+                    onClick={() => openRegisterLabModal(plan.name)}
                     className={`w-full py-3.5 rounded-xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 cursor-pointer ${
                       isHighlighted
                         ? 'bg-[#123B6D] hover:bg-[#0e2c52] text-white shadow-md hover:shadow-lg active:scale-98'
