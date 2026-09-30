@@ -25,6 +25,8 @@ import {
   HardDriveDownload,
   HardDriveUpload,
   X,
+  Eye,
+  FileText,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { VendorLabDirectoryItem } from '../../types';
@@ -32,11 +34,13 @@ import { VendorLabDirectoryItem } from '../../types';
 interface WebsiteBackupTabProps {
   showToast?: (msg: string) => void;
   onNavigateView?: (view: any) => void;
+  onNavigateToDrafts?: () => void;
 }
 
 export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
   showToast: parentShowToast,
   onNavigateView,
+  onNavigateToDrafts,
 }) => {
   const {
     vendorLabsList,
@@ -53,6 +57,7 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
     isCloudConnected,
     selectVendorLab,
     setSelectedVendorLabId,
+    setVendorStatus,
   } = useCms();
 
   const [localToast, setLocalToast] = useState<string | null>(null);
@@ -149,13 +154,14 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
     }
   };
 
-  // Parse All Websites Upload File
+  // Parse All Websites Upload File - automatically imports into Website Draft & immediately redirects to Website Draft tab
   const handleAllWebsitesFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setAllWebsitesUploadError(null);
     setAllWebsitesBackupPreview(null);
+    setIsProcessingAllUpload(true);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -164,44 +170,65 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
         const parsed = JSON.parse(text);
 
         if (!parsed || typeof parsed !== 'object') {
-          throw new Error('Selected file does not contain a valid JSON object.');
+          throw new Error('Selected file does not contain a valid JSON backup object.');
         }
 
-        const websitesList = Array.isArray(parsed.websites)
-          ? parsed.websites
-          : Array.isArray(parsed)
-          ? parsed
-          : [];
+        // SMART DETECTION: Master All-Websites Backup VS Single Lab/Customer Backup
+        const isMaster = Boolean(
+          (Array.isArray(parsed.websites) && parsed.websites.length > 0) ||
+          parsed.settingsMap
+        );
 
-        const totalWebsites = websitesList.length || (parsed.settingsMap ? Object.keys(parsed.settingsMap).length : 0);
-
-        if (totalWebsites === 0 && !parsed.settingsMap) {
-          throw new Error('No website directory or settings map found in backup file.');
+        if (isMaster) {
+          const res = importAllWebsitesBackup(parsed);
+          if (!res.success) {
+            throw new Error(res.message || 'Failed to restore master backup.');
+          }
+          showFeedback(`✅ Master backup loaded! ${res.count || 'All'} website(s) saved to Website Draft. Pehle Draft me save ho gaya hai, ab yahan se manually Publish karein.`);
+        } else {
+          // Single customer/lab backup or vendor export
+          const phoneFromFile = (
+            parsed.customerNumber ||
+            parsed.customerPhone ||
+            parsed.labDetails?.phone ||
+            parsed.phone ||
+            parsed.settings?.phone ||
+            ''
+          ).trim();
+          const targetPhoneOrId = phoneFromFile || customerNumberInput.trim() || '9876543210';
+          const res = importSingleCustomerWebsiteBackup(parsed, targetPhoneOrId);
+          if (!res.success) {
+            throw new Error(res.message || 'Failed to restore website backup.');
+          }
+          const activeLabName = res.customerName || parsed.labName || parsed.labDetails?.name || 'Customer Lab';
+          showFeedback(`✅ Backup for "${activeLabName}" uploaded to Website Draft! Pehle Draft me save ho gaya hai, ab Website Draft tab se review karke manually Publish karein.`);
         }
 
-        const websiteNames = websitesList.map((w: any) => w.name || w.id || 'Website').slice(0, 10);
-        const packagesCount = Array.isArray(parsed.packages) ? parsed.packages.length : 0;
-        const testsCount = Array.isArray(parsed.tests) ? parsed.tests.length : 0;
+        if (allWebsitesFileInputRef.current) {
+          allWebsitesFileInputRef.current.value = '';
+        }
 
-        setAllWebsitesBackupPreview({
-          totalWebsites,
-          websiteNames,
-          packagesCount,
-          testsCount,
-          exportDate: parsed.exportedAt || parsed.timestamp,
-          raw: parsed,
-        });
+        // IMMEDIATELY navigate to Website Draft tab
+        if (onNavigateToDrafts) {
+          onNavigateToDrafts();
+        }
+
+        // Sync cloud in background without blocking UI navigation
+        refreshCloudData().catch(() => {});
       } catch (err: any) {
         setAllWebsitesUploadError(err.message || 'Failed to parse backup file');
+      } finally {
+        setIsProcessingAllUpload(false);
       }
     };
     reader.onerror = () => {
       setAllWebsitesUploadError('Failed to read the backup file.');
+      setIsProcessingAllUpload(false);
     };
     reader.readAsText(file);
   };
 
-  // Execute Restore of All Websites
+  // Execute Restore of All Websites - places into Website Draft for manual publishing
   const handleConfirmRestoreAllWebsites = async () => {
     if (!allWebsitesBackupPreview?.raw) return;
     setIsProcessingAllUpload(true);
@@ -209,14 +236,15 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
     try {
       const res = importAllWebsitesBackup(allWebsitesBackupPreview.raw);
       if (res.success) {
-        showFeedback(res.message);
+        showFeedback(res.message || '✅ All websites backup uploaded to Website Draft! Pehle Draft me save ho gaya hai, ab Website Draft tab se review karke manually Publish karein.');
         setAllWebsitesBackupPreview(null);
         if (allWebsitesFileInputRef.current) {
           allWebsitesFileInputRef.current.value = '';
         }
-        try {
-          await refreshCloudData();
-        } catch {}
+        if (onNavigateToDrafts) {
+          onNavigateToDrafts();
+        }
+        refreshCloudData().catch(() => {});
       } else {
         setAllWebsitesUploadError(res.message);
       }
@@ -371,53 +399,75 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
           throw new Error('Selected file does not contain a valid JSON backup.');
         }
 
-        const phoneFromFile = (
-          parsed.customerNumber ||
-          parsed.customerPhone ||
-          parsed.labDetails?.phone ||
-          parsed.phone ||
-          customerNumberInput ||
-          ''
-        ).trim();
+        // SMART DETECTION: Master All-Websites Backup VS Single Lab/Customer Backup
+        const isMaster = Boolean(
+          (Array.isArray(parsed.websites) && parsed.websites.length > 0) ||
+          parsed.settingsMap
+        );
 
-        const targetPhoneOrId = customerNumberInput.trim() || phoneFromFile;
+        if (isMaster) {
+          const res = importAllWebsitesBackup(parsed);
+          if (!res.success) {
+            throw new Error(res.message || 'Failed to restore master backup.');
+          }
+          showFeedback(`✅ Master backup loaded! ${res.count || 'All'} website(s) saved to Website Draft. Pehle Draft me save ho gaya hai, ab yahan se manually Publish karein.`);
+        } else {
+          const phoneFromFile = (
+            parsed.customerNumber ||
+            parsed.customerPhone ||
+            parsed.labDetails?.phone ||
+            parsed.phone ||
+            customerNumberInput ||
+            ''
+          ).trim();
 
-        // Immediately execute restore and register customer in directory & settings
-        const res = importSingleCustomerWebsiteBackup(parsed, targetPhoneOrId);
-        if (!res.success) {
-          throw new Error(res.message || 'Failed to apply backup to customer.');
+          const targetPhoneOrId = customerNumberInput.trim() || phoneFromFile || '9876543210';
+
+          // Immediately execute restore and register customer in directory & settings as Draft
+          const res = importSingleCustomerWebsiteBackup(parsed, targetPhoneOrId);
+          if (!res.success) {
+            throw new Error(res.message || 'Failed to apply backup to customer.');
+          }
+
+          const activeLabId =
+            res.labId ||
+            parsed.labId ||
+            parsed.labDetails?.id ||
+            (phoneFromFile ? `lab-${phoneFromFile.replace(/\D/g, '').slice(-6)}` : 'lab-apex');
+
+          const activePhone = res.customerPhone || phoneFromFile || targetPhoneOrId;
+          const activeLabName = res.customerName || parsed.labName || parsed.labDetails?.name || 'Customer Lab';
+
+          // 1. Set search input so matchedCustomer immediately renders the customer card!
+          if (activePhone) {
+            setCustomerNumberInput(activePhone);
+          }
+
+          // 2. Select this lab across the app
+          selectVendorLab(activeLabId);
+          setSelectedVendorLabId(activeLabId);
+
+          // 3. Set draft status banner
+          setJustRestoredLab({
+            labId: activeLabId,
+            labName: activeLabName,
+            customerPhone: activePhone,
+          });
+
+          showFeedback(`✅ Backup for "${activeLabName}" (${activePhone}) uploaded to Website Draft! Pehle Draft me save ho gaya hai, ab Website Draft tab se review karke manually Publish karein.`);
         }
 
-        const activeLabId =
-          res.labId ||
-          parsed.labId ||
-          parsed.labDetails?.id ||
-          (phoneFromFile ? `lab-${phoneFromFile.replace(/\D/g, '').slice(-6)}` : 'lab-apex');
-
-        const activePhone = res.customerPhone || phoneFromFile || targetPhoneOrId;
-        const activeLabName = res.customerName || parsed.labName || parsed.labDetails?.name || 'Customer Lab';
-
-        // 1. Set search input so matchedCustomer immediately renders the green customer card!
-        if (activePhone) {
-          setCustomerNumberInput(activePhone);
+        if (singleCustomerFileInputRef.current) {
+          singleCustomerFileInputRef.current.value = '';
         }
 
-        // 2. Select this lab immediately across the app
-        selectVendorLab(activeLabId);
-        setSelectedVendorLabId(activeLabId);
+        // IMMEDIATELY navigate to Website Draft tab
+        if (onNavigateToDrafts) {
+          onNavigateToDrafts();
+        }
 
-        // 3. Set celebratory instant-launch banner
-        setJustRestoredLab({
-          labId: activeLabId,
-          labName: activeLabName,
-          customerPhone: activePhone,
-        });
-
-        showFeedback(res.message || `Website backup for "${activeLabName}" (${activePhone}) successfully restored!`);
-
-        try {
-          await refreshCloudData();
-        } catch {}
+        // Sync cloud in background without blocking UI
+        refreshCloudData().catch(() => {});
       } catch (err: any) {
         setSingleUploadError(err.message || 'Failed to parse customer backup file');
       } finally {
@@ -497,49 +547,74 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
         </div>
       </div>
 
-      {/* Newly Restored Lab Alert & Instant Launch Banner */}
+      {/* Newly Uploaded Draft Lab Alert Banner */}
       {justRestoredLab && (
-        <div className="bg-gradient-to-r from-emerald-900 via-teal-800 to-emerald-950 text-white rounded-3xl p-5 border-2 border-emerald-400 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
+        <div className="bg-gradient-to-r from-amber-900 via-slate-900 to-amber-950 text-white rounded-3xl p-5 border-2 border-amber-400 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0">
-              <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0">
+              <FileJson className="w-7 h-7 text-amber-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider bg-emerald-400 text-slate-950 px-2 py-0.5 rounded-full">
-                  Website Restored &amp; Activated
+                <span className="text-xs font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
+                  Uploaded to Website Draft
                 </span>
-                <span className="text-xs text-emerald-200 font-mono font-bold">
+                <span className="text-xs text-amber-200 font-mono font-bold">
                   {justRestoredLab.customerPhone}
                 </span>
               </div>
               <h3 className="text-lg sm:text-xl font-black text-white mt-0.5">
-                {justRestoredLab.labName} Website is Live!
+                "{justRestoredLab.labName}" Website is in Draft
               </h3>
-              <p className="text-xs text-emerald-100">
-                All branding, test catalogs, packages, and CMS pages have been restored and published.
+              <p className="text-xs text-amber-100">
+                Backup upload pehle Draft me save ho chuka hai. Website Draft tab me jakar review karein aur manually Publish karein.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+            {/* Direct Publish Button right here on banner */}
             <button
               type="button"
-              id="btn-launch-restored-website"
+              id="btn-publish-direct-from-banner"
+              onClick={() => {
+                setVendorStatus(justRestoredLab.labId, 'Active');
+                showFeedback(`✅ "${justRestoredLab.labName}" website is now Published & Live! Moved to Our Clients.`);
+                setJustRestoredLab(null);
+              }}
+              className="flex-1 md:flex-initial py-2.5 px-4 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-2xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4 text-slate-950" />
+              <span>Publish Live (पब्लिश करें)</span>
+            </button>
+
+            {onNavigateToDrafts && (
+              <button
+                type="button"
+                id="btn-goto-website-drafts"
+                onClick={onNavigateToDrafts}
+                className="py-2.5 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-950" />
+                <span>Go to Draft Tab</span>
+              </button>
+            )}
+            <button
+              type="button"
               onClick={() => {
                 selectVendorLab(justRestoredLab.labId);
                 setSelectedVendorLabId(justRestoredLab.labId);
                 if (onNavigateView) onNavigateView('vendor_website');
               }}
-              className="flex-1 md:flex-initial py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-2xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 shadow-md cursor-pointer group/launch"
+              className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <ExternalLink className="w-4 h-4 group-hover/launch:scale-110 transition-transform" />
-              <span>🌐 Open Live Website Now</span>
+              <Eye className="w-3.5 h-3.5 text-amber-300" />
+              <span>Preview</span>
             </button>
             <button
               type="button"
               onClick={() => setJustRestoredLab(null)}
-              className="p-2 text-emerald-200 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
               title="Dismiss"
             >
               <X className="w-5 h-5" />
@@ -847,31 +922,75 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
                   </div>
                 )}
 
-                {/* Immediate Launch Action Bar for this customer's website */}
+                {/* Immediate Action Bar for this customer's website */}
                 <div className="pt-2.5 mt-1 border-t border-emerald-200/80 flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      selectVendorLab(matchedCustomer.id);
-                      setSelectedVendorLabId(matchedCustomer.id);
-                      if (onNavigateView) onNavigateView('vendor_website');
-                    }}
-                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer group/launch"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 group-hover/launch:scale-110 transition-transform" />
-                    <span>🌐 View Live Website</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      selectVendorLab(matchedCustomer.id);
-                      setSelectedVendorLabId(matchedCustomer.id);
-                      if (onNavigateView) onNavigateView('reception_dashboard');
-                    }}
-                    className="py-2 px-3 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                  >
-                    <span>🖥️ Reception Desk</span>
-                  </button>
+                  {matchedCustomer.status === 'Draft' || !matchedCustomer.isWebsiteApproved ? (
+                    <>
+                      {/* Direct Publish button */}
+                      <button
+                        type="button"
+                        id="btn-matched-publish-now"
+                        onClick={() => {
+                          setVendorStatus(matchedCustomer.id, 'Active');
+                          showFeedback(`✅ "${matchedCustomer.name}" website is now Published & Live! Moved to Our Clients.`);
+                        }}
+                        className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-100" />
+                        <span>Publish (पब्लिश करें)</span>
+                      </button>
+
+                      {onNavigateToDrafts && (
+                        <button
+                          type="button"
+                          id="btn-matched-goto-drafts"
+                          onClick={onNavigateToDrafts}
+                          className="flex-1 py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-slate-950" />
+                          <span>Go to Website Draft</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          selectVendorLab(matchedCustomer.id);
+                          setSelectedVendorLabId(matchedCustomer.id);
+                          if (onNavigateView) onNavigateView('vendor_website');
+                        }}
+                        className="py-2 px-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Preview Draft</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          selectVendorLab(matchedCustomer.id);
+                          setSelectedVendorLabId(matchedCustomer.id);
+                          if (onNavigateView) onNavigateView('vendor_website');
+                        }}
+                        className="flex-1 py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer group/launch"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 group-hover/launch:scale-110 transition-transform" />
+                        <span>🌐 View Live Website</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          selectVendorLab(matchedCustomer.id);
+                          setSelectedVendorLabId(matchedCustomer.id);
+                          if (onNavigateView) onNavigateView('reception_dashboard');
+                        }}
+                        className="py-2 px-3 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                      >
+                        <span>🖥️ Reception Desk</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ) : customerNumberInput.trim() ? (

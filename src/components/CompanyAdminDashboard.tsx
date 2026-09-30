@@ -39,6 +39,7 @@ import {
   Smartphone,
   CheckCheck,
   HardDriveDownload,
+  FileText,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { AppView, PricingPlan, CompanyFeature, LabManagementFeature } from '../types';
@@ -86,7 +87,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     deleteDomainRequest,
   } = useCms();
 
-  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'backup' | 'domain_requests';
+  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
   type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features';
@@ -544,6 +545,27 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               </span>
             </button>
 
+            {/* Website Draft Tab */}
+            <button
+              type="button"
+              id="menu-btn-drafts"
+              onClick={() => setActiveMenu('drafts')}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 relative ${
+                activeMenu === 'drafts'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+              title="Website Draft (Backup Uploads & Review Before Publish)"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Website Draft</span>
+              {draftLabsCount > 0 && (
+                <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full leading-none animate-pulse">
+                  {draftLabsCount}
+                </span>
+              )}
+            </button>
+
             {/* Website Backup Module */}
             <button
               type="button"
@@ -698,7 +720,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
             </div>
 
             {/* Quick KPI Overview Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Card 1: Pending Labs */}
               <div
                 onClick={() => setActiveMenu('labs')}
@@ -743,7 +765,35 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 </div>
               </div>
 
-              {/* Card 3: Cloud DB & Sync */}
+              {/* Card 3: Website Draft Tab */}
+              <div
+                id="kpi-card-website-drafts"
+                onClick={() => setActiveMenu('drafts')}
+                className="bg-white p-5 rounded-2xl border-2 border-amber-300 shadow-2xs hover:border-amber-500 hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                      Website Draft
+                    </span>
+                    <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full">
+                      Ready to Publish
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-amber-100 text-amber-800 group-hover:scale-110 transition-transform">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="text-3xl font-black text-amber-900">{draftLabsCount}</div>
+                  <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+                    <span>Backups &amp; Drafts</span>
+                    <span className="font-bold text-amber-700 group-hover:underline">Publish Drafts →</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Cloud DB & Sync */}
               <div
                 onClick={() => setHomeSubTab('cloud_sync')}
                 className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs hover:border-teal-500 hover:shadow-md transition cursor-pointer group flex flex-col justify-between"
@@ -2258,12 +2308,24 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
       </div>
     )}
 
+    {/* VIEW: WEBSITE DRAFT (Draft / Unpublished Websites from Backups & Registrations) */}
+    {activeMenu === 'drafts' && (
+      <div className="animate-in fade-in-50 duration-200">
+        <VendorManagementTab
+          viewMode="drafts"
+          onNavigateView={onNavigateView}
+          showToast={showToast}
+        />
+      </div>
+    )}
+
     {/* VIEW 4: WEBSITE BACKUP MODULE (All Websites & Single Customer) */}
     {activeMenu === 'backup' && (
       <div className="animate-in fade-in-50 duration-200">
         <WebsiteBackupTab
           onNavigateView={onNavigateView}
           showToast={showToast}
+          onNavigateToDrafts={() => setActiveMenu('drafts')}
         />
       </div>
     )}

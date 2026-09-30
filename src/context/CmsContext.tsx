@@ -5577,9 +5577,18 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]);
       }
 
+      // 7. Ensure lab is in Draft mode so it goes to Website Draft tab
+      setVendorLabsList((prev) =>
+        prev.map((l) =>
+          l.id === targetLabId || (l as any).labId === targetLabId
+            ? { ...l, status: 'Draft' as const, isWebsiteApproved: false, badge: 'Draft - Pending Admin Approval' }
+            : l
+        )
+      );
+
       return {
         success: true,
-        message: `Website configuration successfully restored for ${backup.labName || targetLabId}!`,
+        message: `Website configuration for ${backup.labName || targetLabId} saved to Website Draft! Open Website Draft tab to publish it.`,
       };
     } catch (err: any) {
       return { success: false, message: `Failed to restore website backup: ${err.message}` };
@@ -5647,25 +5656,38 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Import All Websites Master Backup (Super Admin)
+  // Import All Websites Master Backup (Super Admin) - places websites into Website Draft
   const importAllWebsitesBackup = (backup: any): { success: boolean; message: string; count: number } => {
     try {
       if (!backup || typeof backup !== 'object') {
         return { success: false, message: 'Invalid master backup file structure.', count: 0 };
       }
       let count = 0;
-      // 1. Websites directory (vendorLabsList)
+      // 1. Websites directory (vendorLabsList) - set all to Draft so they go to Website Draft tab
       if (Array.isArray(backup.websites) && backup.websites.length > 0) {
-        setVendorLabsList(backup.websites);
+        const draftWebsites: VendorLabDirectoryItem[] = backup.websites.map((w: any) => ({
+          ...w,
+          status: 'Draft' as const,
+          isWebsiteApproved: false,
+          badge: 'Draft - Pending Admin Approval',
+        }));
+        setVendorLabsList(draftWebsites);
         try {
-          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(backup.websites));
+          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(draftWebsites));
         } catch {}
-        count = backup.websites.length;
+        count = draftWebsites.length;
       }
-      // 2. Settings map
+      // 2. Settings map - also mark settings status as Draft
       if (backup.settingsMap && typeof backup.settingsMap === 'object') {
         setVendorLabSettingsMap((prev) => {
-          const merged = { ...prev, ...backup.settingsMap };
+          const merged: Record<string, VendorLabSettings> = { ...prev };
+          Object.keys(backup.settingsMap).forEach((labId) => {
+            merged[labId] = {
+              ...backup.settingsMap[labId],
+              status: 'Draft',
+              isWebsiteApproved: false,
+            };
+          });
           try {
             localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(merged));
           } catch {}
@@ -5706,7 +5728,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return {
         success: true,
-        message: `All websites backup successfully restored! (${count || 'All'} customer websites synchronized)`,
+        message: `All websites backup successfully uploaded to Website Draft! (${count || 'All'} websites placed in Draft mode. Open Website Draft tab to publish them manually.)`,
         count: count || 1,
       };
     } catch (err: any) {
@@ -5815,11 +5837,15 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const exists = prev.some((l) => l.id === targetLabId || (customerPhone && l.phone === customerPhone));
         let next: VendorLabDirectoryItem[];
         if (exists) {
-          next = prev.map((l) =>
-            l.id === targetLabId || (customerPhone && l.phone === customerPhone)
-              ? { ...l, ...directoryItem, id: targetLabId, status: 'Draft', isWebsiteApproved: false, badge: 'Draft - Pending Super Admin Approval' }
-              : l
-          );
+          const updatedItem = {
+            ...directoryItem,
+            id: targetLabId,
+            status: 'Draft' as const,
+            isWebsiteApproved: false,
+            badge: 'Draft - Pending Super Admin Approval',
+          };
+          const rest = prev.filter((l) => !(l.id === targetLabId || (customerPhone && l.phone === customerPhone)));
+          next = [updatedItem, ...rest];
         } else {
           next = [directoryItem, ...prev];
         }
@@ -5828,6 +5854,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
         return next;
       });
+      syncVendorLabToCloud(directoryItem);
 
       // 3. Settings map: unconditionally ensure targetLabId settings exist
       const mergedSettings: VendorLabSettings = {
@@ -5854,6 +5881,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
         return next;
       });
+      syncLabSettingsToCloud(targetLabId, mergedSettings);
 
       // 4. Packages
       if (Array.isArray(backup.packages) && backup.packages.length > 0) {

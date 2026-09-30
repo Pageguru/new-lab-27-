@@ -411,6 +411,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   } | null>(null);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isAdminPreviewingDraft, setIsAdminPreviewingDraft] = useState(false);
 
   // Close modals on Escape key
   useEffect(() => {
@@ -1212,7 +1213,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     ? currentLabItem.status === 'Draft' || currentLabItem.status === 'Pending' || (currentLabItem.status !== 'Active' && !currentLabItem.isWebsiteApproved)
     : false;
 
-  if (isDraftOrPending) {
+  if (isDraftOrPending && !isAdminPreviewingDraft) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-amber-100 selection:text-amber-900">
         {/* Top Navbar */}
@@ -1344,6 +1345,14 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   >
                     <CheckCircle2 className="w-4 h-4 text-white" />
                     <span>Approve & Publish Live Now</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminPreviewingDraft(true)}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer border border-slate-300"
+                  >
+                    <Eye className="w-4 h-4 text-slate-600" />
+                    <span>Preview Website Layout (ड्राफ्ट वेबसाइट प्रीव्यू देखें)</span>
                   </button>
                   <p className="text-[11px] text-slate-500">
                     Clicking "Approve" will make this website instantly live and move the laboratory to "Our Clients".

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Building2,
   Plus,
@@ -32,6 +32,9 @@ import {
   EyeOff,
   RefreshCw,
   Package,
+  Upload,
+  Download,
+  HardDriveDownload,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { VendorLabDirectoryItem, VendorStatus, AppView } from '../../types';
@@ -40,7 +43,7 @@ import { getTenantDirectUrl, getTenantSubdomain } from '../../constants/domains'
 interface VendorManagementTabProps {
   onNavigateView: (view: AppView) => void;
   showToast: (msg: string) => void;
-  viewMode?: 'pending' | 'clients' | 'all';
+  viewMode?: 'pending' | 'clients' | 'drafts' | 'all';
 }
 
 export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
@@ -58,6 +61,9 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
     selectVendorLab,
     superAdminTenantScope,
     setSuperAdminTenantScope,
+    importAllWebsitesBackup,
+    importSingleCustomerWebsiteBackup,
+    refreshCloudData,
   } = useCms();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,6 +84,72 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
     pin: '123456',
     showPassword: false,
   });
+
+  // Direct Website Draft Backup Upload State & Handler
+  const draftBackupFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingDraftBackup, setIsUploadingDraftBackup] = useState(false);
+
+  const handleDraftBackupFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingDraftBackup(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
+
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Selected file does not contain a valid JSON backup object.');
+        }
+
+        const isMaster = Boolean(
+          (Array.isArray(parsed.websites) && parsed.websites.length > 0) ||
+          parsed.settingsMap
+        );
+
+        if (isMaster) {
+          const res = importAllWebsitesBackup(parsed);
+          if (!res.success) {
+            throw new Error(res.message || 'Failed to restore master backup.');
+          }
+          showToast(`✅ Master backup uploaded! ${res.count || 'All'} website(s) saved to Website Draft. Pehle Draft me save ho gaya hai, ab yahan se manually Publish karein.`);
+        } else {
+          const phoneFromFile = (
+            parsed.customerNumber ||
+            parsed.customerPhone ||
+            parsed.labDetails?.phone ||
+            parsed.phone ||
+            parsed.settings?.phone ||
+            ''
+          ).trim();
+          const targetPhoneOrId = phoneFromFile || '9876543210';
+          const res = importSingleCustomerWebsiteBackup(parsed, targetPhoneOrId);
+          if (!res.success) {
+            throw new Error(res.message || 'Failed to restore website backup.');
+          }
+          const activeLabName = res.customerName || parsed.labName || parsed.labDetails?.name || 'Customer Lab';
+          showToast(`✅ Backup for "${activeLabName}" loaded into Website Draft! Pehle Draft me save ho gaya hai, ab Publish karein.`);
+        }
+
+        if (draftBackupFileInputRef.current) {
+          draftBackupFileInputRef.current.value = '';
+        }
+
+        refreshCloudData().catch(() => {});
+      } catch (err: any) {
+        showToast(`❌ Backup upload error: ${err.message || 'Invalid backup file'}`);
+      } finally {
+        setIsUploadingDraftBackup(false);
+      }
+    };
+    reader.onerror = () => {
+      showToast('❌ Failed to read backup file.');
+      setIsUploadingDraftBackup(false);
+    };
+    reader.readAsText(file);
+  };
 
   // Form state for add / edit
   const initialFormState: Omit<VendorLabDirectoryItem, 'id'> = {
@@ -146,6 +218,9 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
       } else if (viewMode === 'clients') {
         // Our Clients: Sirf Active users / Published labs hi dikhao (Strictly Active only)
         if (v.status !== 'Active') return false;
+      } else if (viewMode === 'drafts') {
+        // Website Draft Tab: Strictly Draft / Unpublished labs only
+        if (v.status !== 'Draft' && v.isWebsiteApproved) return false;
       } else if (statusFilter !== 'All' && v.status !== statusFilter) {
         return false;
       }
@@ -320,7 +395,9 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
               <Building2 className="w-5 h-5" />
             </span>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              {viewMode === 'pending'
+              {viewMode === 'drafts'
+                ? 'Website Draft Tab — Review & Publish Websites (वेबसाइट ड्राफ्ट)'
+                : viewMode === 'pending'
                 ? 'Labs Section — Pending Labs (अप्रूवल पेंडिंग लैब्स)'
                 : viewMode === 'clients'
                 ? 'Our Clients — Published / Live Labs List (पब्लिश्ड / लाइव क्लाइंट्स)'
@@ -328,7 +405,9 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
             </h2>
           </div>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
-            {viewMode === 'pending'
+            {viewMode === 'drafts'
+              ? 'Backup upload ya nayi registration se aayi sabhi websites pehle yahan Draft mode mein aati hain. Unka branding & catalog review karein aur "Publish" button daba kar manually live karein.'
+              : viewMode === 'pending'
               ? 'Search Lab • Lab Status: Pending • Lab Actions: Approval, Live / Visit, Edit, Make Draft, Change Password, Delete (हटाएं)'
               : viewMode === 'clients'
               ? 'Search Client Labs • Lab Status: Published / Live • Actions: Live / Visit, Edit, Make Draft, Change Password, Delete (हटाएं)'
@@ -346,34 +425,100 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
         </button>
       </div>
 
-      {/* Draft Labs Pending Approval Alert Banner (when newly created labs are in Draft mode) */}
-      {viewMode !== 'clients' && stats.draft > 0 && (
-        <div className="bg-amber-50 border-2 border-amber-400 p-4 sm:p-5 rounded-2xl shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+      {/* Hidden file input for direct Website Draft backup upload */}
+      <input
+        type="file"
+        ref={draftBackupFileInputRef}
+        onChange={handleDraftBackupFileChange}
+        accept=".json"
+        className="hidden"
+      />
+
+      {/* Website Draft Mode Banner */}
+      {viewMode === 'drafts' ? (
+        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-400 p-4 sm:p-5 rounded-2xl shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 shadow-xs font-black">
-              <Clock className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 font-black shadow-xs">
+              <FileText className="w-6 h-6 text-slate-950" />
             </div>
             <div>
-              <h4 className="font-bold text-sm text-amber-950 flex items-center gap-2">
-                <span>{stats.draft} New Laboratory Website(s) in Draft Mode</span>
+              <h4 className="font-bold text-sm text-amber-950 flex items-center gap-2 flex-wrap">
+                <span>Website Draft Queue ({stats.draft} Website(s) in Draft Mode)</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-200 text-amber-900 uppercase font-black tracking-wider">
-                  Pending Admin Approval
+                  Draft Mode • Pehle Review Phir Publish
                 </span>
               </h4>
               <p className="text-xs text-amber-900/80 mt-0.5">
-                New laboratories start in Draft mode so their website remains unpublished until you approve it. Review their setup and click <strong>Approve & Publish Live</strong> to make the website public to patients.
+                Backup upload ya registration se aayi sabhi websites pehle yahan Draft mein rehti hain. Yahan se <strong>Publish (पब्लिश करें)</strong> button daba kar manually live karein.
               </p>
             </div>
           </div>
 
-          <button
-            onClick={() => setStatusFilter('Draft')}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0 self-start sm:self-auto"
-          >
-            <span>Review {stats.draft} Draft Lab(s)</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-auto flex-wrap">
+            <button
+              type="button"
+              id="btn-upload-draft-backup"
+              onClick={() => {
+                if (draftBackupFileInputRef.current) {
+                  draftBackupFileInputRef.current.value = '';
+                  draftBackupFileInputRef.current.click();
+                }
+              }}
+              disabled={isUploadingDraftBackup}
+              className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-3.5 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50 active:scale-95"
+              title="Upload website backup directly into Website Draft"
+            >
+              <Upload className="w-4 h-4 text-slate-950" />
+              <span>{isUploadingDraftBackup ? 'Loading...' : 'Upload Backup to Draft (बैकअप लोड करें)'}</span>
+            </button>
+
+            {stats.draft > 1 && (
+              <button
+                type="button"
+                id="btn-publish-all-drafts"
+                onClick={() => {
+                  vendorLabsList
+                    .filter((v) => v.status === 'Draft' || !v.isWebsiteApproved)
+                    .forEach((v) => setVendorStatus(v.id, 'Active'));
+                  showToast(`All ${stats.draft} draft websites published live!`);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>Publish All Drafts ({stats.draft})</span>
+              </button>
+            )}
+          </div>
         </div>
+      ) : (
+        viewMode !== 'clients' && stats.draft > 0 && (
+          <div className="bg-amber-50 border-2 border-amber-400 p-4 sm:p-5 rounded-2xl shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 shadow-xs font-black">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-amber-950 flex items-center gap-2">
+                  <span>{stats.draft} New Laboratory Website(s) in Draft Mode</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-200 text-amber-900 uppercase font-black tracking-wider">
+                    Pending Admin Approval
+                  </span>
+                </h4>
+                <p className="text-xs text-amber-900/80 mt-0.5">
+                  New laboratories start in Draft mode so their website remains unpublished until you approve it. Review their setup and click <strong>Approve & Publish Live</strong> to make the website public to patients.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setStatusFilter('Draft')}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              <span>Review {stats.draft} Draft Lab(s)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )
       )}
 
       {/* Payment Confirmation Alert Banner (if any lab is in payment confirmation status) */}
@@ -620,23 +765,60 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
       {/* Vendor Cards List */}
       <div>
         {filteredVendors.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-            <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-700">No laboratories match your criteria</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Try adjusting your search keywords or resetting the status filters.
-            </p>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setStatusFilter('All');
-                setSelectedCity('All');
-              }}
-              className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
-            >
-              Reset Filters
-            </button>
-          </div>
+          viewMode === 'drafts' ? (
+            <div className="bg-white rounded-3xl border-2 border-dashed border-amber-300 p-8 sm:p-12 text-center max-w-2xl mx-auto shadow-xs space-y-4 animate-in fade-in">
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center mx-auto text-amber-700">
+                <FileText className="w-8 h-8 text-amber-700" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-black text-slate-900">Website Draft Queue is Empty</h3>
+                <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+                  Backup upload ya registration se aayi sabhi websites pehle yahan Draft queue mein aati hain. Yahan se aap review karke <strong>Publish (पब्लिश करें)</strong> kar sakte hain. Naya backup upload karne ke liye niche click karein:
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (draftBackupFileInputRef.current) {
+                      draftBackupFileInputRef.current.value = '';
+                      draftBackupFileInputRef.current.click();
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer active:scale-95"
+                >
+                  <Upload className="w-4 h-4 text-slate-950" />
+                  <span>Upload Backup to Draft (बैकअप लोड करें)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenAddModal}
+                  className="px-4 py-2.5 bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-4 h-4 text-amber-300" />
+                  <span>Create New Lab in Draft</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+              <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-700">No laboratories match your criteria</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                Try adjusting your search keywords or resetting the status filters.
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('All');
+                  setSelectedCity('All');
+                }}
+                className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Reset Filters
+              </button>
+            </div>
+          )
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4.5">
             {filteredVendors.map((vendor) => {
@@ -662,12 +844,12 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
                     </div>
                     <span
                       className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 border ${
-                        isApproved
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                          : 'bg-amber-100 text-amber-900 border-amber-300'
+                        viewMode === 'drafts' || !isApproved
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                       }`}
                     >
-                      {isApproved ? 'Approved' : 'Hold'}
+                      {viewMode === 'drafts' ? 'Draft (Unpublished)' : isApproved ? 'Approved' : 'Hold'}
                     </span>
                   </div>
 
@@ -694,73 +876,125 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
                     </div>
                   </div>
 
-                  {/* Footer: Action Buttons in line, only icons with title tooltips */}
+                  {/* Footer: Action Buttons */}
                   <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {/* Approval or Hold button based on tab / status */}
-                      {viewMode === 'clients' || (viewMode === 'all' && isApproved) ? (
-                        /* Hold Button in Our client tab */
+                    {viewMode === 'drafts' ? (
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        {/* Publish Live Button */}
                         <button
                           type="button"
-                          onClick={() => {
-                            setVendorStatus(vendor.id, 'Draft');
-                            showToast(`"${vendor.name}" ko Hold (Draft) par daal diya gaya.`);
-                          }}
-                          className="w-8 h-8 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                          title="Hold (होल्ड)"
-                          aria-label="Hold"
-                        >
-                          <Clock className="w-4 h-4 text-amber-800" />
-                        </button>
-                      ) : (
-                        /* Approval Button in Labs tab */
-                        <button
-                          type="button"
+                          id={`btn-publish-draft-${vendor.id}`}
                           onClick={() => {
                             setVendorStatus(vendor.id, 'Active');
-                            showToast(`Approved & Live: "${vendor.name}"!`);
+                            showToast(`✅ "${vendor.name}" website is now Published & Live! Moved to Our Clients.`);
                           }}
-                          className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                          title="Approval (अप्रूवल)"
-                          aria-label="Approval"
+                          className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                          title="Approve & Publish Website Live"
                         >
-                          <CheckCircle2 className="w-4 h-4 text-white" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+                          <span>Publish (पब्लिश करें)</span>
                         </button>
-                      )}
 
-                      {/* Edit (password only) */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenPasswordModal(vendor)}
-                        className="w-8 h-8 rounded-xl bg-purple-100/80 hover:bg-purple-200 text-purple-800 border border-purple-300 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                        title="Edit (password only)"
-                        aria-label="Edit (password only)"
-                      >
-                        <KeyRound className="w-4 h-4 text-purple-700" />
-                      </button>
+                        {/* Preview Draft Website */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenLabWebsite(vendor.id)}
+                          className="py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                          title="Preview Draft Website"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-slate-600" />
+                          <span className="hidden sm:inline">Preview</span>
+                        </button>
 
-                      {/* Delete */}
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirmVendor(vendor)}
-                        className="w-8 h-8 rounded-xl bg-rose-100/80 hover:bg-rose-200 text-rose-700 border border-rose-200 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                        title="Delete (हटाएं)"
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="w-4 h-4 text-rose-600" />
-                      </button>
-                    </div>
+                        {/* Edit (password only) */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPasswordModal(vendor)}
+                          className="w-8 h-8 rounded-xl bg-purple-100/80 hover:bg-purple-200 text-purple-800 border border-purple-300 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                          title="Edit Password"
+                        >
+                          <KeyRound className="w-4 h-4 text-purple-700" />
+                        </button>
 
-                    {/* Visit website */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenLabWebsite(vendor.id)}
-                      className="w-8 h-8 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                      title="Visit website"
-                      aria-label="Visit website"
-                    >
-                      <Globe className="w-4 h-4 text-amber-300" />
-                    </button>
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmVendor(vendor)}
+                          className="w-8 h-8 rounded-xl bg-rose-100/80 hover:bg-rose-200 text-rose-700 border border-rose-200 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                          title="Delete Draft"
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-600" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          {/* Approval or Hold button based on tab / status */}
+                          {viewMode === 'clients' || (viewMode === 'all' && isApproved) ? (
+                            /* Hold Button in Our client tab */
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVendorStatus(vendor.id, 'Draft');
+                                showToast(`"${vendor.name}" ko Hold (Draft) par daal diya gaya.`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                              title="Hold (होल्ड)"
+                              aria-label="Hold"
+                            >
+                              <Clock className="w-4 h-4 text-amber-800" />
+                            </button>
+                          ) : (
+                            /* Approval Button in Labs tab */
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVendorStatus(vendor.id, 'Active');
+                                showToast(`Approved & Live: "${vendor.name}"!`);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                              title="Approval (अप्रूवल)"
+                              aria-label="Approval"
+                            >
+                              <CheckCircle2 className="w-4 h-4 text-white" />
+                            </button>
+                          )}
+
+                          {/* Edit (password only) */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPasswordModal(vendor)}
+                            className="w-8 h-8 rounded-xl bg-purple-100/80 hover:bg-purple-200 text-purple-800 border border-purple-300 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                            title="Edit (password only)"
+                            aria-label="Edit (password only)"
+                          >
+                            <KeyRound className="w-4 h-4 text-purple-700" />
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmVendor(vendor)}
+                            className="w-8 h-8 rounded-xl bg-rose-100/80 hover:bg-rose-200 text-rose-700 border border-rose-200 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                            title="Delete (हटाएं)"
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="w-4 h-4 text-rose-600" />
+                          </button>
+                        </div>
+
+                        {/* Visit website */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenLabWebsite(vendor.id)}
+                          className="w-8 h-8 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                          title="Visit website"
+                          aria-label="Visit website"
+                        >
+                          <Globe className="w-4 h-4 text-amber-300" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
