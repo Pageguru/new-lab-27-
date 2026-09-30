@@ -19,6 +19,8 @@ import {
 import { useCms } from '../context/CmsContext';
 import { AppView } from '../types';
 import { ALL_ROLES_CONFIG } from '../utils/rbac';
+import { PWAInstallButton } from './PWAInstallButton';
+import { getPendingOfflineCount, flushOfflineSyncQueue, subscribeOfflineQueueCount } from '../lib/cloudSync';
 
 interface RoleContextBannerProps {
   currentView: AppView;
@@ -42,10 +44,18 @@ export const RoleContextBanner: React.FC<RoleContextBannerProps> = ({
   } = useCms();
 
   const [isManualSyncing, setIsManualSyncing] = React.useState(false);
+  const [offlineQueueCount, setOfflineQueueCount] = React.useState(() => getPendingOfflineCount());
+
+  React.useEffect(() => {
+    return subscribeOfflineQueueCount((count) => {
+      setOfflineQueueCount(count);
+    });
+  }, []);
 
   const handleManualSync = async () => {
     setIsManualSyncing(true);
     try {
+      await flushOfflineSyncQueue();
       await refreshCloudData();
     } finally {
       setTimeout(() => setIsManualSyncing(false), 600);
@@ -148,11 +158,21 @@ export const RoleContextBanner: React.FC<RoleContextBannerProps> = ({
                 </span>
                 <Cloud className="w-3 h-3 text-emerald-400" />
                 <span>Multi-PC Sync: Live</span>
+                {offlineQueueCount > 0 && (
+                  <span className="bg-sky-400 text-slate-950 px-1.5 py-0.2 rounded-full font-bold text-[9px] animate-pulse">
+                    {offlineQueueCount} syncing
+                  </span>
+                )}
               </>
             ) : (
               <>
                 <WifiOff className="w-3 h-3 text-amber-400" />
-                <span>Local Offline</span>
+                <span>Offline Mode (IndexedDB)</span>
+                {offlineQueueCount > 0 && (
+                  <span className="bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full font-bold text-[9px]">
+                    {offlineQueueCount} queued
+                  </span>
+                )}
               </>
             )}
           </div>
@@ -160,6 +180,8 @@ export const RoleContextBanner: React.FC<RoleContextBannerProps> = ({
 
         {/* Right Section: Role Permissions Pills & Switcher */}
         <div className="flex items-center gap-2 ml-auto">
+          {/* PWA Install Button for Staff Workstations */}
+          <PWAInstallButton variant="minimal" />
           {/* Dashboard Quick Switcher if user has multi-dashboard privilege */}
           {role === 'admin' && (
             <div className="hidden lg:flex items-center gap-1">

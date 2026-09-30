@@ -28,6 +28,17 @@ import {
   PlanRenewalRequest
 } from '../types';
 import { optimizeDataUrl } from '../utils/imageOptimizer';
+import {
+  idbSaveCollection,
+  idbGetCollection,
+  idbGetAllCollections,
+  idbEnqueueOfflineItem,
+  idbGetOfflineQueue,
+  idbRemoveOfflineItem,
+  idbRemoveOfflineItemByDoc,
+  idbClearOfflineQueue,
+  IdbQueueItem,
+} from './indexedDb';
 
 // Collection identifiers on Hostinger server
 export const COLLECTIONS = {
@@ -207,7 +218,7 @@ try {
   }
 } catch {}
 
-// Load initial cache from localStorage
+// Load initial cache from localStorage and seamlessly load/sync with IndexedDB
 function getCachedCollection(collection: string): any {
   if (localCache[collection] !== undefined) {
     return localCache[collection];
@@ -228,6 +239,50 @@ function setCachedCollection(collection: string, data: any) {
   try {
     localStorage.setItem(`hostinger_cache_${collection}`, JSON.stringify(data));
   } catch {}
+  // Persist to browser IndexedDB for large offline capacity
+  idbSaveCollection(collection, data).catch((err) => {
+    console.warn('[IndexedDB Save Warning]:', err);
+  });
+}
+
+// Background asynchronous initialization from IndexedDB on startup
+if (typeof window !== 'undefined') {
+  setTimeout(async () => {
+    try {
+      const idbData = await idbGetAllCollections();
+      for (const [colName, colVal] of Object.entries(idbData)) {
+        if (colVal !== undefined && colVal !== null) {
+          // If memory cache is empty, hydrate from IndexedDB
+          if (localCache[colName] === undefined) {
+            localCache[colName] = colVal;
+            notifySubscribers(colName, colVal);
+          }
+        }
+      }
+
+      // Also hydrate unsynced items from IndexedDB
+      const idbQueue = await idbGetOfflineQueue();
+      if (idbQueue.length > 0) {
+        const memQueue = getOfflineSyncQueue();
+        const mergedMap = new Map<string, OfflineQueueItem>();
+        for (const item of memQueue) mergedMap.set(`${item.collection}_${item.docId}`, item);
+        for (const item of idbQueue) {
+          mergedMap.set(`${item.collection}_${item.docId}`, {
+            id: item.id,
+            collection: item.collection,
+            docId: item.docId,
+            action: item.action,
+            data: item.data,
+            timestamp: item.timestamp,
+          });
+        }
+        const mergedList = Array.from(mergedMap.values());
+        saveOfflineSyncQueue(mergedList);
+      }
+    } catch (err) {
+      console.warn('[IndexedDB Hydration Notice]:', err);
+    }
+  }, 100);
 }
 
 const ALL_CORE_COLLECTIONS = [
@@ -388,9 +443,10 @@ export function addToOfflineSyncQueue(item: Omit<OfflineQueueItem, 'id' | 'times
   const existingIdx = queue.findIndex(
     (q) => q.collection === item.collection && q.docId === item.docId
   );
+  const queueItemId = `${item.collection}_${item.docId}_${Date.now()}`;
   const queueItem: OfflineQueueItem = {
     ...item,
-    id: `${item.collection}_${item.docId}_${Date.now()}`,
+    id: queueItemId,
     timestamp: Date.now(),
   };
   if (existingIdx !== -1) {
@@ -399,6 +455,17 @@ export function addToOfflineSyncQueue(item: Omit<OfflineQueueItem, 'id' | 'times
     queue.push(queueItem);
   }
   saveOfflineSyncQueue(queue);
+
+  // Also persist to IndexedDB store
+  idbEnqueueOfflineItem({
+    id: queueItemId,
+    collection: item.collection,
+    docId: item.docId,
+    action: item.action,
+    data: item.data,
+    timestamp: Date.now(),
+    syncStatus: 'pending_sync',
+  }).catch(() => {});
 }
 
 export function removeFromOfflineSyncQueue(collection: string, docId: string) {
@@ -406,10 +473,12 @@ export function removeFromOfflineSyncQueue(collection: string, docId: string) {
     (q) => !(q.collection === collection && q.docId === docId)
   );
   saveOfflineSyncQueue(queue);
+  idbRemoveOfflineItemByDoc(collection, docId).catch(() => {});
 }
 
 export function clearOfflineSyncQueue() {
   saveOfflineSyncQueue([]);
+  idbClearOfflineQueue().catch(() => {});
 }
 
 export function getPendingOfflineCount(): number {
@@ -459,6 +528,21 @@ export async function flushOfflineSyncQueue(): Promise<{ syncedCount: number; er
       });
       if (res && (res.status === 'success' || res.success)) {
         syncedCount++;
+        // Remove from IndexedDB
+        idbRemoveOfflineItem(item.id).catch(() => {});
+        idbRemoveOfflineItemByDoc(item.collection, item.docId).catch(() => {});
+
+        // Mark document in cache as synced
+        if (item.action === 'save' && item.collection) {
+          const colList = getCachedCollection(item.collection);
+          if (Array.isArray(colList)) {
+            const doc = colList.find((it: any) => (it.id || it.reportId || it.labId) === item.docId);
+            if (doc) {
+              doc._syncStatus = 'synced';
+              doc._syncedAt = new Date().toISOString();
+            }
+          }
+        }
       } else {
         remaining.push(item);
         errors++;
@@ -471,6 +555,22 @@ export async function flushOfflineSyncQueue(): Promise<{ syncedCount: number; er
 
   saveOfflineSyncQueue(remaining);
   return { syncedCount, errors };
+}
+
+// Auto-Sync Listeners: Reconnect automatically when network comes back
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    flushOfflineSyncQueue().then(() => {
+      pollHostingerServerUpdates(true);
+    });
+  });
+
+  // Background interval: every 20 seconds, if online and queue has items, retry sync
+  setInterval(() => {
+    if (typeof navigator !== 'undefined' && navigator.onLine && getPendingOfflineCount() > 0) {
+      flushOfflineSyncQueue();
+    }
+  }, 20000);
 }
 
 /**
@@ -639,6 +739,9 @@ async function saveDocumentToHostinger(collection: string, id: string, itemData:
   const sanitized = sanitizeForFirestore({ ...itemData, id, _updatedAt: new Date().toISOString() });
   
   // 1. Update local cache immediately for 0ms optimistic UI
+  const isCurrentlyOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  sanitized._syncStatus = isCurrentlyOnline ? 'syncing' : 'pending_sync';
+
   let currentList = getCachedCollection(collection);
   if (Array.isArray(currentList)) {
     const idx = currentList.findIndex((it: any) => (it.id || it.reportId || it.labId) === id);
@@ -677,11 +780,14 @@ async function saveDocumentToHostinger(collection: string, id: string, itemData:
     });
     if (res && (res.status === 'success' || res.success)) {
       savedOnline = true;
+      sanitized._syncStatus = 'synced';
+      sanitized._syncedAt = new Date().toISOString();
       removeFromOfflineSyncQueue(collection, id);
     }
   }
 
   if (!savedOnline) {
+    sanitized._syncStatus = 'pending_sync';
     addToOfflineSyncQueue({
       collection,
       docId: id,

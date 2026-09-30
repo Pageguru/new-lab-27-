@@ -58,9 +58,9 @@
   ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 
-# Strict Anti-Caching for API Endpoints and Dynamic Scripts (Hostinger LiteSpeed / Apache / hcdn)
+# Strict Anti-Caching for API Endpoints, Service Worker, Manifest and Dynamic Scripts (Hostinger LiteSpeed / Apache / hcdn)
 <IfModule mod_headers.c>
-  <FilesMatch "\.(php|json)$">
+  <FilesMatch "(\.(php|json)$|sw\.js|registerSW\.js|\.webmanifest)$">
     Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0"
     Header set Pragma "no-cache"
     Header set Expires "0"

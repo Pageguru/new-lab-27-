@@ -41,6 +41,7 @@ import { isUserAuthorizedForView } from './utils/rbac';
 import { useCms } from './context/CmsContext';
 import { getTenantSubdomain } from './constants/domains';
 import { resolveAppRoute } from './utils/domainRouting';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>(() => {
@@ -644,6 +645,9 @@ export default function App() {
 
       {/* 33. Mobile Fixed CTA */}
       <MobileFixedCTA onOpenReport={() => handleViewPatientPortal()} />
+
+      {/* Offline Status & Sync Queue Indicator */}
+      <OfflineIndicator />
 
       {/* Interactive Modals */}
       <BookDemoModal isOpen={isDemoModalOpen} onClose={() => setIsDemoModalOpen(false)} />

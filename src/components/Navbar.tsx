@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Menu, X, Building2, KeyRound, Globe, LogOut, UserCheck, LayoutDashboard, FileText, Search } from 'lucide-react';
 import { AppView, Language, UserRole } from '../types';
 import { useCms } from '../context/CmsContext';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
   onOpenDemo?: () => void;
@@ -159,6 +160,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Desktop Actions: Language, Login, Create Lab */}
           <div className="hidden lg:flex items-center gap-2.5">
+            {/* Install Offline PWA App Button */}
+            <PWAInstallButton variant="navbar" />
+
             {/* Language Selector */}
             {onSelectLanguage && (
               <div
@@ -318,6 +322,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+            {/* Install Offline App for Mobile/Tablet */}
+            <PWAInstallButton variant="banner" />
+
             {currentUser ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200">
