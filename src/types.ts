@@ -571,6 +571,11 @@ export interface VendorLabDirectoryItem {
   email?: string;
   subscriptionPlan?: string;
   subscriptionAmount?: number;
+  purchasedPlan?: string;
+  planPurchasedAt?: string;
+  planExpiresAt?: string;
+  remainingVisibilityDays?: number;
+  planStatusReason?: string;
   paymentMode?: string;
   paymentReference?: string;
   paymentNotes?: string;
@@ -580,6 +585,24 @@ export interface VendorLabDirectoryItem {
   reviewsCount?: number;
   features?: string[];
   _updatedAt?: string;
+}
+
+export interface PlanRenewalRequest {
+  id: string;
+  labId: string;
+  labName: string;
+  phone: string;
+  currentPlan: string;
+  currentExpiryDate?: string;
+  requestedPlan: string;
+  requestedDurationDays: number;
+  amountINR: number;
+  paymentMode?: string;
+  notes?: string;
+  createdAt: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  resolvedAt?: string;
+  resolvedBy?: string;
 }
 
 export interface ReceptionPatientEntry {

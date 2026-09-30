@@ -25,6 +25,11 @@ import {
   Check,
   ArrowRight,
   Eye,
+  Phone,
+  PhoneCall,
+  AlertTriangle,
+  Send,
+  Lock,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { VendorLabSettings } from '../../types';
@@ -90,7 +95,15 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
     pricingPlans,
     activeTenantId,
     vendorLabsList,
+    submitPlanRenewalRequest,
+    planRequests,
+    expireVendorPlan,
+    renewOrExtendVendorPlan,
   } = useCms();
+
+  const [selectedRenewPlan, setSelectedRenewPlan] = useState<'1 Month' | '3 Months' | '1 Year'>('3 Months');
+  const [renewNotes, setRenewNotes] = useState('');
+  const [renewSubmittedToast, setRenewSubmittedToast] = useState<string | null>(null);
 
   const [internalSection, setInternalSection] = useState<SiteSettingsSubSection>(
     activeSubTab || initialSection || 'logo'
@@ -360,9 +373,37 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
     setTimeout(() => setIsSavedToast(false), 3000);
   };
 
+  // Current Lab & Expiry Status
+  const currentLabId = activeTenantId || vendorLabSettings.labId || 'lab-apex';
+  const currentLabItem = vendorLabsList.find((l) => l.id === currentLabId);
+
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
+  let isExpiredByDate = false;
+  if (formData.planExpiresAt) {
+    const parts = formData.planExpiresAt.split('-');
+    if (parts.length === 3) {
+      const expDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      expDate.setHours(23, 59, 59, 999);
+      if (expDate.getTime() < todayDate.getTime()) {
+        isExpiredByDate = true;
+      }
+    }
+  }
+
+  const remainingDays = isExpiredByDate
+    ? 0
+    : Math.max(0, formData.remainingVisibilityDays ?? 0);
+  const isPlanExpired =
+    remainingDays <= 0 ||
+    isExpiredByDate ||
+    (currentLabItem?.status === 'Draft' && Boolean(currentLabItem?.planStatusReason?.includes('Expired')));
+
+  const planStatus: 'Active' | 'Expired' = isPlanExpired ? 'Expired' : 'Active';
+
   // Active Plan details lookup
   const currentPlan = formData.purchasedPlan || '1 Month';
-  const remainingDays = formData.remainingVisibilityDays ?? 24;
   const totalDays =
     formData.planDurationDays ||
     (currentPlan === '1 Year' ? 365 : currentPlan === '3 Months' ? 90 : 30);
@@ -376,6 +417,30 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
   };
 
   const planInfo = planPriceMap[currentPlan] || planPriceMap['1 Month'];
+
+  // Handle Submit Renewal Request to Admin -> Plan Requests
+  const handleSubmitPlanRenewal = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    const planDuration = selectedRenewPlan === '1 Year' ? 365 : selectedRenewPlan === '3 Months' ? 90 : 30;
+    const planPrice = selectedRenewPlan === '1 Year' ? 11999 : selectedRenewPlan === '3 Months' ? 3999 : 1499;
+
+    submitPlanRenewalRequest({
+      labId: currentLabId,
+      labName: formData.labName || vendorLabSettings.labName || 'Apex Diagnostic Center',
+      phone: vendorLabSettings.phone || vendorLabSettings.helplinePhone || '7087033009',
+      currentPlan: formData.purchasedPlan || '1 Month',
+      currentExpiryDate: formData.planExpiresAt || '2026-10-15',
+      requestedPlan: selectedRenewPlan,
+      requestedDurationDays: planDuration,
+      amountINR: planPrice,
+      paymentMode: 'UPI Gateway / Scan & Pay',
+      notes: renewNotes ? renewNotes.trim() : `Renewal request for ${selectedRenewPlan}. Remaining days to be preserved.`,
+    });
+
+    setRenewSubmittedToast(`✅ Plan request for "${selectedRenewPlan}" submitted to Admin! Our Super Admin team will verify and activate your plan. For immediate activation, contact 70870 33009.`);
+    setTimeout(() => setRenewSubmittedToast(null), 8000);
+  };
 
   const [testDynamicAmount, setTestDynamicAmount] = useState<number>(500);
 
@@ -482,11 +547,13 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
             <Zap className={`w-3.5 h-3.5 ${activeSection === 'plan' ? 'text-amber-400 fill-amber-400' : 'text-amber-600 fill-amber-500'}`} />
             <span>6. Plan &amp; Pricing</span>
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-              activeSection === 'plan'
+              isPlanExpired
+                ? 'bg-rose-600 text-white font-black animate-pulse'
+                : activeSection === 'plan'
                 ? 'bg-amber-400 text-slate-950 font-black'
                 : 'bg-amber-100 text-amber-900 font-extrabold'
             }`}>
-              {remainingDays}d left
+              {isPlanExpired ? 'Expired' : `${remainingDays}d left`}
             </span>
           </button>
         </div>
@@ -1280,269 +1347,497 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       {/* (WITH REMAINING VISIBILITY DAYS) */}
       {/* ======================================================== */}
       {activeSection === 'plan' && (
-        <div id="section-plan" className="bg-white rounded-2xl border-2 border-amber-300 p-6 shadow-sm space-y-6">
+        <div id="section-plan" className="space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-amber-100 flex-wrap gap-2">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-amber-100 text-amber-900">
                 <Zap className="w-5 h-5 fill-amber-500 text-amber-700" />
               </span>
               <div>
                 <h2 className="text-base font-black text-[#123B6D]">
-                  6. Plan &amp; Pricing: Active Laboratory Subscription
+                  Plan &amp; Pricing: Laboratory Package &amp; Subscriptions
                 </h2>
                 <p className="text-xs text-slate-600">
-                  Showing <strong>only</strong> the plan currently purchased by this diagnostic lab with remaining visibility days.
+                  Inspect your active laboratory subscription package or apply for package renewal.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Active Purchased Plan</span>
+              <span className={`text-xs font-black px-3 py-1 rounded-full border flex items-center gap-1.5 ${
+                isPlanExpired
+                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${isPlanExpired ? 'bg-rose-600' : 'bg-emerald-500 animate-pulse'}`}></span>
+                <span>Status: {planStatus}</span>
               </span>
-              <button
-                type="button"
-                onClick={() => handleSave('Plan & Pricing subscription settings saved successfully!')}
-                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-              >
-                <Save className="w-3.5 h-3.5 text-amber-400" />
-                <span>Save Plan Settings</span>
-              </button>
             </div>
           </div>
 
-          {/* ======================================================== */}
-          {/* THE SINGLE ACTIVE PURCHASED PLAN CARD WITH REMAINING DAYS */}
-          {/* (1 Month | 3 Months | 1 Year) */}
-          {/* ======================================================== */}
-          <div className="bg-gradient-to-br from-amber-50/70 via-white to-sky-50/40 rounded-2xl border-2 border-[#123B6D]/20 p-6 shadow-sm relative overflow-hidden">
-            {/* Top Accent Stripe */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-400 via-[#123B6D] to-emerald-500" />
+          {/* Toast Notification for Renewal Request Submission */}
+          {renewSubmittedToast && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-400 text-emerald-950 text-xs font-bold flex items-start gap-2.5 shadow-sm animate-in slide-in-from-top-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-black text-emerald-900">Request Sent to Admin!</p>
+                <p className="text-xs text-emerald-800 leading-relaxed">{renewSubmittedToast}</p>
+              </div>
+            </div>
+          )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-              {/* Left Column: Plan Identity & Price */}
-              <div className="space-y-2 lg:border-r lg:border-slate-200 lg:pr-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#123B6D] text-white">
-                    {planInfo.badge}
-                  </span>
-                  {planInfo.popular && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black">
-                      ★ MOST POPULAR
-                    </span>
-                  )}
-                </div>
+          {/* ======================================================== */}
+          {/* CARD 1: CURRENT PACKAGE */}
+          {/* ======================================================== */}
+          <div id="card-current-package" className="bg-white rounded-3xl border-2 border-slate-200 p-6 sm:p-7 shadow-sm space-y-6 relative overflow-hidden">
+            {/* Top Stripe */}
+            <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+              isPlanExpired
+                ? 'bg-gradient-to-r from-rose-500 via-amber-500 to-rose-600'
+                : 'bg-gradient-to-r from-emerald-500 via-[#123B6D] to-teal-500'
+            }`} />
 
-                <h3 className="text-2xl font-black text-[#123B6D] tracking-tight">
-                  {currentPlan}
+            {/* Card Header & Title */}
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  Card 1 • Active Subscription
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
+                  <ShieldCheck className={`w-6 h-6 ${isPlanExpired ? 'text-rose-600' : 'text-emerald-600'}`} />
+                  <span>Current Package</span>
                 </h3>
-
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-3xl font-black text-slate-900">
-                    ₹{planInfo.price.toLocaleString('en-IN')}
-                  </span>
-                  <span className="text-xs font-bold text-slate-500">
-                    / {planInfo.cycle}
-                  </span>
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed pt-1">
-                  Full software access with automated NABL test catalog, online patient portal, WhatsApp reports, and live website hosting.
-                </p>
-
-                <div className="pt-2 flex items-center gap-2 text-xs font-bold text-emerald-700">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Licensed &amp; Verified by INDIANLALAJI.COM</span>
-                </div>
               </div>
 
-              {/* Middle Column: Prominent Remaining Visibility Days Display */}
-              <div className="bg-white p-5 rounded-2xl border-2 border-emerald-300 shadow-2xs space-y-4 text-center lg:col-span-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 text-left">
-                  <div>
-                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
-                      Portal Status
-                    </span>
-                    <span className="text-xs font-black text-[#123B6D] flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>{currentPlan} — Active Visibility</span>
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[11px] font-bold text-slate-400 block">Renewal / Expiry Date</span>
-                    <span className="text-xs font-mono font-bold text-slate-700">
-                      {formData.planExpiresAt || '17 Mar 2026'}
-                    </span>
-                  </div>
-                </div>
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                <span className={`text-xs sm:text-sm font-black px-3.5 py-1.5 rounded-full border shadow-2xs flex items-center gap-2 ${
+                  isPlanExpired
+                    ? 'bg-rose-100 text-rose-800 border-rose-300'
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                }`}>
+                  <span className={`w-2.5 h-2.5 rounded-full ${isPlanExpired ? 'bg-rose-600' : 'bg-emerald-500 animate-pulse'}`}></span>
+                  <span>Status: {planStatus}</span>
+                </span>
+              </div>
+            </div>
 
-                {/* Big Visual Countdown Box */}
-                <div className="py-2">
-                  <div className="inline-flex flex-col items-center justify-center p-4 bg-emerald-50 rounded-2xl border border-emerald-200 shadow-2xs min-w-[220px]">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
-                      {currentPlan} — Remaining Visibility Days
-                    </span>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-5xl font-black text-emerald-700 tracking-tight font-mono">
-                        {remainingDays}
+            {/* Key Attributes Grid (Current Plan, Start Date, Expiry Date, Remaining Days, Status) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Current Plan</span>
+                <strong className="text-base sm:text-lg font-black text-[#123B6D] block">{currentPlan}</strong>
+                <span className="text-[11px] text-slate-500 font-semibold">₹{planInfo.price.toLocaleString('en-IN')} / {planInfo.cycle}</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Start Date</span>
+                <strong className="text-sm sm:text-base font-black text-slate-800 font-mono block">
+                  {formData.planPurchasedAt || '15 Feb 2026'}
+                </strong>
+                <span className="text-[11px] text-slate-500 font-semibold">Plan Activation</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Expiry Date</span>
+                <strong className={`text-sm sm:text-base font-black font-mono block ${isPlanExpired ? 'text-rose-600' : 'text-slate-800'}`}>
+                  {formData.planExpiresAt || '17 Mar 2026'}
+                </strong>
+                <span className="text-[11px] text-slate-500 font-semibold">
+                  {isPlanExpired ? 'Expired' : 'Renewal Due'}
+                </span>
+              </div>
+
+              <div className={`p-3 rounded-xl border shadow-2xs ${
+                isPlanExpired
+                  ? 'bg-rose-50 border-rose-300'
+                  : 'bg-emerald-50 border-emerald-300'
+              }`}>
+                <span className="text-[10px] font-bold uppercase block mb-0.5 text-slate-500">Remaining Days</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-2xl sm:text-3xl font-black font-mono ${isPlanExpired ? 'text-rose-700' : 'text-emerald-700'}`}>
+                    {remainingDays}
+                  </span>
+                  <span className={`text-xs font-bold ${isPlanExpired ? 'text-rose-900' : 'text-emerald-900'}`}>
+                    Days Left
+                  </span>
+                </div>
+                <span className={`text-[10px] font-bold block ${isPlanExpired ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {isPlanExpired ? '⚠️ Subscription Expired' : `${percentageRemaining}% of Period Left`}
+                </span>
+              </div>
+            </div>
+
+            {/* Visual Progress Bar (if active) */}
+            {!isPlanExpired && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                  <span>Subscription Validity Progress</span>
+                  <span className="font-mono text-emerald-700">{remainingDays} of {totalDays} Days Left</span>
+                </div>
+                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all duration-500"
+                    style={{ width: `${percentageRemaining}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* PLAN EXPIRE ALERT BOX (WHEN PLAN EXPIRED) */}
+            {/* ======================================================== */}
+            {isPlanExpired && (
+              <div className="bg-gradient-to-br from-rose-50 via-amber-50/70 to-rose-50 border-2 border-rose-400 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm animate-in fade-in">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <AlertTriangle className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-600 text-white">
+                        Plan Expired
                       </span>
-                      <span className="text-sm font-black text-emerald-900">
-                        Days Remaining
+                      <span className="text-xs font-black text-rose-900 bg-rose-200/80 px-2.5 py-0.5 rounded-full">
+                        Reason: Expired — Contact 70870 33009
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold text-emerald-600 mt-1">
-                      {remainingDays > 7
-                        ? `● Website Live & Visible to All Patients (${percentageRemaining}% Remaining)`
-                        : '⚠️ Plan Expiring Soon — Renew to keep visibility active'}
-                    </span>
+                    <h4 className="text-base sm:text-lg font-black text-rose-950">
+                      Website Offline: Public Patients Cannot Access Your Portal
+                    </h4>
                   </div>
                 </div>
 
-                {/* Visual Progress Bar */}
-                <div className="space-y-1.5 text-left">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600">
-                    <span>Visibility Period Progress</span>
-                    <span className="font-mono text-emerald-700">{remainingDays} of {totalDays} Days Left</span>
+                {/* 3 Explicit Points from prompt */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+                  <div className="bg-white/90 p-3 rounded-xl border border-rose-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">1. Website Visibility</span>
+                    <strong className="text-sm font-black text-rose-700 block mt-0.5">
+                      Website Public Nahi Rahegi
+                    </strong>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                      Public access and online bookings are locked until renewed.
+                    </p>
                   </div>
-                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        remainingDays > 10
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600'
-                          : 'bg-gradient-to-r from-amber-500 to-rose-500'
-                      }`}
-                      style={{ width: `${percentageRemaining}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                    <span>Start: {formData.planPurchasedAt || '15 Feb 2026'}</span>
-                    <span>Expires: {formData.planExpiresAt || '17 Mar 2026'}</span>
-                  </div>
-                </div>
 
-                {/* Key Benefits with this Plan */}
-                <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-left">
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
-                    <span className="font-bold text-slate-800 block">🌐 Public Domain</span>
-                    <span className="text-slate-500 text-[10px]">Indexed on IndianLalaJi</span>
+                  <div className="bg-white/90 p-3 rounded-xl border border-rose-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">2. Portal Status</span>
+                    <strong className="text-sm font-black text-amber-800 block mt-0.5">
+                      Dashboard: Draft
+                    </strong>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                      Lab portal has been moved to Draft mode due to expired validity.
+                    </p>
                   </div>
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
-                    <span className="font-bold text-slate-800 block">📱 WhatsApp PDF</span>
-                    <span className="text-slate-500 text-[10px]">Direct report delivery</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
-                    <span className="font-bold text-slate-800 block">💳 UPI QR Gateway</span>
-                    <span className="text-slate-500 text-[10px]">0% commission fees</span>
+
+                  <div className="bg-white/90 p-3 rounded-xl border border-rose-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">3. Renewal Helpline</span>
+                    <strong className="text-sm font-black text-[#123B6D] block mt-0.5">
+                      Contact 70870 33009
+                    </strong>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                      Contact support or submit a renewal request below for instant reactivation.
+                    </p>
                   </div>
                 </div>
+
+                {/* "Apply for Plan" Button & Helpline Links */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="button"
+                    id="btn-apply-for-plan"
+                    onClick={() => {
+                      const renewCard = document.getElementById('card-renew-package');
+                      if (renewCard) {
+                        renewCard.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="w-full sm:w-auto px-6 py-3 bg-[#123B6D] hover:bg-[#0e2c52] text-white rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                  >
+                    <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    <span>Apply for Plan (Renew Now)</span>
+                  </button>
+
+                  <a
+                    href="tel:7087033009"
+                    className="w-full sm:w-auto px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                  >
+                    <PhoneCall className="w-4 h-4" />
+                    <span>Call 70870 33009</span>
+                  </a>
+
+                  <a
+                    href="https://wa.me/917087033009?text=Hello%2C%20I%20want%20to%20renew%20my%20lab%20package%20subscription%20for%20Apex%20Diagnostics."
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full sm:w-auto px-4 py-3 bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-50 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>💬 WhatsApp 70870 33009</span>
+                  </a>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* ======================================================== */}
-          {/* SIMULATION & PLAN SWITCHER (ADMIN / TESTING CONTROL) */}
-          {/* (Allows user to test and view 1 Month, 3 Months, or 1 Year) */}
-          {/* ======================================================== */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <span className="text-xs font-black text-slate-800 block">
-                  Switch Purchased Plan or Extend Visibility Days
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  Select between the 3 standardized license durations to update the active purchased plan and view its remaining visibility days.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {/* 1 Month Button */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('1 Month')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    currentPlan === '1 Month'
-                      ? 'bg-[#123B6D] text-white shadow-xs font-black ring-2 ring-amber-400'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                  }`}
-                >
-                  <span>1 Month (₹1,499)</span>
-                  {currentPlan === '1 Month' && <Check className="w-3.5 h-3.5 text-amber-400" />}
-                </button>
-
-                {/* 3 Months Button */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('3 Months')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    currentPlan === '3 Months'
-                      ? 'bg-[#123B6D] text-white shadow-xs font-black ring-2 ring-amber-400'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                  }`}
-                >
-                  <span>3 Months (₹3,999)</span>
-                  {currentPlan === '3 Months' && <Check className="w-3.5 h-3.5 text-amber-400" />}
-                </button>
-
-                {/* 1 Year Button */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('1 Year')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    currentPlan === '1 Year'
-                      ? 'bg-[#123B6D] text-white shadow-xs font-black ring-2 ring-amber-400'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                  }`}
-                >
-                  <span>1 Year (₹11,999)</span>
-                  {currentPlan === '1 Year' && <Check className="w-3.5 h-3.5 text-amber-400" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Extension Buttons */}
-            <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+            {/* Simulator Bar for Easy Verification */}
+            <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="text-[11px] text-slate-500 font-medium">
-                Add extra visibility days to the active plan:
+                Testing Simulator (Verify Active / Expired states instantly):
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handleAddDays(30)}
+                  onClick={() => {
+                    expireVendorPlan(currentLabId);
+                    setFormData((prev) => ({
+                      ...prev,
+                      remainingVisibilityDays: 0,
+                      planExpiresAt: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+                    }));
+                    setToastMessage('Plan simulated as EXPIRED (0 Days, Draft Mode, Offline)!');
+                    setIsSavedToast(true);
+                    setTimeout(() => setIsSavedToast(false), 3000);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 font-bold transition cursor-pointer"
+                  title="Simulate Plan Expiration"
+                >
+                  🔴 Test Expire Plan (Set 0d / Draft)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    renewOrExtendVendorPlan(currentLabId, '1 Month', 30);
+                    setFormData((prev) => ({
+                      ...prev,
+                      remainingVisibilityDays: 30,
+                      purchasedPlan: '1 Month',
+                      planExpiresAt: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+                    }));
+                    setToastMessage('Plan renewed to 30 Days Active!');
+                    setIsSavedToast(true);
+                    setTimeout(() => setIsSavedToast(false), 3000);
+                  }}
                   className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 font-bold transition cursor-pointer"
+                  title="Simulate Plan Activation"
                 >
-                  +30 Days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAddDays(90)}
-                  className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 font-bold transition cursor-pointer"
-                >
-                  +90 Days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAddDays(365)}
-                  className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100 font-bold transition cursor-pointer"
-                >
-                  +1 Year (365 Days)
+                  🟢 Test Activate (+30 Days)
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-amber-100 flex items-center justify-between flex-wrap gap-2">
-            <span className="text-[11px] text-slate-600 font-medium">
-              Lab visibility status is active. Extend days anytime to maintain uninterrupted online bookings.
-            </span>
-            <button
-              type="button"
-              onClick={() => handleSave('Plan & Pricing subscription settings saved successfully!')}
-              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-            >
-              <Save className="w-3.5 h-3.5 text-amber-400" />
-              <span>Save Plan Settings</span>
-            </button>
+          {/* ======================================================== */}
+          {/* CARD 2: RENEW PACKAGE (renew Package) */}
+          {/* ======================================================== */}
+          <div id="card-renew-package" className="bg-white rounded-3xl border-2 border-amber-300 p-6 sm:p-7 shadow-sm space-y-6 relative overflow-hidden">
+            {/* Top Stripe */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-400 via-[#123B6D] to-emerald-500" />
+
+            {/* Header & Subtitle */}
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-950 font-black">
+                  Card 2 • Package Radio Button &gt; Apply &gt; Submit
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
+                  <Zap className="w-6 h-6 text-amber-500 fill-amber-400" />
+                  <span>Renew Package</span>
+                </h3>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Select package radio button &gt; click Apply &gt; submits renewal request to <strong>Admin → Plan Requests</strong>.
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-right">
+                <span className="text-[10px] font-bold text-amber-800 uppercase block">Helpline</span>
+                <span className="text-xs font-mono font-black text-slate-900">70870 33009</span>
+              </div>
+            </div>
+
+            {/* CRUCIAL GUARANTEE NOTICE */}
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4 text-xs text-blue-950 flex items-start gap-3 shadow-2xs">
+              <span className="p-1.5 rounded-xl bg-[#123B6D] text-white shrink-0 mt-0.5">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+              </span>
+              <div>
+                <strong className="block font-black text-sm text-[#123B6D]">
+                  Strict Guarantee: No Days Wasted!
+                </strong>
+                <p className="text-xs text-blue-900 leading-relaxed mt-0.5">
+                  <strong>Current plan ke remaining days waste nahi honge, New plan current expiry date ke baad start hoga.</strong> If currently expired, new plan starts today and website goes live immediately.
+                </p>
+              </div>
+            </div>
+
+            {/* Radio Button Package Cards */}
+            <div className="space-y-3">
+              <label className="text-xs font-black text-slate-700 block">
+                Select Package (Radio Option):
+              </label>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {/* 1. 1 Month Plan */}
+                <label
+                  onClick={() => setSelectedRenewPlan('1 Month')}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-3 relative ${
+                    selectedRenewPlan === '1 Month'
+                      ? 'bg-amber-50/70 border-[#123B6D] ring-2 ring-[#123B6D]/20 shadow-md'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                        Flexible Starter
+                      </span>
+                      <input
+                        type="radio"
+                        name="renewPackageRadio"
+                        value="1 Month"
+                        checked={selectedRenewPlan === '1 Month'}
+                        onChange={() => setSelectedRenewPlan('1 Month')}
+                        className="w-4 h-4 text-[#123B6D] focus:ring-[#123B6D]"
+                      />
+                    </div>
+                    <h4 className="text-base font-black text-slate-900">1 Month Plan</h4>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-[#123B6D]">₹1,499</span>
+                      <span className="text-xs text-slate-500 font-bold">/ 30 Days</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Standard monthly package with full diagnostic tests catalog and online patient portal access.
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[10px] font-bold text-slate-600">
+                    +30 Days Added to Expiry
+                  </div>
+                </label>
+
+                {/* 2. 3 Months Plan (Most Popular) */}
+                <label
+                  onClick={() => setSelectedRenewPlan('3 Months')}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-3 relative ${
+                    selectedRenewPlan === '3 Months'
+                      ? 'bg-amber-50/70 border-amber-500 ring-2 ring-amber-500/30 shadow-md'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black">
+                        ★ MOST POPULAR
+                      </span>
+                      <input
+                        type="radio"
+                        name="renewPackageRadio"
+                        value="3 Months"
+                        checked={selectedRenewPlan === '3 Months'}
+                        onChange={() => setSelectedRenewPlan('3 Months')}
+                        className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                      />
+                    </div>
+                    <h4 className="text-base font-black text-slate-900">3 Months Plan</h4>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-[#123B6D]">₹3,999</span>
+                      <span className="text-xs text-slate-500 font-bold">/ 90 Days</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      90 days uninterrupted laboratory operations, priority verification, and digital WhatsApp delivery.
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[10px] font-bold text-amber-700">
+                    +90 Days Added to Expiry (Save ₹500)
+                  </div>
+                </label>
+
+                {/* 3. 1 Year Plan (Best Value) */}
+                <label
+                  onClick={() => setSelectedRenewPlan('1 Year')}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-3 relative ${
+                    selectedRenewPlan === '1 Year'
+                      ? 'bg-emerald-50/70 border-emerald-600 ring-2 ring-emerald-600/30 shadow-md'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-600 text-white font-black">
+                        BEST VALUE (365D)
+                      </span>
+                      <input
+                        type="radio"
+                        name="renewPackageRadio"
+                        value="1 Year"
+                        checked={selectedRenewPlan === '1 Year'}
+                        onChange={() => setSelectedRenewPlan('1 Year')}
+                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <h4 className="text-base font-black text-slate-900">1 Year Plan</h4>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-emerald-700">₹11,999</span>
+                      <span className="text-xs text-slate-500 font-bold">/ 365 Days</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Annual package with custom branded subdomain routing, priority support, and 0% commission payment QR.
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 text-[10px] font-bold text-emerald-700">
+                    +365 Days Added to Expiry (Save ₹5,989)
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Optional Notes / Transaction Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 block">
+                Transaction Reference / Remarks (Optional):
+              </label>
+              <input
+                type="text"
+                value={renewNotes}
+                onChange={(e) => setRenewNotes(e.target.value)}
+                placeholder="e.g. UPI Ref / Transaction UTR / Call 70870 33009 for quick confirmation"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/20 focus:border-[#123B6D] outline-none"
+              />
+            </div>
+
+            {/* Action Button: Apply > Submit Button to Admin -> Plan Requests */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-black text-slate-900 block">
+                  Package Selected: {selectedRenewPlan} (₹{planPriceMap[selectedRenewPlan].price.toLocaleString('en-IN')})
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Submits instant request to <strong>Admin → Plan Requests</strong>. Remaining days will be added automatically.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                id="btn-submit-plan-request"
+                onClick={handleSubmitPlanRenewal}
+                className="w-full sm:w-auto px-6 py-3 bg-[#123B6D] hover:bg-[#0e2c52] text-white rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98 shrink-0"
+              >
+                <Send className="w-4 h-4 text-amber-400" />
+                <span>Apply &gt; Submit to Admin</span>
+              </button>
+            </div>
+
+            {/* Pending Requests Tracker */}
+            {planRequests.filter((r) => r.status === 'Pending').length > 0 && (
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs space-y-1.5 animate-in fade-in">
+                <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-amber-700 animate-spin" />
+                  <span>Pending Renewal Requests for this Lab:</span>
+                </span>
+                {planRequests.filter((r) => r.status === 'Pending').map((req) => (
+                  <div key={req.id} className="text-[11px] text-amber-900 pl-5">
+                    • Requested <strong>{req.requestedPlan}</strong> (₹{req.amountINR}) on {new Date(req.createdAt).toLocaleDateString('en-IN')}. Status: <strong>Pending Super Admin Approval</strong>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

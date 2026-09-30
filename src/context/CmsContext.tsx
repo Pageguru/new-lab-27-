@@ -25,6 +25,7 @@ import {
   LabManagementFeature,
   ContactSubmission,
   DomainRequest,
+  PlanRenewalRequest,
 } from '../types';
 import { MOCK_TESTS, FAQ_LIST, SAMPLE_REPORT, INITIAL_REPORTS, VENDOR_LABS_DIRECTORY, INITIAL_RECEPTION_ENTRIES, DEFAULT_LAB_MANAGEMENT_FEATURES } from '../data/mockData';
 export { VENDOR_LABS_DIRECTORY };
@@ -1380,6 +1381,24 @@ export const DEFAULT_DOMAIN_REQUESTS: DomainRequest[] = [
   },
 ];
 
+export const DEFAULT_PLAN_RENEWAL_REQUESTS: PlanRenewalRequest[] = [
+  {
+    id: 'req-plan-101',
+    labId: 'lab-apex',
+    labName: 'Apex Diagnostic Centre',
+    phone: '7087033009',
+    currentPlan: '1 Month',
+    currentExpiryDate: '2026-10-15',
+    requestedPlan: '3 Months',
+    requestedDurationDays: 90,
+    amountINR: 3999,
+    paymentMode: 'UPI Gateway / Scan & Pay',
+    notes: 'Please extend 3 Months subscription. Remaining days to be preserved.',
+    createdAt: '2026-09-29T14:30:00.000Z',
+    status: 'Pending',
+  },
+];
+
 export const DEFAULT_STAFF_ACCOUNTS: LabStaffAccount[] = [
   // --- SUPER ADMIN & GLOBAL PORTAL OWNER (rkmehra331996@gmail.com) ---
   {
@@ -1912,6 +1931,21 @@ interface CmsContextType {
   deleteDomainRequest: (id: string) => void;
   approveDomainRequest: (id: string, adminRemarks?: string) => void;
   rejectDomainRequest: (id: string, adminRemarks?: string) => void;
+
+  // Plan Renewal Requests & Subscriptions (Vendor Dashboard > Site Settings > Plan & Pricing -> Super Admin > Plan Tab & Renew Req.)
+  planRequests: PlanRenewalRequest[];
+  allPlanRequests: PlanRenewalRequest[];
+  submitPlanRenewalRequest: (
+    req: Omit<PlanRenewalRequest, 'id' | 'createdAt' | 'status'>
+  ) => PlanRenewalRequest;
+  approvePlanRenewalRequest: (id: string, adminRemarks?: string) => { success: boolean; newExpiryDate: string; remainingDays?: number; message?: string };
+  rejectPlanRenewalRequest: (id: string, reason?: string) => void;
+  renewOrExtendVendorPlan: (
+    labId: string,
+    planName: string,
+    durationDays: number
+  ) => { success: boolean; newExpiryDate: string; remainingDays: number; message: string };
+  expireVendorPlan: (labId: string) => void;
 
   // Multi-Vendor Labs Directory & Switching
   selectedVendorLabId: string;
@@ -2508,6 +2542,23 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  const [allPlanRequests, setAllPlanRequests] = useState<PlanRenewalRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem('cms_plan_renewal_requests');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((r: any) => r.id));
+          const missing = DEFAULT_PLAN_RENEWAL_REQUESTS.filter((r) => !existingIds.has(r.id));
+          return [...parsed, ...missing];
+        }
+      }
+      return DEFAULT_PLAN_RENEWAL_REQUESTS;
+    } catch {
+      return DEFAULT_PLAN_RENEWAL_REQUESTS;
+    }
+  });
+
   const [allStaffAccounts, setAllStaffAccounts] = useState<LabStaffAccount[]>(() => {
     try {
       const saved = localStorage.getItem('cms_lab_staff_accounts');
@@ -2607,6 +2658,12 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('cms_domain_requests', JSON.stringify(allDomainRequests));
     } catch {}
   }, [allDomainRequests]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cms_plan_renewal_requests', JSON.stringify(allPlanRequests));
+    } catch {}
+  }, [allPlanRequests]);
 
   useEffect(() => {
     try {
@@ -3001,6 +3058,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
     return allDomainRequests.filter((d) => isTenantMatch(d, targetLab));
   }, [allDomainRequests, selectedVendorLabId, currentUser, superAdminTenantScope]);
+
+  const planRequests = useMemo(() => {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+      return allPlanRequests;
+    }
+    const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+    return allPlanRequests.filter((r) => isTenantMatch(r, targetLab));
+  }, [allPlanRequests, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const staffAccounts = useMemo(() => {
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
@@ -5067,6 +5134,222 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Plan Renewal Requests & Package Management
+  const submitPlanRenewalRequest = (
+    req: Omit<PlanRenewalRequest, 'id' | 'createdAt' | 'status'>
+  ): PlanRenewalRequest => {
+    const effectiveTenant = req.labId || (activeTenantId === 'all' ? 'lab-apex' : activeTenantId);
+    const currentSettings = getLabSettings(effectiveTenant);
+    const newReq: PlanRenewalRequest = {
+      ...req,
+      id: `req-plan-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      labId: effectiveTenant,
+      labName: req.labName || currentSettings.labName || 'Apex Diagnostic Center',
+      phone: req.phone || currentSettings.phone || currentSettings.helplinePhone || '7087033009',
+      currentPlan: req.currentPlan || currentSettings.purchasedPlan || '1 Month',
+      currentExpiryDate: req.currentExpiryDate || currentSettings.planExpiresAt || '2026-10-15',
+      requestedPlan: req.requestedPlan || '3 Months',
+      requestedDurationDays: req.requestedDurationDays || 90,
+      amountINR: req.amountINR || 3999,
+      paymentMode: req.paymentMode || 'UPI Gateway / Scan & Pay',
+      notes: req.notes || 'Plan extension requested by vendor.',
+      createdAt: new Date().toISOString(),
+      status: 'Pending',
+    };
+
+    setAllPlanRequests((prev) => [newReq, ...prev]);
+    return newReq;
+  };
+
+  const renewOrExtendVendorPlan = (
+    labId: string,
+    planName: string,
+    durationDays: number
+  ): { success: boolean; newExpiryDate: string; remainingDays: number; message: string } => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const currentSettings = vendorLabSettingsMap[labId] || (labId === vendorLabSettings.labId ? vendorLabSettings : null);
+    const currentLabItem = vendorLabsList.find((l) => l.id === labId);
+    const currentExpiryStr = currentSettings?.planExpiresAt || currentLabItem?.planExpiresAt;
+
+    let baseDate = new Date(today);
+
+    // CRITICAL REQUIREMENT:
+    // "Current plan ke remaining days waste nahi honge ,New plan current expiry date ke baad start hoga"
+    if (currentExpiryStr) {
+      const parts = currentExpiryStr.split('-');
+      if (parts.length === 3) {
+        const expYear = parseInt(parts[0], 10);
+        const expMonth = parseInt(parts[1], 10) - 1;
+        const expDay = parseInt(parts[2], 10);
+        const expDate = new Date(expYear, expMonth, expDay);
+        expDate.setHours(0, 0, 0, 0);
+        if (expDate.getTime() > today.getTime()) {
+          // Current plan is active with days remaining: new plan starts AFTER current expiry date!
+          baseDate = expDate;
+        }
+      }
+    }
+
+    const newExpiry = new Date(baseDate);
+    newExpiry.setDate(newExpiry.getDate() + durationDays);
+    const newExpiryDateStr = newExpiry.toISOString().slice(0, 10);
+
+    const diffTime = newExpiry.getTime() - today.getTime();
+    const remainingDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    // 1. Update vendorLabSettingsMap
+    setVendorLabSettingsMap((prev) => {
+      const existing = prev[labId] || vendorLabSettings;
+      const updated: VendorLabSettings = {
+        ...existing,
+        labId,
+        purchasedPlan: planName,
+        planPurchasedAt: existing.planPurchasedAt || today.toISOString().slice(0, 10),
+        planExpiresAt: newExpiryDateStr,
+        planDurationDays: durationDays,
+        remainingVisibilityDays: remainingDays,
+        status: 'Active',
+        isWebsiteApproved: true,
+        _updatedAt: new Date().toISOString(),
+      };
+      const nextMap = { ...prev, [labId]: updated };
+      try {
+        localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(nextMap));
+      } catch {}
+      syncLabSettingsToCloud(labId, updated);
+      return nextMap;
+    });
+
+    // 2. Update vendorLabsList
+    setVendorLabsList((prev) => {
+      const next = prev.map((l) => {
+        if (l.id === labId) {
+          return {
+            ...l,
+            status: 'Active' as const,
+            isWebsiteApproved: true,
+            subscriptionPlan: planName,
+            purchasedPlan: planName,
+            planExpiresAt: newExpiryDateStr,
+            remainingVisibilityDays: remainingDays,
+            planStatusReason: undefined,
+            _updatedAt: new Date().toISOString(),
+          };
+        }
+        return l;
+      });
+      try {
+        localStorage.setItem('cms_vendor_labs_list', JSON.stringify(next));
+      } catch {}
+      const targetItem = next.find((l) => l.id === labId);
+      if (targetItem) syncVendorLabToCloud(targetItem);
+      return next;
+    });
+
+    // 3. Mark any pending requests for this lab as Approved
+    setAllPlanRequests((prev) =>
+      prev.map((r) =>
+        r.labId === labId && r.status === 'Pending'
+          ? { ...r, status: 'Approved', resolvedAt: new Date().toISOString(), resolvedBy: currentUser?.name || 'Super Admin' }
+          : r
+      )
+    );
+
+    return {
+      success: true,
+      newExpiryDate: newExpiryDateStr,
+      remainingDays,
+      message: `Plan renewed/extended to ${newExpiryDateStr} (${remainingDays} days total remaining). Remaining days preserved!`,
+    };
+  };
+
+  const approvePlanRenewalRequest = (id: string, _adminRemarks?: string) => {
+    const found = allPlanRequests.find((r) => r.id === id);
+    if (!found) return { success: false, newExpiryDate: '', message: 'Request not found' };
+
+    const res = renewOrExtendVendorPlan(found.labId, found.requestedPlan, found.requestedDurationDays);
+
+    setAllPlanRequests((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'Approved',
+              resolvedAt: new Date().toISOString(),
+              resolvedBy: currentUser?.name || 'Super Admin',
+            }
+          : r
+      )
+    );
+    return res;
+  };
+
+  const rejectPlanRenewalRequest = (id: string, reason?: string) => {
+    setAllPlanRequests((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'Rejected',
+              notes: reason ? `${r.notes || ''} [Rejected: ${reason}]` : r.notes,
+              resolvedAt: new Date().toISOString(),
+              resolvedBy: currentUser?.name || 'Super Admin',
+            }
+          : r
+      )
+    );
+  };
+
+  const expireVendorPlan = (labId: string) => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    setVendorLabSettingsMap((prev) => {
+      const existing = prev[labId] || vendorLabSettings;
+      const updated: VendorLabSettings = {
+        ...existing,
+        labId,
+        planExpiresAt: yesterdayStr,
+        remainingVisibilityDays: 0,
+        status: 'Draft',
+        isWebsiteApproved: false,
+        _updatedAt: new Date().toISOString(),
+      };
+      const nextMap = { ...prev, [labId]: updated };
+      try {
+        localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(nextMap));
+      } catch {}
+      syncLabSettingsToCloud(labId, updated);
+      return nextMap;
+    });
+
+    setVendorLabsList((prev) => {
+      const next = prev.map((l) => {
+        if (l.id === labId) {
+          return {
+            ...l,
+            status: 'Draft' as const,
+            isWebsiteApproved: false,
+            planExpiresAt: yesterdayStr,
+            remainingVisibilityDays: 0,
+            planStatusReason: 'Expired — Contact 70870 33009',
+            _updatedAt: new Date().toISOString(),
+          };
+        }
+        return l;
+      });
+      try {
+        localStorage.setItem('cms_vendor_labs_list', JSON.stringify(next));
+      } catch {}
+      const targetItem = next.find((l) => l.id === labId);
+      if (targetItem) syncVendorLabToCloud(targetItem);
+      return next;
+    });
+  };
+
   // Vendor Lab Directory Management
   const addVendorLab = (vendor: Omit<VendorLabDirectoryItem, 'id'>): VendorLabDirectoryItem => {
     // New labs always start in Draft mode until Super Admin publishes/approves
@@ -6083,6 +6366,14 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteDomainRequest,
         approveDomainRequest,
         rejectDomainRequest,
+
+        planRequests,
+        allPlanRequests,
+        submitPlanRenewalRequest,
+        approvePlanRenewalRequest,
+        rejectPlanRenewalRequest,
+        renewOrExtendVendorPlan,
+        expireVendorPlan,
 
         selectedVendorLabId,
         setSelectedVendorLabId,

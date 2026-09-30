@@ -40,12 +40,14 @@ import {
   CheckCheck,
   HardDriveDownload,
   FileText,
+  Zap,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { AppView, PricingPlan, CompanyFeature, LabManagementFeature } from '../types';
 import { VendorManagementTab } from './admin/VendorManagementTab';
 import { HostingerDatabaseCard } from './admin/HostingerDatabaseCard';
 import { WebsiteBackupTab } from './admin/WebsiteBackupTab';
+import { VendorPlanRenewTab } from './admin/VendorPlanRenewTab';
 
 interface CompanyAdminDashboardProps {
   onNavigateView: (view: AppView) => void;
@@ -85,9 +87,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     allDomainRequests,
     updateDomainRequest,
     deleteDomainRequest,
+    allPlanRequests,
   } = useCms();
 
-  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests';
+  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests' | 'plans';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
   type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features';
@@ -635,6 +638,37 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                   }`}
                 >
                   {allDomainRequests.length}
+                </span>
+              )}
+            </button>
+
+            {/* Plan Tab & Renew Requests */}
+            <button
+              type="button"
+              id="menu-btn-plan-renew"
+              onClick={() => setActiveMenu('plans')}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 relative ${
+                activeMenu === 'plans'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+              title="Plan Tab & Renew Requests (Vendor Subscriptions & Extensions)"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span>Plan &amp; Renew Req.</span>
+              {allPlanRequests.filter((r) => r.status === 'Pending').length > 0 ? (
+                <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full leading-none animate-pulse">
+                  {allPlanRequests.filter((r) => r.status === 'Pending').length}
+                </span>
+              ) : (
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden sm:inline-block leading-none ${
+                    activeMenu === 'plans'
+                      ? 'bg-slate-900 text-amber-300'
+                      : 'bg-white/15 text-slate-200'
+                  }`}
+                >
+                  {vendorLabsList.length}
                 </span>
               )}
             </button>
@@ -2490,6 +2524,18 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
             </div>
           )}
         </div>
+      </div>
+    )}
+
+    {/* VIEW 6: PLAN TAB & RENEW REQUESTS */}
+    {activeMenu === 'plans' && (
+      <div className="animate-in fade-in-50 duration-200">
+        <VendorPlanRenewTab
+          showToast={showToast}
+          onOpenVendorWebsite={(_labId) => {
+            onNavigateView('website');
+          }}
+        />
       </div>
     )}
   </div>
