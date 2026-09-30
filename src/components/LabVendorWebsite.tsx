@@ -2470,170 +2470,206 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       </header>
 
       {/* ========================================================================= */}
-      {/* 1. DESKTOP ONLY HERO: Left 70% Banner Section, Right 30% Check Report Section */}
+      {/* 1. HERO SECTION: 2-Column Layout matching indianlalaji.com Homepage Hero   */}
       {/* ========================================================================= */}
-      <section id="top" className="hidden lg:block bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white py-6 lg:py-8 border-b border-slate-200 scroll-mt-20 overflow-hidden">
+      <section id="hero-section" className="relative overflow-hidden bg-[#F8FAFC] pt-6 pb-12 sm:pt-10 sm:pb-16 border-b border-slate-200 scroll-mt-20">
+        {/* Subtle Background Radial Gradients */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute bottom-10 left-10 w-80 h-80 bg-teal-100/30 rounded-full blur-3xl pointer-events-none -z-10" />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-10 gap-6 xl:gap-8 items-start">
+          {/* Two-Column Grid: Left Content | Right Simple Plain Image Carousel */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             
-            {/* LEFT SIDE: Banner Section → 70% Width (7 out of 10 cols) */}
-            <div className="col-span-7 flex flex-col space-y-3">
-              {/* Trust Badge & Quick Info Bar above Banners */}
-              <div className="flex items-center justify-between gap-3 bg-white px-4 py-2.5 rounded-2xl border border-slate-200 shadow-2xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#123B6D]/10 text-[#123B6D] text-[11px] font-bold shrink-0">
-                    <span>© Since {labEstablishedYear}</span>
-                  </div>
-                  <span className="text-xs font-black text-slate-800 truncate">
-                    {labName}
-                  </span>
-                  <span className="hidden xl:inline-flex text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-                    {vendorLabSettings?.nablAccreditationNo || 'NABL Accredited'}
-                  </span>
+            {/* ========================================================
+                LEFT SIDE: Content, Highlights & CTAs
+                ======================================================== */}
+            <div className="lg:col-span-6 space-y-6">
+              {/* Trust Badge with Live Pulse */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#123B6D]/10 border border-[#123B6D]/15 text-[#123B6D] text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>
+                  {vendorLabSettings?.tagline || `NABL Accredited • Since ${labEstablishedYear} • ${labName}`}
+                </span>
+              </div>
+
+              {/* Main Headline */}
+              <h1 className="text-3xl sm:text-4xl lg:text-[44px] leading-[1.18] lg:leading-[1.12] font-black text-[#123B6D] tracking-tight">
+                {vendorLabSettings?.heroPromoText || 'Fast, Accurate & Reliable Diagnostics for Your Entire Family'}
+              </h1>
+
+              {/* Sub-headline */}
+              <p className="text-base sm:text-lg text-[#475569] leading-relaxed max-w-[540px]">
+                {vendorLabSettings?.description ||
+                  'Experience same-day digital lab reports on WhatsApp, 100% automated barcoded testing, certified pathologist approval, and free doorstep home sample collection.'}
+              </p>
+
+              {/* Key Lab Benefits Checklist - Left-Right 2 Columns on Mobile & Desktop */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 pt-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Same-Day Reports</span>
                 </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Online WhatsApp Reports</span>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>100% Barcoded Analyzers</span>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-slate-700">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="leading-tight sm:leading-normal">Doorstep Home Collection</span>
+                </div>
+              </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <a
-                    href={`tel:+91${cleanPhone}`}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#123B6D] hover:text-[#0F766E] transition"
-                    title="Call Lab Helpline"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="font-extrabold">+91 {labPhone}</span>
-                  </a>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  id="vendor-hero-btn-book"
+                  onClick={() => {
+                    setSelectedTestOrPackage(
+                      vendorPackages[0]
+                        ? `${vendorPackages[0].name} (₹${vendorPackages[0].priceINR})`
+                        : 'Full Body Health Checkup (₹999)'
+                    );
+                    setIsBookingModalOpen(true);
+                  }}
+                  className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-7 py-3.5 rounded-xl font-bold text-sm transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <span>Book Health Checkup</span>
+                  <ArrowRight className="w-4 h-4 text-amber-400" />
+                </button>
 
-                  {/* Admin Edit Banners Action */}
+                <button
+                  id="vendor-hero-btn-report"
+                  onClick={() => {
+                    const el = document.getElementById('check-report-section');
+                    el?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="bg-white hover:bg-slate-50 text-[#123B6D] border border-slate-300 px-6 py-3.5 rounded-xl font-bold text-sm transition shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <FileText className="w-4 h-4 text-[#0F766E]" />
+                  <span>Check &amp; Download Report</span>
+                </button>
+
+                <a
+                  href={`tel:+91${cleanPhone}`}
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-[#123B6D] px-2 py-1.5 transition"
+                  title="Call Lab Helpline"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <span>+91 {labPhone}</span>
+                </a>
+              </div>
+            </div>
+
+            {/* ========================================================
+                RIGHT SIDE: Simple Plain Image Carousel
+                ======================================================== */}
+            <div className="lg:col-span-6 relative">
+              <div
+                className="group relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border border-slate-200/90 bg-white"
+                onMouseEnter={() => setIsHeroPaused(true)}
+                onMouseLeave={() => setIsHeroPaused(false)}
+              >
+                {/* Plain Image Canvas */}
+                <div className="relative aspect-[4/3] sm:aspect-[16/11] w-full overflow-hidden bg-slate-100 select-none">
+                  {heroBannersList.map((bannerUrl, index) => {
+                    const isActive = index === activeHeroBanner;
+                    return (
+                      <div
+                        key={index}
+                        className={`absolute inset-0 transition-opacity duration-700 ease-in-out cursor-pointer ${
+                          isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                        }`}
+                        onClick={() => {
+                          setSelectedTestOrPackage(
+                            vendorPackages[0]
+                              ? `${vendorPackages[0].name} (₹${vendorPackages[0].priceINR})`
+                              : 'Full Body Health Checkup (₹999)'
+                          );
+                          setIsBookingModalOpen(true);
+                        }}
+                      >
+                        <img
+                          src={bannerUrl}
+                          alt={`${labName} Showcase ${index + 1}`}
+                          className="w-full h-full object-cover object-center"
+                          loading={index === 0 ? 'eager' : 'lazy'}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* Subtle Prev / Next Navigation Arrows */}
+                  {heroBannersList.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveHeroBanner(
+                            (prev) => (prev === 0 ? heroBannersList.length - 1 : prev - 1)
+                          );
+                        }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/85 hover:bg-white text-slate-800 backdrop-blur-sm border border-slate-200/80 flex items-center justify-center transition shadow-md hover:scale-105 active:scale-95 cursor-pointer opacity-70 group-hover:opacity-100"
+                        aria-label="Previous Image"
+                      >
+                        <ChevronLeft className="w-5 h-5 text-slate-700" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length);
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/85 hover:bg-white text-slate-800 backdrop-blur-sm border border-slate-200/80 flex items-center justify-center transition shadow-md hover:scale-105 active:scale-95 cursor-pointer opacity-70 group-hover:opacity-100"
+                        aria-label="Next Image"
+                      >
+                        <ChevronRight className="w-5 h-5 text-slate-700" />
+                      </button>
+                    </>
+                  )}
+
+                  {/* Admin Banner Edit Trigger */}
                   {(currentUser?.role === 'vendor' || currentUser?.role === 'admin') && (
                     <button
                       type="button"
-                      onClick={() => setIsBannerManagerOpen(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold transition cursor-pointer"
-                      title="Edit Promotional Banners"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsBannerManagerOpen(true);
+                      }}
+                      className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm text-xs font-bold transition cursor-pointer shadow-md"
+                      title="Edit Carousel Photos"
                     >
-                      <ImageIcon className="w-3 h-3 text-amber-700" />
+                      <ImageIcon className="w-3.5 h-3.5 text-amber-300" />
                       <span>Edit Banners</span>
                     </button>
                   )}
                 </div>
-              </div>
 
-              {/* Large Promotional Banner Carousel Container (Full 70% Width) */}
-              <div className="relative w-full rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-200/90 bg-slate-950 aspect-[16/9] min-h-[420px] max-h-[475px] group">
-                {/* Auto-sliding Image Carousel Track */}
-                <div
-                  ref={heroCarouselDesktopRef}
-                  onMouseEnter={() => setIsHeroPaused(true)}
-                  onMouseLeave={() => setIsHeroPaused(false)}
-                  className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth w-full h-full"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                  {heroBannersList.map((bannerUrl, idx) => (
-                    <div
-                      key={idx}
-                      className="w-full shrink-0 snap-center relative bg-slate-950 h-full cursor-pointer"
-                      onClick={() => {
-                        setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
-                        setIsBookingModalOpen(true);
-                      }}
-                      title="Click to Book Health Checkup"
-                    >
-                      <img
-                        src={bannerUrl}
-                        alt={`${labName} Banner ${idx + 1}`}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
-                        loading={idx === 0 ? 'eager' : 'lazy'}
-                      />
-                    </div>
+                {/* Clean Dot Indicators Below Image */}
+                <div className="py-3 bg-white flex items-center justify-center gap-2 border-t border-slate-100">
+                  {heroBannersList.map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setActiveHeroBanner(index)}
+                      className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                        index === activeHeroBanner
+                          ? 'w-7 bg-[#123B6D]'
+                          : 'w-2 bg-slate-300 hover:bg-slate-400'
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
                   ))}
                 </div>
-
-                {/* Navigation Arrows */}
-                {heroBannersList.length > 1 && (
-                  <div className="flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-10">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length);
-                      }}
-                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
-                      aria-label="Previous Slide"
-                    >
-                      <ChevronLeft className="w-5 h-5 text-slate-700" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length);
-                      }}
-                      className="w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-md flex items-center justify-center transition cursor-pointer pointer-events-auto active:scale-95 border border-slate-200 backdrop-blur-xs"
-                      aria-label="Next Slide"
-                    >
-                      <ChevronRight className="w-5 h-5 text-slate-700" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Floating Quality & Discount Badge */}
-                <div className="absolute bottom-3 left-4 bg-slate-950/75 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/20 text-white text-xs font-bold pointer-events-none flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>NABL Accredited Diagnostics • Accurate Digital Reports</span>
-                </div>
               </div>
-
-              {/* Pagination Dots Below Banners */}
-              <div className="flex items-center justify-center gap-2 pt-0.5">
-                {heroBannersList.map((_, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setActiveHeroBanner(idx)}
-                    className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                      activeHeroBanner === idx
-                        ? 'w-8 bg-[#123B6D] shadow-xs'
-                        : 'w-2.5 bg-slate-300 hover:bg-slate-400'
-                    }`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Micro Trust Strip */}
-              <div className="grid grid-cols-3 gap-3 pt-1">
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-xs shrink-0">
-                    ⚡
-                  </div>
-                  <div className="text-[11px] leading-tight">
-                    <span className="font-extrabold text-slate-800 block">Same-Day Reports</span>
-                    <span className="text-slate-500">Fast digital delivery</span>
-                  </div>
-                </div>
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center text-xs shrink-0">
-                    🔬
-                  </div>
-                  <div className="text-[11px] leading-tight">
-                    <span className="font-extrabold text-slate-800 block">100% Barcoded</span>
-                    <span className="text-slate-500">Automated analyzers</span>
-                  </div>
-                </div>
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2.5 shadow-2xs">
-                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center text-xs shrink-0">
-                    🏠
-                  </div>
-                  <div className="text-[11px] leading-tight">
-                    <span className="font-extrabold text-slate-800 block">Home Collection</span>
-                    <span className="text-slate-500">Free doorstep pickup</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT SIDE: “Check & Download Patient Lab Report” Section → 30% Width (3 out of 10 cols) */}
-            <div id="check-report-section-desktop" className="col-span-3">
-              {renderCheckReportCard(false, undefined, 'desktop')}
             </div>
 
           </div>
@@ -2641,162 +2677,30 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. MOBILE ONLY LAYOUT (Unchanged - Mobile layout already correct)          */}
+      {/* 2. CHECK & DOWNLOAD PATIENT LAB REPORT (Full-width section directly below hero) */}
       {/* ========================================================================= */}
-      <div className="lg:hidden">
-        {/* Mobile Section 1: Hero Banner */}
-        <section id="top-mobile" className="bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white py-8 border-b border-slate-200 scroll-mt-20 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="flex flex-col space-y-5 text-left">
-              {/* Trust Badge: © Since & Lab Name */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#123B6D]/10 text-[#123B6D] border border-[#123B6D]/20 text-xs font-bold tracking-wide w-fit shadow-2xs">
-                <span className="text-xs">©</span>
-                <span>Since {labEstablishedYear} • {labName}</span>
-              </div>
-
-              {/* 1. Large, bold headline with highlighted text */}
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-[1.15]">
-                Fast, Accurate &amp;{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#123B6D] via-[#0F766E] to-teal-600">
-                  Reliable Diagnostics
-                </span>{' '}
-                for Your Entire Family
-              </h1>
-
-              {/* 3. Short descriptive paragraph */}
-              <p className="text-sm text-slate-600 leading-relaxed font-normal">
-                Experience same-day digital lab reports on WhatsApp, 100% automated barcoded testing, certified pathologist approval, and free doorstep home sample collection.
-              </p>
-
-              {/* 4. Prominent “Phone Number” CTA button */}
-              <div className="flex flex-wrap items-center gap-3.5 pt-1">
-                <a
-                  href={`tel:+91${cleanPhone}`}
-                  className="inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl bg-[#123B6D] hover:bg-[#0c294d] text-white font-extrabold text-sm transition-all duration-300 shadow-lg active:scale-98 group cursor-pointer border border-[#123B6D]/40"
-                  id="hero-phone-cta-btn-mobile"
-                >
-                  <span className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-amber-300 shadow-xs">
-                    <Phone className="w-5 h-5" />
-                  </span>
-                  <div className="text-left leading-tight">
-                    <span className="block text-[10px] font-bold text-amber-300 uppercase tracking-wider">
-                      Call / Helpline Number
-                    </span>
-                    <span className="block font-black text-base tracking-wide text-white">
-                      +91 {labPhone}
-                    </span>
-                  </div>
-                </a>
-              </div>
-
-              {/* Mobile Image Carousel */}
-              <div className="flex flex-col items-center w-full pt-2">
-                <div className="relative w-full rounded-3xl overflow-hidden shadow-xl border border-slate-200/90 bg-slate-950 aspect-[16/10] sm:aspect-[16/9] max-h-[460px] group">
-                  <div
-                    ref={heroCarouselRef}
-                    onTouchStart={handleHeroTouchStart}
-                    onTouchMove={handleHeroTouchMove}
-                    onTouchEnd={handleHeroTouchEnd}
-                    onMouseEnter={() => setIsHeroPaused(true)}
-                    onMouseLeave={() => setIsHeroPaused(false)}
-                    className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth w-full h-full"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                  >
-                    {heroBannersList.map((bannerUrl, idx) => (
-                      <div
-                        key={idx}
-                        className="w-full shrink-0 snap-center relative bg-slate-950 h-full cursor-pointer"
-                        onClick={() => {
-                          setSelectedTestOrPackage('Full Body Health Checkup (₹999)');
-                          setIsBookingModalOpen(true);
-                        }}
-                        title="Click to Book Health Checkup"
-                      >
-                        <img
-                          src={bannerUrl}
-                          alt={`${labName} Banner ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                          loading={idx === 0 ? 'eager' : 'lazy'}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {heroBannersList.length > 1 && (
-                    <div className="flex items-center justify-between absolute top-1/2 -translate-y-1/2 left-3 right-3 pointer-events-none z-10">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveHeroBanner((prev) => (prev - 1 + heroBannersList.length) % heroBannersList.length);
-                        }}
-                        className="w-10 h-10 rounded-full bg-white/90 text-slate-800 shadow-md flex items-center justify-center pointer-events-auto active:scale-95 border border-slate-200"
-                        aria-label="Previous Slide"
-                      >
-                        <ChevronLeft className="w-5 h-5 text-slate-700" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveHeroBanner((prev) => (prev + 1) % heroBannersList.length);
-                        }}
-                        className="w-10 h-10 rounded-full bg-white/90 text-slate-800 shadow-md flex items-center justify-center pointer-events-auto active:scale-95 border border-slate-200"
-                        aria-label="Next Slide"
-                      >
-                        <ChevronRight className="w-5 h-5 text-slate-700" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Mobile Pagination Dots */}
-                <div className="flex items-center justify-center gap-2 mt-3.5">
-                  {heroBannersList.map((_, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setActiveHeroBanner(idx)}
-                      className={`h-2.5 rounded-full transition-all duration-300 ${
-                        activeHeroBanner === idx
-                          ? 'w-8 bg-[#123B6D] shadow-xs'
-                          : 'w-2.5 bg-slate-300'
-                      }`}
-                      aria-label={`Go to slide ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
+      <section id="check-report-section" className="py-12 sm:py-16 bg-gradient-to-b from-[#F8FAFC] via-slate-50 to-white border-b border-slate-200 scroll-mt-20">
+        <span id="check-report-quick" className="sr-only" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-3">
+              <FileText className="w-3.5 h-3.5 text-[#0F766E]" />
+              <span>Instant Lab Report Access</span>
             </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#123B6D] tracking-tight">
+              {vendorLabSettings?.reportCheckTitle || 'Check & Download Patient Lab Report'}
+            </h2>
+            <p className="text-sm text-[#64748B] mt-2">
+              {vendorLabSettings?.reportCheckSubtitle ||
+                'Access your verified diagnostic reports directly using your registered mobile number or Token Number.'}
+            </p>
           </div>
-        </section>
 
-        {/* Mobile Section 2: Fast Patient Report Download Portal */}
-        <section id="check-report-section" className="py-10 bg-slate-50/80 border-b border-slate-200 scroll-mt-20">
-          <span id="check-report-quick" className="sr-only" />
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="text-center max-w-2xl mx-auto mb-6">
-              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-bold mb-2">
-                <FileText className="w-3.5 h-3.5 text-[#0F766E]" />
-                <span>Instant Lab Report Access</span>
-              </div>
-              <h2 className="text-2xl font-extrabold text-[#123B6D] tracking-tight">
-                {vendorLabSettings?.reportCheckTitle || 'Check & Download Patient Lab Report'}
-              </h2>
-              {Boolean(vendorLabSettings?.reportCheckSubtitle !== undefined ? vendorLabSettings.reportCheckSubtitle : true) && (
-                <p className="text-xs text-[#64748B] mt-1">
-                  {vendorLabSettings?.reportCheckSubtitle || 'Access your verified diagnostic reports directly using your registered mobile number or Token Number.'}
-                </p>
-              )}
-            </div>
-
-            <div className="max-w-xl mx-auto">
-              {renderCheckReportCard(false, undefined, 'mobile')}
-            </div>
+          <div className="max-w-2xl mx-auto">
+            {renderCheckReportCard(false, undefined, '')}
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
       {/* SECTION 3: HEALTH PACKAGES (with Booking Button & Peek Carousel) */}
       <div id="packages-section" className="scroll-mt-24" />
