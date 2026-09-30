@@ -1864,10 +1864,12 @@ interface CmsContextType {
   vendorLabSettings: VendorLabSettings;
   updateVendorLabSettings: (newSettings: Partial<VendorLabSettings>) => void;
   vendorPackages: VendorPackage[];
+  allVendorPackages: VendorPackage[];
   addVendorPackage: (pkg: Omit<VendorPackage, 'id'>) => void;
   updateVendorPackage: (id: string, pkg: Partial<VendorPackage>) => void;
   deleteVendorPackage: (id: string) => void;
   vendorTests: TestItem[];
+  allVendorTests: TestItem[];
   addVendorTest: (test: Omit<TestItem, 'id'>) => void;
   updateVendorTest: (id: string, test: Partial<TestItem>) => void;
   deleteVendorTest: (id: string) => void;
@@ -1877,6 +1879,7 @@ interface CmsContextType {
   updateVendorDoctor: (id: string, doc: Partial<VendorDoctor>) => void;
   deleteVendorDoctor: (id: string) => void;
   vendorBranches: VendorBranch[];
+  allVendorBranches: VendorBranch[];
   addVendorBranch: (branch: Omit<VendorBranch, 'id'>) => void;
   updateVendorBranch: (id: string, branch: Partial<VendorBranch>) => void;
   deleteVendorBranch: (id: string) => void;
@@ -1962,6 +1965,11 @@ interface CmsContextType {
   // Backup & Restore
   importFullWebsiteBackup: (backup: any) => { success: boolean; message: string };
   importCustomerEntryBackup: (backup: any, mode?: 'append' | 'replace') => { success: boolean; message: string; count: number };
+  importAllWebsitesBackup: (backup: any) => { success: boolean; message: string; count: number };
+  importSingleCustomerWebsiteBackup: (
+    backup: any,
+    targetPhoneOrId?: string
+  ) => { success: boolean; message: string; customerName?: string; labId?: string; customerPhone?: string };
 
   // Multi-Lab Data Isolation & Tenant Security
   activeTenantId: string;
@@ -5639,6 +5647,281 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Import All Websites Master Backup (Super Admin)
+  const importAllWebsitesBackup = (backup: any): { success: boolean; message: string; count: number } => {
+    try {
+      if (!backup || typeof backup !== 'object') {
+        return { success: false, message: 'Invalid master backup file structure.', count: 0 };
+      }
+      let count = 0;
+      // 1. Websites directory (vendorLabsList)
+      if (Array.isArray(backup.websites) && backup.websites.length > 0) {
+        setVendorLabsList(backup.websites);
+        try {
+          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(backup.websites));
+        } catch {}
+        count = backup.websites.length;
+      }
+      // 2. Settings map
+      if (backup.settingsMap && typeof backup.settingsMap === 'object') {
+        setVendorLabSettingsMap((prev) => {
+          const merged = { ...prev, ...backup.settingsMap };
+          try {
+            localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+      // 3. Packages
+      if (Array.isArray(backup.packages) && backup.packages.length > 0) {
+        setAllVendorPackages(backup.packages);
+        try {
+          localStorage.setItem('cms_all_vendor_packages', JSON.stringify(backup.packages));
+        } catch {}
+      }
+      // 4. Tests
+      if (Array.isArray(backup.tests) && backup.tests.length > 0) {
+        setAllVendorTests(backup.tests);
+        try {
+          localStorage.setItem('cms_all_vendor_tests', JSON.stringify(backup.tests));
+        } catch {}
+      }
+      // 5. Doctors
+      if (Array.isArray(backup.doctors) && backup.doctors.length > 0) {
+        setAllVendorDoctors(backup.doctors);
+        try {
+          localStorage.setItem('cms_all_vendor_doctors', JSON.stringify(backup.doctors));
+        } catch {}
+      }
+      // 6. Branches
+      if (Array.isArray(backup.branches) && backup.branches.length > 0) {
+        setAllVendorBranches(backup.branches);
+        try {
+          localStorage.setItem('cms_all_vendor_branches', JSON.stringify(backup.branches));
+        } catch {}
+      }
+      // 7. Global company settings (if included)
+      if (backup.companySettings && typeof backup.companySettings === 'object') {
+        updateCompanySettings(backup.companySettings);
+      }
+      return {
+        success: true,
+        message: `All websites backup successfully restored! (${count || 'All'} customer websites synchronized)`,
+        count: count || 1,
+      };
+    } catch (err: any) {
+      return { success: false, message: `Failed to restore master backup: ${err.message}`, count: 0 };
+    }
+  };
+
+  // Import Single Customer Website Backup (Super Admin)
+  const importSingleCustomerWebsiteBackup = (
+    backup: any,
+    targetPhoneOrId?: string
+  ): { success: boolean; message: string; customerName?: string; labId?: string; customerPhone?: string } => {
+    try {
+      if (!backup || typeof backup !== 'object') {
+        return { success: false, message: 'Invalid customer backup file structure.' };
+      }
+
+      const settingsObj = backup.settings || {};
+      const labDetailsObj = backup.labDetails || {};
+
+      // 1. Resolve customer number/phone from all possible places
+      const customerNum = (
+        targetPhoneOrId ||
+        backup.customerNumber ||
+        backup.customerPhone ||
+        backup.phone ||
+        settingsObj.phone ||
+        settingsObj.contactPhone ||
+        labDetailsObj.phone ||
+        ''
+      ).trim();
+
+      const labId = (
+        backup.labId ||
+        backup.id ||
+        settingsObj.labId ||
+        labDetailsObj.id ||
+        ''
+      ).trim();
+
+      // Find matching lab from vendorLabsList
+      const normalizedQuery = customerNum.replace(/\D/g, '');
+      let matchedLab = vendorLabsList.find((l) => {
+        const pNorm = (l.phone || '').replace(/\D/g, '');
+        return (
+          (customerNum && l.phone === customerNum) ||
+          (normalizedQuery && pNorm && (pNorm.endsWith(normalizedQuery) || normalizedQuery.endsWith(pNorm))) ||
+          (labId && l.id === labId)
+        );
+      });
+
+      // Target lab ID
+      const targetLabId =
+        matchedLab?.id ||
+        labId ||
+        (customerNum ? `lab-${customerNum.replace(/\D/g, '').slice(-6)}` : `lab-${Date.now().toString().slice(-6)}`);
+
+      const labName =
+        backup.labName ||
+        backup.name ||
+        settingsObj.labName ||
+        labDetailsObj.name ||
+        backup.customerName ||
+        matchedLab?.name ||
+        'Diagnostic Laboratory';
+
+      const customerPhone = customerNum || matchedLab?.phone || '9876543210';
+      const ownerName =
+        backup.customerName ||
+        backup.ownerName ||
+        settingsObj.ownerName ||
+        labDetailsObj.ownerName ||
+        matchedLab?.ownerName ||
+        'Dr. Chief Pathologist';
+
+      const city = settingsObj.city || labDetailsObj.city || matchedLab?.city || 'Delhi NCR';
+
+      // 2. ALWAYS CREATE OR UPDATE IN vendorLabsList so the website appears everywhere!
+      const directoryItem: VendorLabDirectoryItem = {
+        name: labName,
+        tagline: settingsObj.tagline || labDetailsObj.tagline || 'Advanced Diagnostic & Pathology Center',
+        description: settingsObj.about || labDetailsObj.description || '',
+        logoUrl: settingsObj.logoUrl || labDetailsObj.logoUrl || '',
+        websiteUrl: settingsObj.websiteUrl || labDetailsObj.websiteUrl || `https://${targetLabId}.indianlalaji.com`,
+        city: city,
+        state: settingsObj.state || labDetailsObj.state || 'India',
+        address: settingsObj.address || labDetailsObj.address || '',
+        nablCode: settingsObj.nablCode || labDetailsObj.nablCode || 'NABL-IN-2026',
+        badge: labDetailsObj.badge || 'NABL Certified',
+        rating: labDetailsObj.rating || 4.9,
+        activePackages: Array.isArray(backup.packages) && backup.packages.length > 0 ? backup.packages.length : 3,
+        turnaroundTime: settingsObj.turnaroundTime || labDetailsObj.turnaroundTime || 'Same Day Reports',
+        emergency: true,
+        color: settingsObj.primaryColor || labDetailsObj.color || '#123B6D',
+        approvedAt: new Date().toISOString(),
+        approvedBy: 'Super Admin',
+        ownerName: ownerName,
+        ...labDetailsObj,
+        id: targetLabId,
+        phone: customerPhone,
+        status: 'Draft',
+        isWebsiteApproved: false,
+        badge: 'Draft - Pending Super Admin Approval',
+      };
+
+      setVendorLabsList((prev) => {
+        const exists = prev.some((l) => l.id === targetLabId || (customerPhone && l.phone === customerPhone));
+        let next: VendorLabDirectoryItem[];
+        if (exists) {
+          next = prev.map((l) =>
+            l.id === targetLabId || (customerPhone && l.phone === customerPhone)
+              ? { ...l, ...directoryItem, id: targetLabId, status: 'Draft', isWebsiteApproved: false, badge: 'Draft - Pending Super Admin Approval' }
+              : l
+          );
+        } else {
+          next = [directoryItem, ...prev];
+        }
+        try {
+          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      // 3. Settings map: unconditionally ensure targetLabId settings exist
+      const mergedSettings: VendorLabSettings = {
+        ...DEFAULT_VENDOR_LAB_SETTINGS,
+        ...settingsObj,
+        labId: targetLabId,
+        labName: labName,
+        phone: customerPhone,
+        ownerName: ownerName,
+        city: city,
+        sections: {
+          ...DEFAULT_VENDOR_LAB_SETTINGS.sections,
+          ...(backup.sections || settingsObj.sections || {}),
+        },
+      };
+
+      setVendorLabSettingsMap((prev) => {
+        const next = {
+          ...prev,
+          [targetLabId]: mergedSettings,
+        };
+        try {
+          localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      // 4. Packages
+      if (Array.isArray(backup.packages) && backup.packages.length > 0) {
+        const sanitized = backup.packages.map((p: any) => ({ ...p, labId: targetLabId }));
+        setAllVendorPackages((prev) => {
+          const next = [...sanitized, ...prev.filter((p) => p.labId !== targetLabId)];
+          try {
+            localStorage.setItem('cms_all_vendor_packages', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+
+      // 5. Tests
+      if (Array.isArray(backup.tests) && backup.tests.length > 0) {
+        const sanitized = backup.tests.map((t: any) => ({ ...t, labId: targetLabId }));
+        setAllVendorTests((prev) => {
+          const next = [...sanitized, ...prev.filter((t) => t.labId !== targetLabId)];
+          try {
+            localStorage.setItem('cms_vendor_tests', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+
+      // 6. Doctors
+      if (Array.isArray(backup.doctors) && backup.doctors.length > 0) {
+        const sanitized = backup.doctors.map((d: any) => ({ ...d, labId: targetLabId }));
+        setAllVendorDoctors((prev) => {
+          const next = [...sanitized, ...prev.filter((d) => d.labId !== targetLabId)];
+          try {
+            localStorage.setItem('cms_all_vendor_doctors', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+
+      // 7. Branches
+      if (Array.isArray(backup.branches) && backup.branches.length > 0) {
+        const sanitized = backup.branches.map((b: any) => ({ ...b, labId: targetLabId }));
+        setAllVendorBranches((prev) => {
+          const next = [...sanitized, ...prev.filter((b) => b.labId !== targetLabId)];
+          try {
+            localStorage.setItem('cms_vendor_devices_v6', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      }
+
+      // 8. ACTIVATE THIS LAB IMMEDIATELY
+      setSelectedVendorLabId(targetLabId);
+      try {
+        localStorage.setItem('cms_selected_vendor_lab_id', targetLabId);
+      } catch {}
+
+      return {
+        success: true,
+        message: `Website backup for "${labName}" (${customerPhone}) successfully imported into Website Drafts! Review and click "Approve & Publish Live" to make it live.`,
+        customerName: labName,
+        labId: targetLabId,
+        customerPhone: customerPhone,
+      };
+    } catch (err: any) {
+      return { success: false, message: `Failed to restore customer website: ${err.message}` };
+    }
+  };
+
   const patients: Patient[] = useMemo(() => {
     return (receptionEntries || []).map((e) => ({
       id: e.id,
@@ -5727,10 +6010,12 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateVendorSection,
         toggleAllVendorSections,
         vendorPackages,
+        allVendorPackages,
         addVendorPackage,
         updateVendorPackage,
         deleteVendorPackage,
         vendorTests,
+        allVendorTests,
         addVendorTest,
         updateVendorTest,
         deleteVendorTest,
@@ -5740,6 +6025,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateVendorDoctor,
         deleteVendorDoctor,
         vendorBranches,
+        allVendorBranches,
         addVendorBranch,
         updateVendorBranch,
         deleteVendorBranch,
@@ -5805,6 +6091,8 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetAllToDefaults,
         importFullWebsiteBackup,
         importCustomerEntryBackup,
+        importAllWebsitesBackup,
+        importSingleCustomerWebsiteBackup,
 
         // Multi-Lab Data Isolation & Tenant Security
         activeTenantId,

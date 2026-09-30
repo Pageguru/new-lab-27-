@@ -38,11 +38,13 @@ import {
   Download,
   Smartphone,
   CheckCheck,
+  HardDriveDownload,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { AppView, PricingPlan, CompanyFeature, LabManagementFeature } from '../types';
 import { VendorManagementTab } from './admin/VendorManagementTab';
 import { HostingerDatabaseCard } from './admin/HostingerDatabaseCard';
+import { WebsiteBackupTab } from './admin/WebsiteBackupTab';
 
 interface CompanyAdminDashboardProps {
   onNavigateView: (view: AppView) => void;
@@ -84,10 +86,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     deleteDomainRequest,
   } = useCms();
 
-  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'domain_requests';
+  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'backup' | 'domain_requests';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
-  type HomeSubTab = 'pricing' | 'upi_qr' | 'cloud_sync' | 'settings' | 'features';
+  type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features';
   const [homeSubTab, setHomeSubTab] = useState<HomeSubTab>('pricing');
   const activeTab = homeSubTab;
 
@@ -542,6 +544,21 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               </span>
             </button>
 
+            {/* Website Backup Module */}
+            <button
+              type="button"
+              id="menu-btn-backup"
+              onClick={() => setActiveMenu('backup')}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                activeMenu === 'backup'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <HardDriveDownload className="w-3.5 h-3.5" />
+              <span>Website Backup</span>
+            </button>
+
             {/* Complete Laboratory Management Features Tab */}
             <button
               type="button"
@@ -825,6 +842,18 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                   <span className="text-[10px] bg-amber-200 text-amber-950 font-black px-1.5 py-0.2 rounded-full">
                     Live
                   </span>
+                </button>
+
+                <button
+                  onClick={() => setHomeSubTab('backup')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                    homeSubTab === 'backup'
+                      ? 'bg-[#123B6D] text-white shadow-xs'
+                      : 'text-blue-900 bg-blue-50 hover:bg-blue-100/70 border border-blue-200'
+                  }`}
+                >
+                  <HardDriveDownload className="w-3.5 h-3.5 text-[#123B6D]" />
+                  <span>Website Backup</span>
                 </button>
 
                 <button
@@ -2003,6 +2032,16 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
           </div>
         )}
 
+        {/* WEBSITE BACKUP MODULE (SUPER ADMIN) */}
+        {activeTab === 'backup' && (
+          <div className="animate-in fade-in-50 duration-200">
+            <WebsiteBackupTab
+              onNavigateView={onNavigateView}
+              showToast={showToast}
+            />
+          </div>
+        )}
+
         {/* 4. LIVE CLOUD DB & SYNC INSPECTOR */}
         {activeTab === 'cloud_sync' && (
           <div className="space-y-6 animate-in fade-in-50 duration-200">
@@ -2219,7 +2258,17 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
       </div>
     )}
 
-    {/* VIEW 4: DOMAIN REQUESTS (Vendor Custom Domain Approvals) */}
+    {/* VIEW 4: WEBSITE BACKUP MODULE (All Websites & Single Customer) */}
+    {activeMenu === 'backup' && (
+      <div className="animate-in fade-in-50 duration-200">
+        <WebsiteBackupTab
+          onNavigateView={onNavigateView}
+          showToast={showToast}
+        />
+      </div>
+    )}
+
+    {/* VIEW 5: DOMAIN REQUESTS (Vendor Custom Domain Approvals) */}
     {activeMenu === 'domain_requests' && (
       <div className="space-y-6 animate-in fade-in-50 duration-200">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
