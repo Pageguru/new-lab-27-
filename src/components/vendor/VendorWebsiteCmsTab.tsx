@@ -840,24 +840,27 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 </span>
               </div>
               <p className="text-xs text-amber-900 mt-1 max-w-2xl leading-relaxed">
-                लैब बनाने के बाद वेबसाइट अभी <strong>ड्राफ्ट मोड</strong> में है। जब प्लेटफॉर्म एडमिन (Admin) इसे अप्रूव करेंगे, तभी यह पब्लिकली लाइव होगी। आप सेटिंग्स एडिट कर सकते हैं और प्रीव्यू देख सकते हैं।
+                लैब बनाने के बाद वेबसाइट अभी <strong>ड्राफ्ट मोड</strong> में है। <strong>ड्राफ्ट वेबसाइट को सिर्फ सुपर एडमिन ही लाइव कर सकता है।</strong> जब प्लेटफॉर्म सुपर एडमिन (Super Admin) इसे रिव्यू करके अप्रूव करेंगे, तभी यह पब्लिकली लाइव होगी।
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const targetLabId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId;
-              if (targetLabId) {
-                setVendorStatus(targetLabId, 'Active');
-                triggerToast('Website published LIVE and approved!');
-              }
-            }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95"
-          >
-            <CheckCircle2 className="w-4 h-4 text-white" />
-            <span>Publish Website Live (वेबसाइट लाइव करें)</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <a
+              href="tel:7087033009"
+              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>Call 70870 33009</span>
+            </a>
+            <a
+              href="https://wa.me/917087033009?text=Hello%20Super%20Admin%2C%20please%20approve%20and%20make%20my%20laboratory%20website%20live."
+              target="_blank"
+              rel="noreferrer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span>💬 WhatsApp 70870 33009</span>
+            </a>
+          </div>
         </div>
       )}
 

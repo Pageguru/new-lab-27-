@@ -1577,52 +1577,6 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 </div>
               </div>
             )}
-
-            {/* Simulator Bar for Easy Verification */}
-            <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-[11px] text-slate-500 font-medium">
-                Testing Simulator (Verify Active / Expired states instantly):
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    expireVendorPlan(currentLabId);
-                    setFormData((prev) => ({
-                      ...prev,
-                      remainingVisibilityDays: 0,
-                      planExpiresAt: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
-                    }));
-                    setToastMessage('Plan simulated as EXPIRED (0 Days, Draft Mode, Offline)!');
-                    setIsSavedToast(true);
-                    setTimeout(() => setIsSavedToast(false), 3000);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 font-bold transition cursor-pointer"
-                  title="Simulate Plan Expiration"
-                >
-                  🔴 Test Expire Plan (Set 0d / Draft)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    renewOrExtendVendorPlan(currentLabId, '1 Month', 30);
-                    setFormData((prev) => ({
-                      ...prev,
-                      remainingVisibilityDays: 30,
-                      purchasedPlan: '1 Month',
-                      planExpiresAt: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-                    }));
-                    setToastMessage('Plan renewed to 30 Days Active!');
-                    setIsSavedToast(true);
-                    setTimeout(() => setIsSavedToast(false), 3000);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 font-bold transition cursor-pointer"
-                  title="Simulate Plan Activation"
-                >
-                  🟢 Test Activate (+30 Days)
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* ======================================================== */}
