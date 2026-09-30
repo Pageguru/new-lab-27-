@@ -108,6 +108,9 @@ export interface CompanySettings {
   superAdminDomain?: string;
   platformDomain?: string;
   sections?: Partial<PortalWebsiteSections>;
+  upiId?: string;
+  upiMerchantName?: string;
+  qrCodeUrl?: string;
 }
 
 export interface PricingPlan {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, IndianRupee, Check, ShieldCheck, Lock, AlertCircle, Printer, MessageSquare } from 'lucide-react';
+import { X, IndianRupee, Check, ShieldCheck, Lock, AlertCircle, Printer, MessageSquare, QrCode, Smartphone, Copy } from 'lucide-react';
 import { ReceptionPatientEntry } from '../types';
+import { useCms } from '../context/CmsContext';
 
 interface CollectRemainingPaymentModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const CollectRemainingPaymentModal: React.FC<CollectRemainingPaymentModal
   onCollectPayment,
   onPaymentCollected,
 }) => {
+  const { vendorLabSettings } = useCms();
   if (!isOpen || !entry) return null;
 
   const netPayable = Math.max(0, entry.totalAmount - (entry.discountINR || 0));
@@ -222,6 +224,48 @@ export const CollectRemainingPaymentModal: React.FC<CollectRemainingPaymentModal
                 </button>
               ))}
             </div>
+
+            {/* Dynamic UPI QR Code Scanner when UPI is selected */}
+            {paymentMode === 'UPI' && (() => {
+              const labUpi = vendorLabSettings?.upiId1 || (vendorLabSettings as any)?.upiId || 'apexlab@icici';
+              const labMerchant = vendorLabSettings?.merchantName || vendorLabSettings?.labName || 'Apex Diagnostic Lab';
+              const dynamicUpiUri = `upi://pay?pa=${encodeURIComponent(labUpi)}&pn=${encodeURIComponent(labMerchant)}&am=${collectAmount}&cu=INR&tn=${encodeURIComponent(`Token ${entry.tokenNumber || entry.tokenNo} Balance - ${entry.patientName}`)}`;
+              const dynamicQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(dynamicUpiUri)}`;
+
+              return (
+                <div className="mt-3 bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex flex-col sm:flex-row items-center gap-3.5 text-xs">
+                  <div className="p-1.5 bg-white rounded-xl shadow-xs border border-amber-200 shrink-0">
+                    <img
+                      src={dynamicQrUrl}
+                      alt="Dynamic Counter UPI QR"
+                      className="w-28 h-28 object-contain rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1 text-center sm:text-left flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                        Exact Due Amount Injected
+                      </span>
+                      <span className="text-base font-black text-slate-900 font-mono">₹{collectAmount}</span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-800">{labMerchant}</div>
+                    <div className="text-[11px] font-mono text-slate-600 font-bold">{labUpi}</div>
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      Patient scans with Google Pay, PhonePe, or Paytm. Exact amount of <strong>₹{collectAmount}</strong> will auto-fill on phone.
+                    </p>
+                    <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
+                      <a
+                        href={dynamicUpiUri}
+                        className="px-2.5 py-1 bg-[#123B6D] text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      >
+                        <Smartphone className="w-3 h-3" />
+                        <span>Open on UPI App</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Status Preview Card */}

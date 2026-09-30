@@ -32,6 +32,12 @@ import {
   Server,
   RotateCcw,
   ExternalLink,
+  QrCode,
+  Copy,
+  Share2,
+  Download,
+  Smartphone,
+  CheckCheck,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { AppView, PricingPlan, CompanyFeature, LabManagementFeature } from '../types';
@@ -81,9 +87,23 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
   type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'domain_requests';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
-  type HomeSubTab = 'pricing' | 'cloud_sync' | 'settings' | 'features';
+  type HomeSubTab = 'pricing' | 'upi_qr' | 'cloud_sync' | 'settings' | 'features';
   const [homeSubTab, setHomeSubTab] = useState<HomeSubTab>('pricing');
   const activeTab = homeSubTab;
+
+  // Super Admin Dynamic UPI QR State
+  const [upiSelectedPlan, setUpiSelectedPlan] = useState<string>('3 Months');
+  const [upiDynamicAmount, setUpiDynamicAmount] = useState<number>(4999);
+  const [upiSelectedLabId, setUpiSelectedLabId] = useState<string>('walkin');
+  const [upiCustomClientName, setUpiCustomClientName] = useState<string>('');
+  const [upiCustomClientPhone, setUpiCustomClientPhone] = useState<string>('');
+  const [upiNote, setUpiNote] = useState<string>('Subscription Plan - 3 Months - IndianLalaji OS');
+  const [copiedUpiLink, setCopiedUpiLink] = useState(false);
+  const [copiedUpiId, setCopiedUpiId] = useState(false);
+  const [copiedUpiAmount, setCopiedUpiAmount] = useState(false);
+  const [superAdminUpiVpa, setSuperAdminUpiVpa] = useState<string>(companySettings.upiId || '7087033009@okbizaxis');
+  const [superAdminPayeeName, setSuperAdminPayeeName] = useState<string>(companySettings.upiMerchantName || 'INDIANLALAJI.COM LAB OS');
+  const [upiSavedToast, setUpiSavedToast] = useState(false);
 
   const [toastMessage, setToastMessage] = useState('');
   const [pingResult, setPingResult] = useState<{ status: 'idle' | 'testing' | 'success'; latencyMs?: number; message?: string }>({ status: 'idle' });
@@ -793,6 +813,21 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 </button>
 
                 <button
+                  onClick={() => setHomeSubTab('upi_qr')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                    homeSubTab === 'upi_qr'
+                      ? 'bg-[#123B6D] text-white shadow-xs'
+                      : 'text-slate-700 bg-amber-50 hover:bg-amber-100/70 border border-amber-200'
+                  }`}
+                >
+                  <QrCode className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Dynamic UPI QR Scanner</span>
+                  <span className="text-[10px] bg-amber-200 text-amber-950 font-black px-1.5 py-0.2 rounded-full">
+                    Live
+                  </span>
+                </button>
+
+                <button
                   onClick={() => setHomeSubTab('cloud_sync')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                     homeSubTab === 'cloud_sync'
@@ -1050,6 +1085,521 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
             </div>
           </div>
         )}
+
+        {/* 1.1 DYNAMIC UPI SCANNER QR TAB */}
+        {activeTab === 'upi_qr' && (() => {
+          const effectiveSuperAdminUpi = superAdminUpiVpa.trim() || companySettings.upiId || '7087033009@okbizaxis';
+          const effectivePayeeName = superAdminPayeeName.trim() || companySettings.upiMerchantName || 'INDIANLALAJI.COM LAB OS';
+          const getPlanPrice = (planKeyword: string, fallback: number) => {
+            const match = pricingPlans.find((p) => p.name.toLowerCase().includes(planKeyword.toLowerCase()));
+            return match ? (match.priceINR ?? match.monthlyPriceINR) : fallback;
+          };
+
+          const selectedLab = vendorLabsList.find((l) => l.id === upiSelectedLabId);
+          const targetRecipientName = selectedLab ? selectedLab.name : (upiCustomClientName.trim() || 'New Diagnostic Center');
+          const targetRecipientPhone = selectedLab ? selectedLab.phone : (upiCustomClientPhone.trim() || '7087033009');
+
+          const dynamicUpiUri = `upi://pay?pa=${encodeURIComponent(effectiveSuperAdminUpi)}&pn=${encodeURIComponent(effectivePayeeName)}&am=${upiDynamicAmount}&cu=INR&tn=${encodeURIComponent(upiNote.trim() || 'Lab Software Subscription')}`;
+          const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=340x340&data=${encodeURIComponent(dynamicUpiUri)}`;
+
+          const handleSaveUpiDetails = (e?: React.FormEvent) => {
+            if (e) e.preventDefault();
+            updateCompanySettings({
+              upiId: effectiveSuperAdminUpi,
+              upiMerchantName: effectivePayeeName,
+            });
+            setSettingsForm((prev) => ({
+              ...prev,
+              upiId: effectiveSuperAdminUpi,
+              upiMerchantName: effectivePayeeName,
+            }));
+            setUpiSavedToast(true);
+            setTimeout(() => setUpiSavedToast(false), 2500);
+            showToast('Super Admin UPI VPA & Merchant Name updated successfully!');
+          };
+
+          const handleSelectPlanPreset = (planName: string, price: number) => {
+            setUpiSelectedPlan(planName);
+            setUpiDynamicAmount(price);
+            setUpiNote(`${planName} SaaS Plan - ${targetRecipientName}`);
+          };
+
+          const handleWhatsAppShare = () => {
+            const cleanPhone = targetRecipientPhone.replace(/\D/g, '');
+            const message = `*INDIANLALAJI.COM — LABORATORY SOFTWARE SUBSCRIPTION*\n\n` +
+              `Hello *${targetRecipientName}*,\n\n` +
+              `Here is your official dynamic UPI payment link and details for *${upiSelectedPlan}*:\n\n` +
+              `💰 *Payable Amount:* ₹${upiDynamicAmount.toLocaleString('en-IN')}\n` +
+              `📱 *Beneficiary VPA:* ${effectiveSuperAdminUpi}\n` +
+              `🏢 *Payee Name:* ${effectivePayeeName}\n` +
+              `📝 *Transaction Note:* ${upiNote}\n\n` +
+              `👉 *Direct 1-Click UPI Payment Link:* \n${dynamicUpiUri}\n\n` +
+              `_After successful payment, please share your UTR/Reference number for instant activation of your laboratory software portal and domain._\n\n` +
+              `Support: +91 7087033009 • https://indianlalaji.com`;
+
+            const waUrl = cleanPhone.length >= 10
+              ? `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(message)}`
+              : `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(waUrl, '_blank');
+          };
+
+          const handleDownloadQr = () => {
+            const link = document.createElement('a');
+            link.href = qrImageUrl;
+            link.download = `INDIANLALAJI_Dynamic_UPI_QR_Rs_${upiDynamicAmount}.png`;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+
+          return (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              {/* Top Informative Banner */}
+              <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-black flex items-center gap-1.5 border border-amber-300">
+                      <QrCode className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Super Admin Dynamic UPI Engine</span>
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">• Live Amount Injected</span>
+                  </div>
+                  <h2 className="text-lg font-extrabold text-[#123B6D] mt-1 flex items-center gap-2">
+                    <span>Dynamic UPI Scanner QR & Payment Engine</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Generate instant dynamic QR codes with exact payable amount pre-filled for SaaS subscription plans, lab onboarding, white-label setup, or custom invoicing.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800 text-xs font-bold">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>Dynamic Billing Active</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Grid: Left Controls (5 cols) & Right Live QR Standee (7 cols) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Controls & Customizer (5 cols) */}
+                <div className="lg:col-span-6 space-y-4">
+                  {/* 1. Super Admin Beneficiary Config */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-blue-50 text-[#123B6D]">
+                          <Crown className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-800">
+                            Super Admin Beneficiary UPI Account
+                          </h4>
+                          <p className="text-[10px] text-slate-400">
+                            Bank-linked VPA where all platform payments arrive
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveUpiDetails}
+                        className="px-2.5 py-1 bg-[#123B6D] hover:bg-[#0e2c52] text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <Save className="w-3 h-3 text-amber-300" />
+                        <span>Save VPA</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Platform UPI ID (VPA) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={superAdminUpiVpa}
+                          onChange={(e) => setSuperAdminUpiVpa(e.target.value.trim())}
+                          placeholder="e.g. 7087033009@okbizaxis"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs text-slate-900 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Payee / Merchant Name <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={superAdminPayeeName}
+                          onChange={(e) => setSuperAdminPayeeName(e.target.value)}
+                          placeholder="e.g. INDIANLALAJI.COM LAB OS"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Dynamic Amount & Plan Selector */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+                          <IndianRupee className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-800">
+                            Dynamic Amount & Package Selection
+                          </h4>
+                          <p className="text-[10px] text-slate-400">
+                            Select standard plan or enter any custom dynamic ₹ amount
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-mono font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                        ₹{upiDynamicAmount.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {/* Quick Plan Presets */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                        Quick Preset Plans & Add-ons
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPlanPreset('1 Month', getPlanPrice('1 Month', 1999))}
+                          className={`p-2 rounded-xl text-left border transition cursor-pointer ${
+                            upiSelectedPlan === '1 Month' && upiDynamicAmount === getPlanPrice('1 Month', 1999)
+                              ? 'bg-[#123B6D] text-white border-[#123B6D] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <div className="text-[10px] opacity-80 uppercase font-semibold">1 Month Plan</div>
+                          <div className="text-xs font-black">₹{getPlanPrice('1 Month', 1999).toLocaleString('en-IN')}</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPlanPreset('3 Months', getPlanPrice('3 Month', 4999))}
+                          className={`p-2 rounded-xl text-left border transition cursor-pointer ${
+                            upiSelectedPlan === '3 Months' && upiDynamicAmount === getPlanPrice('3 Month', 4999)
+                              ? 'bg-[#123B6D] text-white border-[#123B6D] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <div className="text-[10px] opacity-80 uppercase font-semibold">3 Months Plan</div>
+                          <div className="text-xs font-black text-amber-500">₹{getPlanPrice('3 Month', 4999).toLocaleString('en-IN')}</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPlanPreset('1 Year', getPlanPrice('1 Year', 11999))}
+                          className={`p-2 rounded-xl text-left border transition cursor-pointer ${
+                            upiSelectedPlan === '1 Year' && upiDynamicAmount === getPlanPrice('1 Year', 11999)
+                              ? 'bg-[#123B6D] text-white border-[#123B6D] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <div className="text-[10px] opacity-80 uppercase font-semibold">1 Year Annual</div>
+                          <div className="text-xs font-black">₹{getPlanPrice('1 Year', 11999).toLocaleString('en-IN')}</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPlanPreset('Onboarding Setup', 500)}
+                          className={`p-2 rounded-xl text-left border transition cursor-pointer ${
+                            upiSelectedPlan === 'Onboarding Setup' && upiDynamicAmount === 500
+                              ? 'bg-[#123B6D] text-white border-[#123B6D] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <div className="text-[10px] opacity-80 uppercase font-semibold">Setup Fee</div>
+                          <div className="text-xs font-black">₹500</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPlanPreset('Custom Domain Link', 1000)}
+                          className={`p-2 rounded-xl text-left border transition cursor-pointer ${
+                            upiSelectedPlan === 'Custom Domain Link' && upiDynamicAmount === 1000
+                              ? 'bg-[#123B6D] text-white border-[#123B6D] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <div className="text-[10px] opacity-80 uppercase font-semibold">Domain Link</div>
+                          <div className="text-xs font-black">₹1,000</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPlanPreset('White-Label Portal', 2500)}
+                          className={`p-2 rounded-xl text-left border transition cursor-pointer ${
+                            upiSelectedPlan === 'White-Label Portal' && upiDynamicAmount === 2500
+                              ? 'bg-[#123B6D] text-white border-[#123B6D] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <div className="text-[10px] opacity-80 uppercase font-semibold">White-Label</div>
+                          <div className="text-xs font-black">₹2,500</div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Custom Dynamic Amount Input */}
+                    <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-amber-950 flex items-center gap-1">
+                          <span>Custom Dynamic Amount (₹)</span>
+                          <span className="text-[10px] text-amber-700 font-normal">• Type any custom amount</span>
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-sm font-black text-amber-800">₹</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="500000"
+                          value={upiDynamicAmount}
+                          onChange={(e) => {
+                            const val = Math.max(1, Number(e.target.value) || 0);
+                            setUpiDynamicAmount(val);
+                          }}
+                          className="w-full pl-8 pr-3 py-2 bg-white border border-amber-300 rounded-xl font-black text-base text-slate-900 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                          placeholder="e.g. 4999"
+                        />
+                      </div>
+                      <p className="text-[10px] text-amber-800">
+                        ⚡ The QR code on the right updates instantly with this dynamic amount embedded in the UPI string.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 3. Target Lab & Purpose / Transaction Note */}
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-3 text-xs">
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+                        <Building2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800">Target Laboratory & Purpose</h4>
+                        <p className="text-[10px] text-slate-400">Attach lab details to QR note for automatic reconciliation</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Select Registered Lab (or Walk-In Client)
+                      </label>
+                      <select
+                        value={upiSelectedLabId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setUpiSelectedLabId(val);
+                          if (val === 'walkin') {
+                            setUpiNote(`${upiSelectedPlan} SaaS Plan - Walk-In Client`);
+                          } else {
+                            const lab = vendorLabsList.find((l) => l.id === val);
+                            if (lab) {
+                              setUpiNote(`${upiSelectedPlan} Plan - ${lab.name}`);
+                            }
+                          }
+                        }}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-800 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                      >
+                        <option value="walkin">➕ Direct / Walk-In / New Lab Registration</option>
+                        {vendorLabsList.map((lab) => (
+                          <option key={lab.id} value={lab.id}>
+                            {lab.name} ({lab.city || 'Punjab'}) • {lab.phone}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {upiSelectedLabId === 'walkin' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Client / Lab Name
+                          </label>
+                          <input
+                            type="text"
+                            value={upiCustomClientName}
+                            onChange={(e) => {
+                              setUpiCustomClientName(e.target.value);
+                              setUpiNote(`${upiSelectedPlan} Plan - ${e.target.value || 'Client'}`);
+                            }}
+                            placeholder="e.g. LifeCare Diagnostic Center"
+                            className="w-full p-2 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#123B6D]/30"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            WhatsApp Mobile Number
+                          </label>
+                          <input
+                            type="tel"
+                            value={upiCustomClientPhone}
+                            onChange={(e) => setUpiCustomClientPhone(e.target.value)}
+                            placeholder="e.g. 9876543210"
+                            className="w-full p-2 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#123B6D]/30"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Transaction Note / Purpose (UPI &tn= Parameter)
+                      </label>
+                      <input
+                        type="text"
+                        value={upiNote}
+                        onChange={(e) => setUpiNote(e.target.value)}
+                        placeholder="e.g. 3 Months Plan - Apex Diagnostic"
+                        className="w-full p-2 rounded-lg border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#123B6D]/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Live Dynamic UPI QR Standee (6 cols) */}
+                <div className="lg:col-span-6 space-y-4">
+                  <div className="bg-linear-to-b from-[#123B6D] to-[#0A2544] text-white rounded-3xl p-5 sm:p-7 shadow-xl border border-blue-900/60 relative overflow-hidden flex flex-col items-center text-center">
+                    {/* Background Glow */}
+                    <div className="absolute -top-24 -right-24 w-56 h-56 bg-amber-400/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="absolute -bottom-24 -left-24 w-56 h-56 bg-teal-400/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                    {/* Standee Header */}
+                    <div className="relative z-10 w-full flex items-center justify-between pb-3 border-b border-white/15">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1 rounded-md bg-white/20">
+                          <Crown className="w-4 h-4 text-amber-300" />
+                        </span>
+                        <div className="text-left">
+                          <span className="text-xs font-extrabold text-white block tracking-wide">
+                            INDIANLALAJI.COM
+                          </span>
+                          <span className="text-[10px] text-blue-200">Official SaaS Payment Standee</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/20 border border-emerald-400/40 rounded-full text-emerald-300 text-[10px] font-bold">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span>Dynamic Amount Active</span>
+                      </div>
+                    </div>
+
+                    {/* Prominent Dynamic Amount Banner */}
+                    <div className="relative z-10 my-4 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 w-full max-w-sm">
+                      <span className="text-[11px] text-amber-300 font-extrabold uppercase tracking-widest block">
+                        Exact Amount Pre-Filled in QR
+                      </span>
+                      <div className="text-3xl sm:text-4xl font-black text-white mt-0.5 tracking-tight flex items-center justify-center gap-1">
+                        <span>₹</span>
+                        <span>{upiDynamicAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <p className="text-[11px] text-blue-100 mt-1 truncate">
+                        {upiNote}
+                      </p>
+                    </div>
+
+                    {/* Real Dynamic QR Image Container */}
+                    <div className="relative z-10 bg-white p-3.5 rounded-2xl shadow-2xl border-4 border-white/90 flex flex-col items-center">
+                      <img
+                        src={qrImageUrl}
+                        alt="Dynamic UPI QR Code"
+                        className="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-lg"
+                      />
+                      <div className="mt-2 text-center text-slate-800">
+                        <div className="text-xs font-black">{effectivePayeeName}</div>
+                        <div className="text-[11px] font-mono text-slate-600 font-bold">{effectiveSuperAdminUpi}</div>
+                      </div>
+                    </div>
+
+                    {/* Supported UPI Brands Strip */}
+                    <div className="relative z-10 mt-4 flex items-center justify-center gap-2 text-[10px] text-blue-200 font-bold">
+                      <span className="px-2 py-0.5 bg-white/10 rounded-md">Google Pay</span>
+                      <span className="px-2 py-0.5 bg-white/10 rounded-md">PhonePe</span>
+                      <span className="px-2 py-0.5 bg-white/10 rounded-md">Paytm</span>
+                      <span className="px-2 py-0.5 bg-white/10 rounded-md">BHIM</span>
+                      <span className="px-2 py-0.5 bg-white/10 rounded-md">Cred</span>
+                    </div>
+
+                    <p className="relative z-10 text-[11px] text-blue-200 mt-2 max-w-xs">
+                      Customer simply scans this code with camera or any UPI app. The amount of <strong>₹{upiDynamicAmount}</strong> is automatically filled.
+                    </p>
+
+                    {/* Standee Action Buttons */}
+                    <div className="relative z-10 mt-5 w-full grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(dynamicUpiUri);
+                          setCopiedUpiLink(true);
+                          setTimeout(() => setCopiedUpiLink(false), 2000);
+                        }}
+                        className="py-2.5 px-3 bg-white/15 hover:bg-white/25 text-white rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer border border-white/20"
+                      >
+                        {copiedUpiLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                        <span>{copiedUpiLink ? 'UPI Link Copied!' : 'Copy UPI Link'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(effectiveSuperAdminUpi);
+                          setCopiedUpiId(true);
+                          setTimeout(() => setCopiedUpiId(false), 2000);
+                        }}
+                        className="py-2.5 px-3 bg-white/15 hover:bg-white/25 text-white rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer border border-white/20"
+                      >
+                        {copiedUpiId ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                        <span>{copiedUpiId ? 'VPA Copied!' : 'Copy UPI VPA'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleWhatsAppShare}
+                        className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        <span>Send on WhatsApp</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDownloadQr}
+                        className="py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download QR PNG</span>
+                      </button>
+                    </div>
+
+                    {/* Direct Test Deep Link */}
+                    <div className="relative z-10 mt-3 pt-3 border-t border-white/15 w-full text-center">
+                      <a
+                        href={dynamicUpiUri}
+                        className="text-[11px] text-amber-300 hover:underline flex items-center justify-center gap-1 font-bold"
+                      >
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>Open Directly in UPI App (Mobile Test)</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 2. FEATURES TAB */}
         {activeTab === 'features' && (
@@ -1355,6 +1905,45 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                     onChange={(e) => setSettingsForm({ ...settingsForm, supportEmail: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
                   />
+                </div>
+              </div>
+
+              {/* Super Admin Platform UPI Payment Details */}
+              <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-amber-700" />
+                  <h4 className="font-extrabold text-xs text-amber-950">Platform Super Admin UPI & QR Billing</h4>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                    Live Dynamic Payments
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Super Admin UPI ID (VPA)</label>
+                    <input
+                      type="text"
+                      value={settingsForm.upiId || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, upiId: e.target.value.trim() })}
+                      placeholder="e.g. 7087033009@okbizaxis or indianlalaji@upi"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 font-mono font-bold text-slate-800 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Direct bank linked Virtual Payment Address for all platform subscription fees and renewals.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Super Admin Merchant / Payee Name</label>
+                    <input
+                      type="text"
+                      value={settingsForm.upiMerchantName || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, upiMerchantName: e.target.value })}
+                      placeholder="e.g. INDIANLALAJI.COM LAB OS"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Account name shown on patient / lab phone during UPI QR scan.
+                    </p>
+                  </div>
                 </div>
               </div>
 

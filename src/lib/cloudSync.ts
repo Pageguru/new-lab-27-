@@ -88,22 +88,26 @@ export function sanitizeForFirestore<T>(data: T): T {
 function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    // If running on local developer dev server (localhost:3000):
-    if (host === 'localhost' || host === '127.0.0.1') {
+    // If running on local developer dev server (localhost:3000) or AI Studio preview/dev environment:
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.includes('run.app') ||
+      host.includes('webcontainer') ||
+      host.includes('googleusercontent.com')
+    ) {
       return window.location.origin;
     }
+    if (import.meta.env.VITE_HOSTINGER_API_URL) {
+      return import.meta.env.VITE_HOSTINGER_API_URL;
+    }
     // If the browser is running on indianalala.com or indianlalaji.com or any of its subdomains:
-    if (host.endsWith('indianalala.com')) {
-      return 'https://indianalala.com';
+    if (host.endsWith('indianalala.com') || host.endsWith('indianlalaji.com')) {
+      return window.location.origin;
     }
-    if (host.endsWith('indianlalaji.com')) {
-      return 'https://indianalala.com';
-    }
-    // On all other devices (preview, shared link, mobile phone, custom domain):
-    // Always connect to the central Hostinger server on main domain indianalala.com so ALL devices share the same live database!
-    return 'https://indianalala.com';
+    return window.location.origin;
   }
-  return 'https://indianalala.com';
+  return '';
 }
 
 async function callHostingerApi(endpoint: string, options?: RequestInit): Promise<any> {

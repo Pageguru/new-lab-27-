@@ -137,6 +137,8 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   announcementText: '🚀 Version 3.4 Live: Instant UPI QR Dynamic Billing & Auto WhatsApp Dispatch Added!',
   superAdminDomain: 'indianlalaji.com',
   platformDomain: 'indianlalaji.com',
+  upiId: '7087033009@okbizaxis',
+  upiMerchantName: 'INDIANLALAJI.COM LAB OS',
 };
 
 export const STANDARD_PLAN_FEATURES = [

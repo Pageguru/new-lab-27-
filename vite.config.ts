@@ -54,8 +54,8 @@ function hostingerApiDevPlugin(): Plugin {
         const [pathname, searchStr] = urlStr.split('?');
         const searchParams = new URLSearchParams(searchStr || '');
 
-        // 1. API: /api/status.php
-        if (pathname === '/api/status.php') {
+        // 1. API: /api/status.php and /api/status
+        if (pathname === '/api/status.php' || pathname === '/api/status') {
           res.setHeader('Content-Type', 'application/json');
           res.end(
             JSON.stringify({
@@ -69,8 +69,8 @@ function hostingerApiDevPlugin(): Plugin {
           return;
         }
 
-        // 2. API: /api/upload.php
-        if (pathname === '/api/upload.php' && req.method === 'POST') {
+        // 2. API: /api/upload.php and /api/upload
+        if ((pathname === '/api/upload.php' || pathname === '/api/upload') && req.method === 'POST') {
           let body = '';
           req.on('data', (chunk) => {
             body += chunk;
@@ -106,12 +106,31 @@ function hostingerApiDevPlugin(): Plugin {
           return;
         }
 
-        // 3. API: /api/sync.php
-        if (pathname === '/api/sync.php') {
+        // 3. API: /api/sync.php and /api/sync (including ping)
+        if (
+          pathname === '/api/sync.php' ||
+          pathname === '/api/sync' ||
+          pathname === '/api/sync/ping' ||
+          pathname === '/api/ping'
+        ) {
           res.setHeader('Content-Type', 'application/json');
           const action = searchParams.get('action') || '';
 
           if (req.method === 'GET') {
+            if (action === 'ping' || pathname === '/api/sync/ping' || pathname === '/api/ping') {
+              res.end(
+                JSON.stringify({
+                  status: 'online',
+                  success: true,
+                  mode: 'express_dev',
+                  message: 'IndianLalaji Hostinger Backend Emulation Active',
+                  timestamp: new Date().toISOString(),
+                  version: '3.5.0-dev',
+                })
+              );
+              return;
+            }
+
             if (action === 'check_updates') {
               const since = parseFloat(searchParams.get('since') || '0');
               const meta = getMeta();
@@ -188,21 +207,34 @@ function hostingerApiDevPlugin(): Plugin {
                 const collection = payload.collection || '';
 
                 if (postAction === 'save') {
-                  const id = String(payload.id);
+                  const id = String(payload.id || payload.data?.id || payload.data?.reportId || payload.data?.labId || Date.now());
                   const itemData = payload.data || {};
                   itemData.id = itemData.id || id;
                   itemData._updatedAt = new Date().toISOString();
 
-                  const list = readCol(collection);
-                  const idx = list.findIndex(
-                    (it: any) => (it.id || it.reportId || it.labId) === id
-                  );
-                  if (idx !== -1) {
-                    list[idx] = { ...list[idx], ...itemData };
+                  if (collection === 'labSettingsMap' && itemData && typeof itemData === 'object') {
+                    const settingsList = readCol('lab_settings');
+                    for (const [sLabId, sData] of Object.entries(itemData)) {
+                      const idx = settingsList.findIndex((it: any) => it.labId === sLabId || it.id === sLabId);
+                      if (idx !== -1) {
+                        settingsList[idx] = { ...settingsList[idx], ...(sData as object), labId: sLabId };
+                      } else {
+                        settingsList.push({ ...(sData as object), labId: sLabId, id: sLabId });
+                      }
+                    }
+                    writeCol('lab_settings', settingsList);
                   } else {
-                    list.unshift(itemData);
+                    const list = readCol(collection);
+                    const idx = list.findIndex(
+                      (it: any) => (it.id || it.reportId || it.labId) === id
+                    );
+                    if (idx !== -1) {
+                      list[idx] = { ...list[idx], ...itemData };
+                    } else {
+                      list.unshift(itemData);
+                    }
+                    writeCol(collection, list);
                   }
-                  writeCol(collection, list);
 
                   res.end(
                     JSON.stringify({
@@ -217,7 +249,7 @@ function hostingerApiDevPlugin(): Plugin {
                 }
 
                 if (postAction === 'delete') {
-                  const id = String(payload.id);
+                  const id = String(payload.id || payload.data?.id || payload.data?.reportId || payload.data?.labId || '');
                   const list = readCol(collection);
                   const filtered = list.filter(
                     (it: any) => (it.id || it.reportId || it.labId) !== id

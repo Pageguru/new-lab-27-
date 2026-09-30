@@ -1345,21 +1345,49 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
                 </button>
               </div>
 
-              {/* UPI QR Display Box */}
-              {payingMode === 'UPI' && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex items-center gap-4 text-xs">
-                  <div className="w-16 h-16 bg-white p-1 rounded-lg border border-slate-300 flex items-center justify-center shrink-0">
-                    <QrCode className="w-14 h-14 text-slate-800" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="font-bold text-slate-900">Scan & Pay via any UPI App</div>
-                    <div className="text-[11px] text-slate-600 font-mono">UPI ID: <strong>{labUpi}</strong></div>
-                    <div className="text-[10px] text-emerald-700 font-semibold">
-                      Instant automatic payment webhook verification
+              {/* UPI QR Display Box with Dynamic Amount */}
+              {payingMode === 'UPI' && (() => {
+                const dynamicPatientUpiUri = `upi://pay?pa=${encodeURIComponent(labUpi)}&pn=${encodeURIComponent(labName)}&am=${activeDueAmount}&cu=INR&tn=${encodeURIComponent(`Due Clearance - Token ${searchedReport.uhid || searchedReport.reportId}`)}`;
+                const dynamicPatientQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(dynamicPatientUpiUri)}`;
+
+                return (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col items-center text-center space-y-3">
+                    <div className="w-full flex items-center justify-between text-left border-b border-slate-200 pb-2">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Payable Balance</span>
+                        <span className="text-lg font-black text-rose-600">₹{activeDueAmount}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                        ⚡ Amount Pre-filled in QR
+                      </span>
                     </div>
+
+                    <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
+                      <img
+                        src={dynamicPatientQrUrl}
+                        alt="Dynamic Balance UPI QR"
+                        className="w-40 h-40 object-contain rounded-lg"
+                      />
+                    </div>
+
+                    <div className="w-full space-y-1">
+                      <div className="font-bold text-xs text-slate-900">{labName}</div>
+                      <div className="text-[11px] text-slate-600 font-mono font-bold">UPI ID: {labUpi}</div>
+                      <p className="text-[10px] text-slate-400">
+                        Scan with Google Pay, PhonePe, or Paytm. Exact amount of <strong>₹{activeDueAmount}</strong> will auto-fill.
+                      </p>
+                    </div>
+
+                    <a
+                      href={dynamicPatientUpiUri}
+                      className="w-full py-2 px-3 bg-[#0F766E] hover:bg-[#0d655e] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>Pay ₹{activeDueAmount} directly in UPI App</span>
+                    </a>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Pay Action Buttons */}

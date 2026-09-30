@@ -394,6 +394,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const [bookedSuccess, setBookedSuccess] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isPaymentQrModalOpen, setIsPaymentQrModalOpen] = useState(false);
+  const [websiteDynamicAmount, setWebsiteDynamicAmount] = useState<number>(500);
+  const [websitePatientRef, setWebsitePatientRef] = useState<string>('');
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isWebsiteQrModalOpen, setIsWebsiteQrModalOpen] = useState(false);
@@ -4526,93 +4528,162 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               </div>
             </div>
 
-            {/* QR Code Container */}
-            <div className="mt-3 p-3 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 w-full flex flex-col items-center">
-              <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
-                <img
-                  src={
-                    vendorLabSettings?.qrCode1Url ||
-                    (vendorLabSettings as any)?.qrCodeUrl ||
-                    `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(
-                      `upi://pay?pa=${
-                        vendorLabSettings?.upiId1 ||
-                        (vendorLabSettings as any)?.upiId ||
-                        'apexlab@icici'
-                      }&pn=${encodeURIComponent(
-                        vendorLabSettings?.merchantName || labName
-                      )}&cu=INR`
-                    )}`
-                  }
-                  alt="UPI Payment QR Code"
-                  className="w-48 h-48 sm:w-52 sm:h-52 object-contain rounded-lg"
-                />
-              </div>
+            {/* Dynamic Amount Selector & Inputs */}
+            {(() => {
+              const cleanUpi =
+                vendorLabSettings?.upiId1 ||
+                (vendorLabSettings as any)?.upiId ||
+                'apexlab@icici';
+              const cleanMerchant = vendorLabSettings?.merchantName || labName;
+              const cleanNote = websitePatientRef.trim()
+                ? `Test Bill - ${websitePatientRef.trim()}`
+                : `Test Bill - ${labName}`;
+              const dynamicWebsiteUpiUri = `upi://pay?pa=${encodeURIComponent(cleanUpi)}&pn=${encodeURIComponent(cleanMerchant)}&am=${websiteDynamicAmount}&cu=INR&tn=${encodeURIComponent(cleanNote)}`;
+              const dynamicQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(dynamicWebsiteUpiUri)}`;
 
-              {/* Merchant and UPI ID Details */}
-              <div className="mt-3 text-center w-full">
-                <div className="text-xs font-bold text-slate-800 truncate">
-                  {vendorLabSettings?.merchantName || labName}
-                </div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  Shop ID: <span className="font-mono font-bold text-[#123B6D]">{labShopId}</span>
-                </div>
-
-                {/* 1-Click Copy UPI Bar */}
-                <div className="mt-2 flex items-center justify-between gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs w-full">
-                  <div className="truncate font-mono font-bold text-slate-700 text-[11px]">
-                    {vendorLabSettings?.upiId1 ||
-                      (vendorLabSettings as any)?.upiId ||
-                      'apexlab@icici'}
+              return (
+                <div className="w-full space-y-3 mt-2">
+                  {/* Dynamic Amount Badge */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center justify-between text-left">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 block">
+                        Pre-Filled Dynamic Amount
+                      </span>
+                      <span className="text-xl font-black text-slate-900">
+                        ₹{websiteDynamicAmount.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Auto Filled</span>
+                    </span>
                   </div>
+
+                  {/* Preset Amount Chips & Custom Input */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      Select or Enter Test Bill Amount (₹)
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[200, 500, 1000, 2500].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setWebsiteDynamicAmount(preset)}
+                          className={`py-1 px-2 rounded-lg text-xs font-black transition cursor-pointer border ${
+                            websiteDynamicAmount === preset
+                              ? 'bg-[#123B6D] text-white border-[#123B6D] shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          ₹{preset}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-2 text-xs font-bold text-slate-400">₹</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="200000"
+                          value={websiteDynamicAmount}
+                          onChange={(e) => setWebsiteDynamicAmount(Math.max(1, Number(e.target.value) || 0))}
+                          className="w-full pl-6 pr-2 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                          placeholder="Amount"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={websitePatientRef}
+                        onChange={(e) => setWebsitePatientRef(e.target.value)}
+                        placeholder="Token / Name (Optional)"
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* QR Code Container */}
+                  <div className="p-3 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 w-full flex flex-col items-center">
+                    <div className="p-2 bg-white rounded-xl shadow-xs border border-slate-200">
+                      <img
+                        src={dynamicQrUrl}
+                        alt="Dynamic UPI Payment QR Code"
+                        className="w-48 h-48 sm:w-52 sm:h-52 object-contain rounded-lg"
+                      />
+                    </div>
+
+                    {/* Merchant and UPI ID Details */}
+                    <div className="mt-2 text-center w-full">
+                      <div className="text-xs font-bold text-slate-800 truncate">
+                        {cleanMerchant}
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        Shop ID: <span className="font-mono font-bold text-[#123B6D]">{labShopId}</span>
+                      </div>
+
+                      {/* 1-Click Copy UPI Bar */}
+                      <div className="mt-2 flex items-center justify-between gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs w-full">
+                        <div className="truncate font-mono font-bold text-slate-700 text-[11px]">
+                          {cleanUpi}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(cleanUpi);
+                            setCopiedUpi(true);
+                            setTimeout(() => setCopiedUpi(false), 2000);
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 transition shrink-0 cursor-pointer"
+                        >
+                          {copiedUpi ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span>Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy UPI</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile Deep Link */}
+                  <a
+                    href={dynamicWebsiteUpiUri}
+                    className="w-full py-2.5 px-3 bg-[#123B6D] hover:bg-[#0e2c52] text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <span>Pay ₹{websiteDynamicAmount.toLocaleString('en-IN')} on UPI App</span>
+                  </a>
+
+                  {/* Supported UPI Apps Strip */}
+                  <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 font-semibold">
+                    <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">GPay</span>
+                    <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">PhonePe</span>
+                    <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">Paytm</span>
+                    <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">BHIM</span>
+                    <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">Any UPI</span>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400">
+                    Scanning automatically sets ₹{websiteDynamicAmount} in your Google Pay, PhonePe, or Paytm app.
+                  </p>
+
                   <button
                     type="button"
-                    onClick={() => {
-                      const upi =
-                        vendorLabSettings?.upiId1 ||
-                        (vendorLabSettings as any)?.upiId ||
-                        'apexlab@icici';
-                      navigator.clipboard?.writeText(upi);
-                      setCopiedUpi(true);
-                      setTimeout(() => setCopiedUpi(false), 2000);
-                    }}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 transition shrink-0 cursor-pointer"
+                    onClick={() => setIsPaymentQrModalOpen(false)}
+                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer"
                   >
-                    {copiedUpi ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        <span>Copy UPI</span>
-                      </>
-                    )}
+                    Close
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Supported UPI Apps Strip */}
-            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-slate-500 font-semibold">
-              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">GPay</span>
-              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">PhonePe</span>
-              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">Paytm</span>
-              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">BHIM</span>
-              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">Any UPI</span>
-            </div>
-
-            <p className="text-[10px] text-slate-400 mt-2">
-              Scan with any UPI application for instant blood test payment & receipt confirmation.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setIsPaymentQrModalOpen(false)}
-              className="mt-3 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer"
-            >
-              Close
-            </button>
+              );
+            })()}
           </div>
         </div>
       )}

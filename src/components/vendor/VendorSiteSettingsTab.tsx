@@ -377,12 +377,14 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
 
   const planInfo = planPriceMap[currentPlan] || planPriceMap['1 Month'];
 
-  // Generated QR placeholder if none uploaded
+  const [testDynamicAmount, setTestDynamicAmount] = useState<number>(500);
+
+  // Generated QR placeholder with dynamic amount injection
   const effectiveQrCode1 =
     formData.qrCode1Url ||
-    `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=upi://pay?pa=${encodeURIComponent(
-      formData.upiId1 || 'apexlab@icici'
-    )}%26pn=${encodeURIComponent(formData.merchantName || formData.labName || 'Apex Diagnostic Lab')}%26cu=INR`;
+    `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(
+      `upi://pay?pa=${formData.upiId1 || 'apexlab@icici'}&pn=${formData.merchantName || formData.labName || 'Apex Diagnostic Lab'}&am=${testDynamicAmount}&cu=INR&tn=Lab Test Bill`
+    )}`;
 
   return (
     <div className="space-y-6">
@@ -1106,6 +1108,33 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                   referrerPolicy="no-referrer"
                   className="w-full h-auto object-contain mx-auto"
                 />
+              </div>
+
+              {/* Dynamic Amount Live Simulator Indicator */}
+              <div className="bg-white/10 rounded-xl p-2 border border-white/20 text-center space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-amber-300 font-bold px-1">
+                  <span>Dynamic Test Amount:</span>
+                  <span className="text-white font-black text-xs font-mono">₹{testDynamicAmount}</span>
+                </div>
+                <div className="flex items-center justify-center gap-1 pt-0.5">
+                  {[250, 500, 1000, 2500].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setTestDynamicAmount(amt)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                        testDynamicAmount === amt
+                          ? 'bg-amber-400 text-slate-950 font-black'
+                          : 'bg-white/20 text-white hover:bg-white/30'
+                      }`}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-slate-300 pt-0.5">
+                  ⚡ Pre-fills ₹{testDynamicAmount} when scanned with GPay/PhonePe
+                </p>
               </div>
 
               <div className="space-y-1">
