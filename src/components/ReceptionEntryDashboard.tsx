@@ -632,13 +632,15 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
       paymentMode,
       paymentStatus: calculatedPaymentStatus,
       status: 'Waiting',
+      sentToTechnician: false,
+      technicianStatus: undefined,
       registeredAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       entryDate: new Date().toISOString().split('T')[0],
       notes: notes.trim() || undefined,
     };
 
     const saved = addReceptionEntry(newEntry);
-    showToast(`✅ Patient Registered! Token: ${saved.tokenNumber} (${saved.patientName})`);
+    showToast(`✅ Patient Registered! Token: ${saved.tokenNumber} (Click "Sent to Lab" to transfer to Technician)`);
 
     // Track recently registered entry for quick 1-click mistake correction
     setLastRegisteredEntry(saved);
@@ -1379,14 +1381,33 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                     lastRegisteredEntry.status === 'Report Ready' ||
                     lastRegisteredEntry.reportId
                   ) ? (
-                    <button
-                      type="button"
-                      onClick={() => handleLoadEntryToForm(lastRegisteredEntry)}
-                      className="bg-[#0F766E] hover:bg-[#0d655e] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Galti Theek Karein (Edit)</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleLoadEntryToForm(lastRegisteredEntry)}
+                        className="bg-[#0F766E] hover:bg-[#0d655e] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Galti Theek Karein (Edit)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSendToLab(lastRegisteredEntry);
+                          setLastRegisteredEntry({
+                            ...lastRegisteredEntry,
+                            sentToTechnician: true,
+                            technicianStatus: 'Sent to Lab',
+                            status: 'Sample Collected',
+                          });
+                        }}
+                        className="bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                        title="Transfer to Lab Technician"
+                      >
+                        <FlaskConical className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Sent to Lab</span>
+                      </button>
+                    </>
                   ) : (
                     <span className="bg-teal-800 text-teal-100 text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1">
                       <Lock className="w-3 h-3" />
@@ -2117,8 +2138,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
 
                   const isSentToLab = !isReportReady && !isInLab && Boolean(
                     entry.sentToTechnician ||
-                    entry.technicianStatus === 'Sent to Lab' ||
-                    entry.status === 'Sample Collected'
+                    entry.technicianStatus === 'Sent to Lab'
                   );
 
                   const isAlreadySent = isReportReady || isInLab || isSentToLab;

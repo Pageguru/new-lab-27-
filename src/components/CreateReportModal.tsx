@@ -80,7 +80,18 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
   // Combine provided patients with CMS patients and reception entries so registered patients are always available
   const basePatients = patients && patients.length > 0 ? patients : cmsPatients;
-  const receptionAsPatients: Patient[] = (receptionEntries || []).map((e) => {
+  const receptionAsPatients: Patient[] = (receptionEntries || [])
+    .filter(
+      (e) =>
+        Boolean(e.sentToTechnician) ||
+        e.technicianStatus === 'Sent to Lab' ||
+        e.technicianStatus === 'Accepted' ||
+        e.technicianStatus === 'Report Generated' ||
+        e.status === 'In Lab' ||
+        e.status === 'Report Ready' ||
+        Boolean(e.reportId)
+    )
+    .map((e) => {
     const rawTests = e.tests;
     const testsList: string[] = Array.isArray(rawTests)
       ? rawTests

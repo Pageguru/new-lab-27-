@@ -132,9 +132,24 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     return todayDateStr;
   };
 
-  // Tenant-isolated patients derived directly from active vendor's reception queue
+  // Transferred reception entries: Only entries transferred when receptionist clicks "Sent to Lab"
+  const transferredReceptionEntries = useMemo(() => {
+    return receptionEntries.filter((r) => {
+      return Boolean(
+        r.sentToTechnician ||
+        r.technicianStatus === 'Sent to Lab' ||
+        r.technicianStatus === 'Accepted' ||
+        r.technicianStatus === 'Report Generated' ||
+        r.status === 'In Lab' ||
+        r.status === 'Report Ready' ||
+        Boolean(r.reportId)
+      );
+    });
+  }, [receptionEntries]);
+
+  // Tenant-isolated patients derived directly from active vendor's transferred reception queue
   const patients = useMemo<Patient[]>(() => {
-    return receptionEntries.map((r) => {
+    return transferredReceptionEntries.map((r) => {
       const rawTests = r.tests;
       const testList: string[] = Array.isArray(rawTests)
         ? rawTests
@@ -189,7 +204,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         notes: r.notes,
       };
     });
-  }, [receptionEntries, vendorLabSettings?.address, reports]);
+  }, [transferredReceptionEntries, vendorLabSettings?.address, reports]);
 
   // Tab counts
   const countAll = patients.length;
@@ -197,16 +212,16 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
   const countInTesting = patients.filter((p) => p.status === 'In Testing').length;
   const countReportDone = patients.filter((p) => p.status === 'Report Done').length;
 
-  // Reception Queue Computed metrics for Technician
-  const pendingReceptionEntries = receptionEntries.filter((r) => r.sentToTechnician);
-  const awaitingAcceptCount = receptionEntries.filter(
-    (r) => r.sentToTechnician && r.technicianStatus === 'Sent to Lab'
+  // Reception Queue Computed metrics for Technician (Transferred entries only)
+  const pendingReceptionEntries = transferredReceptionEntries.filter((r) => r.sentToTechnician);
+  const awaitingAcceptCount = transferredReceptionEntries.filter(
+    (r) => r.technicianStatus === 'Sent to Lab' || (!r.technicianStatus && r.sentToTechnician)
   ).length;
-  const inTestingCount = receptionEntries.filter(
-    (r) => r.sentToTechnician && r.technicianStatus === 'Accepted'
+  const inTestingCount = transferredReceptionEntries.filter(
+    (r) => r.technicianStatus === 'Accepted' || r.status === 'In Lab'
   ).length;
-  const completedReceptionCount = receptionEntries.filter(
-    (r) => r.sentToTechnician && (r.technicianStatus === 'Report Generated' || !!r.reportId)
+  const completedReceptionCount = transferredReceptionEntries.filter(
+    (r) => r.technicianStatus === 'Report Generated' || r.status === 'Report Ready' || !!r.reportId
   ).length;
 
   // Report Generator & Detail Modals
@@ -2195,9 +2210,9 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[11px] font-semibold text-slate-500">Total from Reception</span>
-                <div className="text-2xl font-black text-slate-900 mt-0.5">{receptionEntries.length}</div>
-                <span className="text-[10px] text-slate-400">Registered today</span>
+                <span className="text-[11px] font-semibold text-slate-500">Transferred from Reception</span>
+                <div className="text-2xl font-black text-slate-900 mt-0.5">{transferredReceptionEntries.length}</div>
+                <span className="text-[10px] text-slate-400">Specimens sent to lab</span>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-amber-200 bg-amber-50/20 shadow-2xs">
                 <span className="text-[11px] font-semibold text-amber-800">Awaiting Tech Accept</span>
@@ -2228,7 +2243,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  All ({receptionEntries.length})
+                  All ({transferredReceptionEntries.length})
                 </button>
                 <button
                   type="button"
@@ -2282,7 +2297,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
 
             {/* List of Reception Patient Orders */}
             {(() => {
-              const filtered = receptionEntries.filter((entry) => {
+              const filtered = transferredReceptionEntries.filter((entry) => {
                 // Status Filter
                 if (receptionFilter === 'Awaiting') {
                   if (!(entry.sentToTechnician && entry.technicianStatus === 'Sent to Lab')) return false;
