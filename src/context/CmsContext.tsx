@@ -5795,7 +5795,6 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         state: settingsObj.state || labDetailsObj.state || 'India',
         address: settingsObj.address || labDetailsObj.address || '',
         nablCode: settingsObj.nablCode || labDetailsObj.nablCode || 'NABL-IN-2026',
-        badge: labDetailsObj.badge || 'NABL Certified',
         rating: labDetailsObj.rating || 4.9,
         activePackages: Array.isArray(backup.packages) && backup.packages.length > 0 ? backup.packages.length : 3,
         turnaroundTime: settingsObj.turnaroundTime || labDetailsObj.turnaroundTime || 'Same Day Reports',
