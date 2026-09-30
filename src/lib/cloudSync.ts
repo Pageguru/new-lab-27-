@@ -24,7 +24,8 @@ import {
   PricingPlan,
   LabStaffAccount,
   ContactSubmission,
-  DomainRequest
+  DomainRequest,
+  PlanRenewalRequest
 } from '../types';
 import { optimizeDataUrl } from '../utils/imageOptimizer';
 
@@ -45,6 +46,7 @@ export const COLLECTIONS = {
   PRICING_PLANS: 'pricing_plans',
   CONTACT_SUBMISSIONS: 'contact_submissions',
   DOMAIN_REQUESTS: 'domain_requests',
+  PLAN_REQUESTS: 'plan_requests',
 } as const;
 
 export enum OperationType {
@@ -56,22 +58,24 @@ export enum OperationType {
   WRITE = 'write',
 }
 
-export interface FirestoreErrorInfo {
+export interface HostingerErrorInfo {
   error: string;
   operationType: OperationType;
   path: string | null;
 }
+export type FirestoreErrorInfo = HostingerErrorInfo;
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
+export function handleHostingerError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: HostingerErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     operationType,
     path
   };
-  console.warn('[Hostinger Server Sync Info]:', JSON.stringify(errInfo));
+  console.warn('[Hostinger MySQL Sync Info]:', JSON.stringify(errInfo));
 }
+export const handleFirestoreError = handleHostingerError;
 
-export function sanitizeForFirestore<T>(data: T): T {
+export function sanitizeForHostingerDb<T>(data: T): T {
   try {
     return JSON.parse(JSON.stringify(data, (_key, value) => {
       return value === undefined ? null : value;
@@ -80,6 +84,7 @@ export function sanitizeForFirestore<T>(data: T): T {
     return data;
   }
 }
+export const sanitizeForFirestore = sanitizeForHostingerDb;
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -546,16 +551,17 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Validates connection to Hostinger server
+ * Validates connection to Hostinger server & MySQL Database
  */
-export async function testFirestoreConnection(): Promise<boolean> {
+export async function testHostingerConnection(): Promise<boolean> {
   try {
     const result = await callHostingerApi('/api/status.php');
-    return !!(result && result.status === 'online');
+    return !!(result && (result.status === 'online' || result.success));
   } catch {
     return false;
   }
 }
+export const testFirestoreConnection = testHostingerConnection;
 
 /**
  * Universal Image Upload to Hostinger /uploads/ directory
@@ -1106,7 +1112,7 @@ export function subscribeToBookings(
 // -----------------------------------------------------------------------------
 // 9. Initial Seeding of Platform Data to Hostinger Server
 // -----------------------------------------------------------------------------
-export async function seedInitialFirestoreData(
+export async function seedInitialHostingerData(
   initialEntries: ReceptionPatientEntry[],
   initialReports: LabReport[],
   initialSettingsMap: Record<string, VendorLabSettings>,
@@ -1144,9 +1150,10 @@ export async function seedInitialFirestoreData(
       body: JSON.stringify(payload),
     });
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, 'seed_data');
+    handleHostingerError(err, OperationType.WRITE, 'seed_data');
   }
 }
+export const seedInitialFirestoreData = seedInitialHostingerData;
 
 // -----------------------------------------------------------------------------
 // 10. Company Settings (indianlalaji.com Platform Settings)
@@ -1352,4 +1359,33 @@ export function subscribeToDomainRequests(
     callback(cached);
   }
   return registerSubscriber(COLLECTIONS.DOMAIN_REQUESTS, callback);
+}
+
+// -----------------------------------------------------------------------------
+// 17. Plan Renewal Requests (Hostinger MySQL & Super Admin Queue)
+// -----------------------------------------------------------------------------
+export async function syncPlanRequestToHostinger(req: PlanRenewalRequest): Promise<void> {
+  try {
+    await saveDocumentToHostinger(COLLECTIONS.PLAN_REQUESTS, req.id, req);
+  } catch (err) {
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.PLAN_REQUESTS}/${req.id}`);
+  }
+}
+
+export async function deletePlanRequestFromHostinger(requestId: string): Promise<void> {
+  try {
+    await deleteDocumentFromHostinger(COLLECTIONS.PLAN_REQUESTS, requestId);
+  } catch (err) {
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.PLAN_REQUESTS}/${requestId}`);
+  }
+}
+
+export function subscribeToPlanRequests(
+  callback: (requests: PlanRenewalRequest[]) => void
+): () => void {
+  const cached = getCachedCollection(COLLECTIONS.PLAN_REQUESTS);
+  if (Array.isArray(cached) && cached.length > 0) {
+    callback(cached);
+  }
+  return registerSubscriber(COLLECTIONS.PLAN_REQUESTS, callback);
 }

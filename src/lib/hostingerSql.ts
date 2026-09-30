@@ -242,7 +242,104 @@ CREATE TABLE IF NOT EXISTS \`lab_bookings\` (
   INDEX \`idx_booking_mobile\` (\`patientMobile\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 11. Initial Super Admin Insert
+-- 11. Table: company_settings (Global SaaS Portal Settings)
+CREATE TABLE IF NOT EXISTS \`company_settings\` (
+  \`id\` VARCHAR(100) NOT NULL PRIMARY KEY,
+  \`brandName\` VARCHAR(255) DEFAULT 'INDIAN LALAJI',
+  \`tagline\` VARCHAR(255) DEFAULT NULL,
+  \`supportEmail\` VARCHAR(150) DEFAULT NULL,
+  \`supportPhone\` VARCHAR(50) DEFAULT NULL,
+  \`data\` LONGTEXT DEFAULT NULL,
+  \`updatedAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. Table: portal_sections (Hero, Features, Pricing visibility)
+CREATE TABLE IF NOT EXISTS \`portal_sections\` (
+  \`id\` VARCHAR(100) NOT NULL PRIMARY KEY,
+  \`sectionsJson\` LONGTEXT DEFAULT NULL,
+  \`updatedAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. Table: pricing_plans (SaaS Subscription Plans)
+CREATE TABLE IF NOT EXISTS \`pricing_plans\` (
+  \`id\` VARCHAR(100) NOT NULL PRIMARY KEY,
+  \`name\` VARCHAR(150) NOT NULL,
+  \`priceINR\` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  \`durationMonths\` INT DEFAULT 1,
+  \`features\` JSON DEFAULT NULL,
+  \`badge\` VARCHAR(100) DEFAULT NULL,
+  \`data\` LONGTEXT DEFAULT NULL,
+  \`updatedAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14. Table: contact_submissions (Inquiries & Lead Captures)
+CREATE TABLE IF NOT EXISTS \`contact_submissions\` (
+  \`id\` VARCHAR(100) NOT NULL PRIMARY KEY,
+  \`labId\` VARCHAR(100) DEFAULT 'all',
+  \`name\` VARCHAR(150) NOT NULL,
+  \`phone\` VARCHAR(50) NOT NULL,
+  \`email\` VARCHAR(150) DEFAULT NULL,
+  \`subject\` VARCHAR(255) DEFAULT NULL,
+  \`message\` TEXT DEFAULT NULL,
+  \`status\` ENUM('New', 'Read', 'Contacted', 'Resolved') DEFAULT 'New',
+  \`createdAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  \`updatedAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX \`idx_contact_lab\` (\`labId\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15. Table: domain_requests (Custom Domain Setup Requests)
+CREATE TABLE IF NOT EXISTS \`domain_requests\` (
+  \`id\` VARCHAR(100) NOT NULL PRIMARY KEY,
+  \`labId\` VARCHAR(100) NOT NULL,
+  \`labName\` VARCHAR(255) NOT NULL,
+  \`requestedDomain\` VARCHAR(255) NOT NULL,
+  \`cnameStatus\` ENUM('Pending', 'Verified', 'Active', 'Rejected') DEFAULT 'Pending',
+  \`sslStatus\` ENUM('Pending', 'Active', 'Error') DEFAULT 'Pending',
+  \`data\` LONGTEXT DEFAULT NULL,
+  \`createdAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  \`updatedAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX \`idx_domain_lab\` (\`labId\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 16. Table: lab_images (Hostinger Server Storage Uploads)
+CREATE TABLE IF NOT EXISTS \`lab_images\` (
+  \`id\` VARCHAR(100) NOT NULL PRIMARY KEY,
+  \`labId\` VARCHAR(100) NOT NULL,
+  \`imageType\` ENUM('logo', 'dp', 'banner', 'qr', 'signature', 'attachment', 'other') NOT NULL,
+  \`filePath\` VARCHAR(255) NOT NULL,
+  \`originalName\` VARCHAR(255) DEFAULT NULL,
+  \`fileSize\` INT DEFAULT 0,
+  \`mimeType\` VARCHAR(100) DEFAULT NULL,
+  \`createdAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  \`updatedAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX \`idx_img_lab\` (\`labId\`),
+  INDEX \`idx_img_type\` (\`imageType\`),
+  INDEX \`idx_img_path\` (\`filePath\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 17. Table: lab_plan_requests (Plan & Renew Requests Queue)
+CREATE TABLE IF NOT EXISTS \`lab_plan_requests\` (
+  \`id\` VARCHAR(100) NOT NULL PRIMARY KEY,
+  \`labId\` VARCHAR(100) NOT NULL,
+  \`labName\` VARCHAR(255) NOT NULL,
+  \`phone\` VARCHAR(50) DEFAULT NULL,
+  \`currentPlan\` VARCHAR(100) DEFAULT NULL,
+  \`currentExpiryDate\` VARCHAR(50) DEFAULT NULL,
+  \`requestedPlan\` VARCHAR(100) NOT NULL,
+  \`requestedDurationDays\` INT NOT NULL DEFAULT 30,
+  \`amountINR\` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  \`paymentMode\` VARCHAR(50) DEFAULT 'UPI',
+  \`notes\` TEXT DEFAULT NULL,
+  \`status\` ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+  \`resolvedAt\` VARCHAR(50) DEFAULT NULL,
+  \`resolvedBy\` VARCHAR(100) DEFAULT NULL,
+  \`createdAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  \`updatedAt\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX \`idx_plan_lab\` (\`labId\`),
+  INDEX \`idx_plan_status\` (\`status\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 18. Initial Super Admin Insert
 INSERT INTO \`lab_staff\` (\`id\`, \`labId\`, \`labName\`, \`branchId\`, \`branchName\`, \`name\`, \`role\`, \`username\`, \`email\`, \`phone\`, \`password\`, \`status\`, \`shift\`, \`notes\`)
 VALUES (
   'staff-rkmehra-admin',

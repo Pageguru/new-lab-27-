@@ -45,7 +45,7 @@
    - Username: `u873216892_lalaji`
    - Password: अपना सुरक्षित पासवर्ड दर्ज करें
 3. **phpMyAdmin** खोलें और रूट में मौजूद `hostinger_database_schema.sql` फ़ाइल को **Import** करें।
-   - इसमें सभी 16 टेबल्स (vendor_labs, lab_settings, lab_branches, lab_staff, lab_tests, lab_packages, lab_doctors, lab_reception_entries, lab_reports, lab_bookings, company_settings, portal_sections, pricing_plans, contact_submissions, domain_requests, lab_images) ऑटोमैटिक बन जाएंगी।
+   - इसमें सभी 17 टेबल्स (vendor_labs, lab_settings, lab_branches, lab_staff, lab_tests, lab_packages, lab_doctors, lab_reception_entries, lab_reports, lab_bookings, company_settings, portal_sections, pricing_plans, contact_submissions, domain_requests, lab_images, lab_plan_requests) ऑटोमैटिक बन जाएंगी।
 4. `api/config.php` फ़ाइल में अपने क्रेडेंशियल्स कन्फ़र्म करें:
    ```php
    define('DB_HOST', 'localhost');

@@ -317,7 +317,29 @@ CREATE TABLE IF NOT EXISTS `lab_images` (
   INDEX `idx_img_path` (`filePath`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 17. Initial Super Admin Insert
+-- 17. Table: lab_plan_requests (Plan & Renew Requests Queue)
+CREATE TABLE IF NOT EXISTS `lab_plan_requests` (
+  `id` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `labId` VARCHAR(100) NOT NULL,
+  `labName` VARCHAR(255) NOT NULL,
+  `phone` VARCHAR(50) DEFAULT NULL,
+  `currentPlan` VARCHAR(100) DEFAULT NULL,
+  `currentExpiryDate` VARCHAR(50) DEFAULT NULL,
+  `requestedPlan` VARCHAR(100) NOT NULL,
+  `requestedDurationDays` INT NOT NULL DEFAULT 30,
+  `amountINR` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  `paymentMode` VARCHAR(50) DEFAULT 'UPI',
+  `notes` TEXT DEFAULT NULL,
+  `status` ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+  `resolvedAt` VARCHAR(50) DEFAULT NULL,
+  `resolvedBy` VARCHAR(100) DEFAULT NULL,
+  `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_plan_lab` (`labId`),
+  INDEX `idx_plan_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 18. Initial Super Admin Insert
 INSERT INTO `lab_staff` (`id`, `labId`, `labName`, `branchId`, `branchName`, `name`, `role`, `username`, `email`, `phone`, `password`, `status`, `shift`, `notes`)
 VALUES (
   'staff-rkmehra-admin',

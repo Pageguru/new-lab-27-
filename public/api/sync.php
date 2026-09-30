@@ -27,7 +27,8 @@ $TABLE_MAP = [
     'pricing_plans'       => ['table' => 'pricing_plans',         'id' => 'id'],
     'contact_submissions' => ['table' => 'contact_submissions',   'id' => 'id'],
     'domain_requests'     => ['table' => 'domain_requests',       'id' => 'id'],
-    'lab_images'          => ['table' => 'lab_images',            'id' => 'id']
+    'lab_images'          => ['table' => 'lab_images',            'id' => 'id'],
+    'plan_requests'       => ['table' => 'lab_plan_requests',      'id' => 'id']
 ];
 
 /**
@@ -254,6 +255,35 @@ function persistDocToMySql($collection, $id, $data) {
                 ':parameters' => json_encode($data['parameters'] ?? [], JSON_UNESCAPED_UNICODE),
                 ':notes' => $data['notes'] ?? null,
                 ':data' => json_encode($data, JSON_UNESCAPED_UNICODE)
+            ]);
+            return true;
+        }
+
+        if ($collection === 'plan_requests') {
+            $stmt = $pdo->prepare("REPLACE INTO `lab_plan_requests` (
+                `id`, `labId`, `labName`, `phone`, `currentPlan`, `currentExpiryDate`,
+                `requestedPlan`, `requestedDurationDays`, `amountINR`, `paymentMode`,
+                `notes`, `status`, `resolvedAt`, `resolvedBy`
+            ) VALUES (
+                :id, :labId, :labName, :phone, :currentPlan, :currentExpiryDate,
+                :requestedPlan, :requestedDurationDays, :amountINR, :paymentMode,
+                :notes, :status, :resolvedAt, :resolvedBy
+            )");
+            $stmt->execute([
+                ':id'                   => $id,
+                ':labId'                => $data['labId'] ?? '',
+                ':labName'              => $data['labName'] ?? '',
+                ':phone'                => $data['phone'] ?? '',
+                ':currentPlan'          => $data['currentPlan'] ?? '',
+                ':currentExpiryDate'    => $data['currentExpiryDate'] ?? '',
+                ':requestedPlan'        => $data['requestedPlan'] ?? '',
+                ':requestedDurationDays'=> (int)($data['requestedDurationDays'] ?? 30),
+                ':amountINR'            => (float)($data['amountINR'] ?? 0.00),
+                ':paymentMode'          => $data['paymentMode'] ?? 'UPI',
+                ':notes'                => $data['notes'] ?? '',
+                ':status'               => $data['status'] ?? 'Pending',
+                ':resolvedAt'           => $data['resolvedAt'] ?? null,
+                ':resolvedBy'           => $data['resolvedBy'] ?? null,
             ]);
             return true;
         }

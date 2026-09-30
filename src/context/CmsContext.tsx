@@ -44,6 +44,9 @@ import {
   syncDomainRequestToCloud,
   deleteDomainRequestFromCloud,
   subscribeToDomainRequests,
+  syncPlanRequestToHostinger,
+  deletePlanRequestFromHostinger,
+  subscribeToPlanRequests,
   syncLabSettingsToCloud,
   subscribeToLabSettings,
   fetchAllLabSettingsFromCloud,
@@ -2896,6 +2899,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
 
+    // 17. Subscribe to Plan Requests (Hostinger MySQL & Super Admin Queue)
+    const unsubscribePlanRequests = subscribeToPlanRequests((cloudPlanReqs) => {
+      if (cloudPlanReqs && Array.isArray(cloudPlanReqs) && cloudPlanReqs.length > 0) {
+        setAllPlanRequests(cloudPlanReqs);
+        try {
+          localStorage.setItem('cms_all_plan_requests', JSON.stringify(cloudPlanReqs));
+        } catch {}
+      }
+    });
+
     return () => {
       unsubscribeSettings();
       unsubscribeTests();
@@ -2912,6 +2925,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeStaff();
       unsubscribeContact();
       unsubscribeDomainRequests();
+      unsubscribePlanRequests();
     };
   }, []);
 
@@ -5157,7 +5171,14 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'Pending',
     };
 
-    setAllPlanRequests((prev) => [newReq, ...prev]);
+    setAllPlanRequests((prev) => {
+      const next = [newReq, ...prev];
+      try {
+        localStorage.setItem('cms_all_plan_requests', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    syncPlanRequestToHostinger(newReq);
     return newReq;
   };
 
@@ -5271,35 +5292,46 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const res = renewOrExtendVendorPlan(found.labId, found.requestedPlan, found.requestedDurationDays);
 
-    setAllPlanRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: 'Approved',
-              resolvedAt: new Date().toISOString(),
-              resolvedBy: currentUser?.name || 'Super Admin',
-            }
-          : r
-      )
-    );
+    const approvedItem: PlanRenewalRequest = {
+      ...found,
+      status: 'Approved',
+      resolvedAt: new Date().toISOString(),
+      resolvedBy: currentUser?.name || 'Super Admin',
+    };
+
+    setAllPlanRequests((prev) => {
+      const next = prev.map((r) => (r.id === id ? approvedItem : r));
+      try {
+        localStorage.setItem('cms_all_plan_requests', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    syncPlanRequestToHostinger(approvedItem);
     return res;
   };
 
   const rejectPlanRenewalRequest = (id: string, reason?: string) => {
-    setAllPlanRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: 'Rejected',
-              notes: reason ? `${r.notes || ''} [Rejected: ${reason}]` : r.notes,
-              resolvedAt: new Date().toISOString(),
-              resolvedBy: currentUser?.name || 'Super Admin',
-            }
-          : r
-      )
-    );
+    const target = allPlanRequests.find((r) => r.id === id);
+    if (!target) return;
+
+    const rejectedItem: PlanRenewalRequest = {
+      ...target,
+      status: 'Rejected',
+      notes: reason ? `${target.notes || ''} [Rejected: ${reason}]` : target.notes,
+      resolvedAt: new Date().toISOString(),
+      resolvedBy: currentUser?.name || 'Super Admin',
+    };
+
+    setAllPlanRequests((prev) => {
+      const next = prev.map((r) => (r.id === id ? rejectedItem : r));
+      try {
+        localStorage.setItem('cms_all_plan_requests', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    syncPlanRequestToHostinger(rejectedItem);
   };
 
   const expireVendorPlan = (labId: string) => {
