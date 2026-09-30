@@ -89,7 +89,9 @@ export const SyncNowButton: React.FC<SyncNowButtonProps> = ({
 
         {/* Offline indicator if browser is disconnected */}
         {isOffline && pendingOfflineSyncCount === 0 && (
-          <WifiOff className="w-3 h-3 text-rose-300 shrink-0" title="Offline Mode: Changes save locally" />
+          <span title="Offline Mode: Changes save locally" className="inline-flex">
+            <WifiOff className="w-3 h-3 text-rose-300 shrink-0" />
+          </span>
         )}
       </button>
 
