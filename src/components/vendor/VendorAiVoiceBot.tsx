@@ -4,18 +4,15 @@ import {
   MicOff,
   Volume2,
   VolumeX,
-  Sparkles,
   Send,
   X,
-  ShieldCheck,
-  Calendar,
-  FileText,
+  Sparkles,
   Phone,
   Clock,
-  RotateCcw,
-  MessageSquare,
+  Calendar,
+  FileText,
   Home,
-  Smartphone,
+  RotateCcw,
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
@@ -68,16 +65,15 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
   // Panel open/closed state
   const [isOpen, setIsOpen] = useState(false);
 
-  // Floating button active vs idle transparent state
-  const [isButtonActive, setIsButtonActive] = useState(false);
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Floating button highlight state (highlight only, NO size increase)
+  const [isButtonHighlighted, setIsButtonHighlighted] = useState(false);
+  const highlightTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Voice recognition states
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [speechLanguage, setSpeechLanguage] = useState<'hi-IN' | 'en-IN'>('hi-IN');
-  const [voiceMode, setVoiceMode] = useState<'hi' | 'hinglish' | 'en'>('hinglish');
-  const [speechEnabled, setSpeechEnabled] = useState(true);
+  const [speechEnabled, setSpeechEnabled] = useState(true); // 🔊 Speaker ON by default
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [micSupported, setMicSupported] = useState(true);
 
@@ -87,7 +83,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Speech Recognition instance
+  // Speech Recognition instance ref
   const recognitionRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -140,14 +136,14 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
       homeCollectionFee: vendorLabSettings?.homeCollectionFee || 0,
       tests: vendorTests || [],
       packages: vendorPackages || [],
-      doctors: (vendorDoctors || []).map(d => ({
+      doctors: (vendorDoctors || []).map((d) => ({
         name: d.name || d.doctorName || 'कंसल्टेंट पैथोलॉजिस्ट',
         qualification: d.qualification || d.degree || 'MBBS, MD',
         specialization: d.specialization || d.speciality || 'Pathology',
-        designation: d.designation || 'Consultant Pathologist'
+        designation: d.designation || 'Consultant Pathologist',
       })),
       allReports,
-      allReceptionEntries
+      allReceptionEntries,
     };
   }, [
     vendorLabSettings,
@@ -157,12 +153,12 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
     vendorPackages,
     vendorDoctors,
     allReports,
-    allReceptionEntries
+    allReceptionEntries,
   ]);
 
   // Initial welcome greeting from bot
   useEffect(() => {
-    const initialGreeting = `नमस्ते! मैं ${vendorContext.vendorName} का AI Voice Assistant हूँ 🎙️।\n\nआप बिना टाइप किए बोलकर सवाल पूछ सकते हैं:\n• किसी भी टेस्ट का रेट व फास्टिंग नियम\n• होम कलेक्शन सुविधा\n• प्रिवेंटिव हेल्थ चेकअप पैकेजेस\n• लैब का पता, समय व संपर्क सूत्र\n• अपनी रिपोर्ट का स्टेटस (टोकन नंबर से)`;
+    const initialGreeting = `नमस्ते! मैं ${vendorContext.vendorName} का AI Voice Assistant हूँ 🎙️।\n\nआप बोलकर (Voice) या लिखकर (Text) सवाल पूछ सकते हैं:\n• टेस्ट का रेट व फास्टिंग नियम\n• होम कलेक्शन बुकिंग\n• फुल बॉडी हेल्थ चेकअप पैकेजेस\n• लैब का समय व पता\n• रिपोर्ट का स्टेटस`;
 
     setMessages([
       {
@@ -173,51 +169,43 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
         actions: [
           { type: 'scroll_tests', label: '🩸 टेस्ट रेट लिस्ट' },
           { type: 'book_home_collection', label: '🏠 होम कलेक्शन' },
-          { type: 'check_report', label: '🔍 रिपोर्ट चेक करें' }
-        ]
-      }
+          { type: 'check_report', label: '🔍 रिपोर्ट चेक करें' },
+        ],
+      },
     ]);
   }, [vendorContext.vendorName]);
 
-  // Scroll to bottom of message list on updates
+  // Normal smooth scroll to bottom of messages
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen, isListening, transcript]);
 
-  // Touch & inactivity auto-dim timer:
-  // "Touch न करने पर button छोटा और transparent रहेगा।
-  //  Touch करने पर button smoothly थोड़ा बड़ा/active हो जाएगा।
-  //  कुछ समय बाद फिर छोटा और transparent हो जाएगा।"
-  const triggerButtonActive = () => {
-    setIsButtonActive(true);
-    if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-    }
-    // Return to transparent & small after 6 seconds of no touch
-    idleTimerRef.current = setTimeout(() => {
+  // Button highlight trigger (Size never changes, only highlights)
+  const triggerHighlight = () => {
+    setIsButtonHighlighted(true);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => {
       if (!isOpen) {
-        setIsButtonActive(false);
+        setIsButtonHighlighted(false);
       }
-    }, 6000);
+    }, 4000);
   };
 
   useEffect(() => {
-    // If modal is opened, button is active
     if (isOpen) {
-      setIsButtonActive(true);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      setIsButtonHighlighted(true);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     } else {
-      // Set timer to dim down when closed
-      triggerButtonActive();
+      triggerHighlight();
     }
     return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     };
   }, [isOpen]);
 
-  // Initialize Web Speech Recognition
+  // Web Speech Recognition Initialization (Hindi, English, Hinglish)
   useEffect(() => {
     const windowWithSpeech = window as any;
     const SpeechRecognition =
@@ -253,6 +241,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
 
         const currentText = finalTranscript || interimTranscript;
         setTranscript(currentText);
+        setInputText(currentText);
 
         // Auto-submit after silence of 1.5 seconds if we have speech
         if (silenceTimeoutRef.current) {
@@ -261,7 +250,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
         if (currentText.trim().length > 1) {
           silenceTimeoutRef.current = setTimeout(() => {
             handleStopAndSubmitSpeech(currentText);
-          }, 1600);
+          }, 1500);
         }
       };
 
@@ -292,11 +281,12 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
     };
   }, [speechLanguage]);
 
-  // Handle Speech Toggle
+  // Start Voice Listening
   const startListening = () => {
-    triggerButtonActive();
+    triggerHighlight();
     if (!recognitionRef.current) {
-      alert('आपके ब्राउज़र में वॉइस रिकॉग्निशन सपोर्ट नहीं है। आप नीचे टाइप कर सकते हैं।');
+      // Graceful fallback for non-WebSpeech browsers
+      alert('माइक्रोफ़ोन इस ब्राउज़र में उपलब्ध नहीं है। आप नीचे टाइप करके पूछ सकते हैं।');
       return;
     }
 
@@ -308,13 +298,19 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
       recognitionRef.current.start();
       setIsListening(true);
     } catch (err) {
-      // If already started, restart
       try {
         recognitionRef.current.stop();
+        setTimeout(() => {
+          try {
+            recognitionRef.current.start();
+            setIsListening(true);
+          } catch {}
+        }, 150);
       } catch {}
     }
   };
 
+  // Stop Voice Listening
   const stopListening = () => {
     if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
     if (recognitionRef.current) {
@@ -325,28 +321,31 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
     setIsListening(false);
   };
 
+  // Stop & Submit Speech
   const handleStopAndSubmitSpeech = (textToSend?: string) => {
     stopListening();
-    const query = (textToSend || transcript).trim();
+    const query = (textToSend || transcript || inputText).trim();
     if (query.length > 0) {
       submitUserQuery(query, true);
     }
     setTranscript('');
   };
 
-  // Submit User Query
+  // Submit User Query (Voice or Text)
   const submitUserQuery = async (queryText: string, isFromVoice = false) => {
     if (!queryText.trim() || isProcessing) return;
+
+    stopListening();
 
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       sender: 'user',
       text: queryText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isVoice: isFromVoice
+      isVoice: isFromVoice,
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
     setInputText('');
     setTranscript('');
     setIsProcessing(true);
@@ -355,7 +354,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
       const response: VoiceBotResponse = await askVendorVoiceBot(
         queryText,
         vendorContext,
-        voiceMode
+        'hinglish'
       );
 
       const botMsg: ChatMessage = {
@@ -363,40 +362,35 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
         sender: 'bot',
         text: response.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actions: response.actions
+        actions: response.actions,
       };
 
-      setMessages(prev => [...prev, botMsg]);
+      setMessages((prev) => [...prev, botMsg]);
 
-      // Speak response aloud if speech is enabled
-      if (speechEnabled && response.speechText) {
-        VoiceSpeaker.speak(response.speechText, {
+      // If Speaker is ON, automatically speak the AI answer in Voice
+      if (speechEnabled) {
+        VoiceSpeaker.speak(response.speechText || response.reply, {
           onStart: () => setIsSpeaking(true),
           onEnd: () => setIsSpeaking(false),
-          onError: () => setIsSpeaking(false)
+          onError: () => setIsSpeaking(false),
         });
       }
-    } catch (err) {
-      console.error('Error fetching voice response:', err);
-      const fallbackMsg: ChatMessage = {
-        id: `b-${Date.now()}`,
+    } catch (e) {
+      console.error('Error processing query:', e);
+      const errorMsg: ChatMessage = {
+        id: `err-${Date.now()}`,
         sender: 'bot',
-        text: `माफ़ कीजिए, मुझे आपकी बात समझने में थोड़ी समस्या हुई। कृपया दोबारा बोलें या नीचे दिए गए विकल्पों में से चुनें।`,
+        text: `माफ़ कीजिए, अभी आपका सवाल प्रोसेस नहीं हो पाया। आप सीधे हमें कॉल कर सकते हैं: ${vendorContext.phone}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actions: [
-          { type: 'scroll_tests', label: '🩸 टेस्ट रेट लिस्ट' },
-          { type: 'book_home_collection', label: '🏠 होम कलेक्शन' }
-        ]
       };
-      setMessages(prev => [...prev, fallbackMsg]);
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Execute Action from Bot
+  // Handle Quick Actions
   const handleExecuteAction = (action: VoiceBotAction) => {
-    triggerButtonActive();
     switch (action.type) {
       case 'book_test':
         setIsOpen(false);
@@ -445,212 +439,165 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
     }
   };
 
-  // Quick Prompt Chips
-  const quickChips = [
-    { label: '🩸 CBC Test Rate', prompt: 'CBC test ka price kya hai aur fasting chahiye?' },
-    { label: '🧪 Sugar / Diabetes', prompt: 'Blood sugar test ki timing aur fasting rules kya hain?' },
-    { label: '🏠 Home Collection', prompt: 'Home sample collection kaise book karein?' },
-    { label: '🕒 Lab Timing & Address', prompt: 'Lab kab khulti hai aur address kya hai?' },
-    { label: '📦 Full Body Package', prompt: 'Health checkup packages aur unke prices batao' },
-    { label: '📄 Report Status', prompt: 'Mera report online kaise check karein?' },
-  ];
-
   return (
     <>
-      {/* 
-        FLOATING / STICKY AI VOICE BOT BUTTON
-        "Website के bottom corner में छोटा sticky/floating AI Voice Bot 🎙️ button रहेगा।
-         Touch न करने पर button छोटा और transparent रहेगा।
-         Touch करने पर button smoothly थोड़ा बड़ा/active हो जाएगा।
-         कुछ समय बाद फिर छोटा और transparent हो जाएगा।
-         Button lightweight होगा और website content को unnecessarily cover नहीं करेगा。"
-      */}
+      {/* ========================================================================= */}
+      {/* 1. BOT UI - FLOATING / STICKY BUTTON                                     */}
+      {/* Exact Spec:                                                              */}
+      {/* - AI Bot bottom corner में छोटा floating/sticky button रहेगा।             */}
+      {/* - Button पर Touch/Click करने पर size बड़ा नहीं होगा, केवल highlight/active होगा। */}
+      {/* - Touch/Click करते ही AI Chat Popup खुलेगा।                               */}
+      {/* ========================================================================= */}
       <div
         className="fixed bottom-5 left-4 sm:bottom-6 sm:left-6 z-40 select-none"
-        onMouseEnter={triggerButtonActive}
-        onTouchStart={triggerButtonActive}
+        onMouseEnter={triggerHighlight}
+        onTouchStart={triggerHighlight}
       >
         <button
           type="button"
           onClick={() => {
-            triggerButtonActive();
-            setIsOpen(!isOpen);
-            if (!isOpen) {
-              // Auto start listening on open
+            triggerHighlight();
+            const nextState = !isOpen;
+            setIsOpen(nextState);
+            if (nextState) {
+              // Immediately start listening on open for seamless hands-free voice experience
               setTimeout(() => {
                 startListening();
-              }, 400);
+              }, 300);
             } else {
               stopListening();
               VoiceSpeaker.stop();
             }
           }}
-          className={`group relative flex items-center gap-2 rounded-full transition-all duration-300 ease-out cursor-pointer ${
-            isButtonActive || isOpen
-              ? 'scale-105 opacity-100 shadow-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 border border-white/40 ring-4 ring-blue-500/20'
-              : 'scale-90 opacity-45 hover:opacity-100 hover:scale-100 p-2.5 sm:p-3 bg-slate-900/50 backdrop-blur-md text-white/90 border border-white/20 shadow-sm'
+          className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer shadow-lg active:scale-95 ${
+            isButtonHighlighted || isOpen
+              ? 'bg-gradient-to-tr from-[#123B6D] via-blue-600 to-indigo-600 text-white ring-4 ring-blue-500/40 shadow-blue-500/30'
+              : 'bg-[#123B6D]/85 hover:bg-[#123B6D] text-white/95 backdrop-blur-md border border-white/20'
           }`}
-          title="AI Voice Bot - बोलकर पूछें (Hindi/English/Hinglish)"
+          title="AI Voice Bot - बोलकर या लिखकर पूछें"
           aria-label="Open AI Voice Bot"
         >
           {/* Animated Microphone Icon */}
           <div className="relative flex items-center justify-center">
             {isListening && (
-              <span className="absolute -inset-1 rounded-full bg-red-500/40 animate-ping" />
+              <span className="absolute -inset-2 rounded-full bg-rose-500/50 animate-ping" />
             )}
             {isSpeaking && (
-              <span className="absolute -inset-1 rounded-full bg-emerald-400/40 animate-pulse" />
+              <span className="absolute -inset-2 rounded-full bg-emerald-400/50 animate-pulse" />
             )}
-            <div
-              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-colors ${
-                isButtonActive || isOpen
-                  ? 'bg-white/20 text-white'
-                  : 'bg-white/10 text-white/90 group-hover:bg-white/20'
-              }`}
-            >
-              {isListening ? (
-                <Mic className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-300 animate-bounce" />
-              ) : isSpeaking ? (
-                <Volume2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-emerald-300 animate-pulse" />
-              ) : (
-                <Mic className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-300 group-hover:scale-110 transition-transform" />
-              )}
-            </div>
 
-            {/* Glowing AI Sparkle dot */}
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-slate-900 shadow-xs" />
+            {isListening ? (
+              <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-rose-300 animate-bounce" />
+            ) : isSpeaking ? (
+              <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-300 animate-pulse" />
+            ) : (
+              <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" />
+            )}
+
+            {/* Glowing online indicator */}
+            <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white shadow-xs" />
           </div>
-
-          {/* Smooth expanding label when active */}
-          {(isButtonActive || isOpen) && (
-            <div className="flex flex-col text-left pr-1 animate-in fade-in slide-in-from-left-2 duration-200">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs sm:text-sm font-black tracking-tight leading-none text-white">
-                  AI Voice Bot
-                </span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-900 leading-none">
-                  🎙️ Live
-                </span>
-              </div>
-              <span className="text-[10px] text-blue-100 font-medium leading-tight">
-                बोलकर पूछें (Hindi/Eng)
-              </span>
-            </div>
-          )}
         </button>
       </div>
 
-      {/* 
-        VOICE BOT INTERACTION MODAL / FLOATING PANEL
-      */}
+      {/* ========================================================================= */}
+      {/* 2. AI CHAT POPUP                                                          */}
+      {/* Exact Spec:                                                              */}
+      {/* - Popup Header: Simple header, Close (X) compact at outer top corner.     */}
+      {/* - Popup Body: Customer & AI messages, normal scrollable, Speaker ON/OFF.  */}
+      {/* - Popup Footer: Mic Button 🎙️ + Type Bar + Send Button ➤.                 */}
+      {/* ========================================================================= */}
       {isOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed bottom-20 left-3 sm:bottom-24 sm:left-6 z-50 w-[calc(100vw-24px)] sm:w-[410px] md:w-[430px] max-h-[85vh] flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 animate-in fade-in slide-in-from-bottom-6 zoom-in-95 duration-200"
-          onClick={triggerButtonActive}
+          className="fixed bottom-20 left-3 sm:bottom-22 sm:left-6 z-50 w-[calc(100vw-24px)] sm:w-[390px] md:w-[410px] max-h-[85vh] flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-200 text-slate-800 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-200"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-[#123B6D] via-blue-800 to-indigo-900 text-white relative">
-            <div className="flex items-center gap-2.5">
-              <div className="relative w-9 h-9 rounded-2xl bg-white/15 flex items-center justify-center border border-white/20">
-                <Mic className="w-5 h-5 text-amber-300" />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-[#123B6D]" />
+          {/* 
+            COMPACT CLOSE (X) BUTTON ON OUTER TOP CORNER
+            "Close (X) button popup के top corner पर, popup की बाहरी side में छोटा सा रहेगा।
+             Close button compact रहेगा और popup के अंदर unnecessary space नहीं लेगा।"
+          */}
+          <button
+            type="button"
+            onClick={() => {
+              stopListening();
+              VoiceSpeaker.stop();
+              setIsOpen(false);
+            }}
+            className="absolute -top-3 -right-2 sm:-top-3.5 sm:-right-2.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-900 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg border-2 border-white transition-all cursor-pointer z-20 active:scale-90"
+            title="Close AI Assistant"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4 stroke-[2.5]" />
+          </button>
+
+          {/* 
+            POPUP HEADER
+            "Simple header रहेगा। अनावश्यक extra options नहीं होंगे।"
+          */}
+          <div className="flex items-center justify-between px-4 py-3 bg-[#123B6D] text-white rounded-t-3xl relative">
+            <div className="flex items-center gap-2.5 pr-2">
+              <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center border border-white/20 shrink-0">
+                <Mic className="w-4 h-4 text-amber-300" />
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-black tracking-tight leading-tight line-clamp-1">
-                    {vendorContext.vendorName}
-                  </h3>
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-sm bg-emerald-500/30 text-emerald-300 border border-emerald-400/30">
-                    AI Bot
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-blue-100/90 font-medium">
-                  <ShieldCheck className="w-3 h-3 text-emerald-300" />
-                  <span>Strictly {vendorContext.vendorName} Data Only</span>
-                </div>
+              <div className="truncate">
+                <h3 className="text-xs sm:text-sm font-black tracking-tight leading-tight truncate">
+                  {vendorContext.vendorName}
+                </h3>
+                <p className="text-[10px] text-blue-200/90 font-medium truncate flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>AI Voice Assistant (Hindi • Eng)</span>
+                </p>
               </div>
             </div>
 
-            {/* Controls: Audio Speaker toggle & Close */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  if (speechEnabled) {
-                    VoiceSpeaker.stop();
-                    setIsSpeaking(false);
-                    setSpeechEnabled(false);
-                  } else {
-                    setSpeechEnabled(true);
-                  }
-                }}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  speechEnabled
-                    ? 'text-emerald-300 hover:bg-white/15'
-                    : 'text-white/50 hover:bg-white/10'
-                }`}
-                title={speechEnabled ? 'वॉयस उत्तर चालू है (Mute करें)' : 'वॉयस उत्तर बंद है (Unmute करें)'}
-              >
-                {speechEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  stopListening();
+            {/* 
+              SPEAKER TOGGLE BUTTON (IN HEADER)
+              "Speaker option रहेगा:
+               🔊 Speaker ON / Unmute
+               🔇 Speaker OFF / Mute
+               Speaker ON होने पर AI का जवाब voice में सुनाई देगा।"
+            */}
+            <button
+              type="button"
+              onClick={() => {
+                if (speechEnabled) {
                   VoiceSpeaker.stop();
-                  setIsOpen(false);
-                }}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+                  setIsSpeaking(false);
+                  setSpeechEnabled(false);
+                } else {
+                  setSpeechEnabled(true);
+                }
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer border shrink-0 ${
+                speechEnabled
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
+                  : 'bg-white/10 text-white/60 border-white/20 hover:bg-white/15'
+              }`}
+              title={speechEnabled ? 'वॉयस उत्तर चालू है (Mute करने के लिए क्लिक करें)' : 'वॉयस उत्तर बंद है (बोलकर सुनने के लिए क्लिक करें)'}
+            >
+              {speechEnabled ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Speaker ON</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 text-white/50" />
+                  <span>Speaker OFF</span>
+                </>
+              )}
+            </button>
           </div>
 
-          {/* Language and Isolation Status Bar */}
-          <div className="bg-slate-50 border-b border-slate-100 px-3 py-1.5 flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 font-semibold flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-600" />
-              Hindi • English • Hinglish
-            </span>
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-full px-1.5 py-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setSpeechLanguage('hi-IN');
-                  setVoiceMode('hi');
-                }}
-                className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-all cursor-pointer ${
-                  speechLanguage === 'hi-IN'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                हिंदी
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSpeechLanguage('en-IN');
-                  setVoiceMode('en');
-                }}
-                className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full transition-all cursor-pointer ${
-                  speechLanguage === 'en-IN'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                English
-              </button>
-            </div>
-          </div>
-
-          {/* Messages Stream */}
-          <div className="flex-1 p-3.5 space-y-3 overflow-y-auto max-h-[46vh] sm:max-h-[50vh] bg-slate-50/50">
+          {/* 
+            POPUP BODY
+            "Customer और AI के conversation messages दिखाई देंगे।
+             Conversation area scrollable होगा।
+             अलग Scroll Tab/Button नहीं होगा; normal scrolling ही होगी।"
+          */}
+          <div className="flex-1 p-3.5 space-y-3 overflow-y-auto max-h-[46vh] sm:max-h-[50vh] bg-slate-50/70">
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -665,7 +612,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
                       : 'bg-white text-slate-800 border border-slate-200 rounded-tl-xs'
                   }`}
                 >
-                  {/* Sender badge */}
+                  {/* Sender identity */}
                   <div className="flex items-center justify-between gap-2 mb-1 pb-1 border-b border-black/5 text-[10px] opacity-75">
                     <span className="font-bold flex items-center gap-1">
                       {m.sender === 'user' ? (
@@ -705,14 +652,14 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
                           VoiceSpeaker.speak(m.text, {
                             onStart: () => setIsSpeaking(true),
                             onEnd: () => setIsSpeaking(false),
-                            onError: () => setIsSpeaking(false)
+                            onError: () => setIsSpeaking(false),
                           });
                         }}
                         className="text-[10px] text-slate-400 hover:text-blue-600 flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-                        title="Replay in Voice"
+                        title="Replay Audio"
                       >
                         <Volume2 className="w-3 h-3" />
-                        <span>सुने</span>
+                        <span>सुने (Audio)</span>
                       </button>
                     </div>
                   )}
@@ -723,8 +670,8 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
             {/* Live Voice Recording Status */}
             {isListening && (
               <div className="flex flex-col items-center justify-center p-3 bg-blue-50 border border-blue-200 rounded-2xl animate-pulse">
-                <div className="flex items-center gap-2 text-blue-800 font-bold text-xs">
-                  <Mic className="w-4 h-4 text-red-500 animate-bounce" />
+                <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                  <Mic className="w-4 h-4 text-rose-500 animate-bounce" />
                   <span>सुन रहे हैं... बोलिए (Listening...)</span>
                 </div>
                 {transcript ? (
@@ -732,7 +679,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
                     "{transcript}"
                   </p>
                 ) : (
-                  <p className="mt-0.5 text-[10px] text-blue-600">
+                  <p className="mt-0.5 text-[10px] text-blue-600 text-center">
                     अपना सवाल या टेस्ट का नाम बोलें (जैसे: "CBC टेस्ट का क्या रेट है?")
                   </p>
                 )}
@@ -741,7 +688,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
                   <span className="w-1 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:0ms]" />
                   <span className="w-1 h-5 bg-indigo-600 rounded-full animate-bounce [animation-delay:150ms]" />
                   <span className="w-1 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:300ms]" />
-                  <span className="w-1 h-6 bg-red-500 rounded-full animate-bounce [animation-delay:200ms]" />
+                  <span className="w-1 h-6 bg-rose-500 rounded-full animate-bounce [animation-delay:200ms]" />
                   <span className="w-1 h-4 bg-indigo-500 rounded-full animate-bounce [animation-delay:400ms]" />
                 </div>
               </div>
@@ -749,7 +696,7 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
 
             {/* Processing state */}
             {isProcessing && (
-              <div className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-500">
+              <div className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-500 shadow-2xs">
                 <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 <span>AI जवाब तैयार कर रहा है...</span>
               </div>
@@ -758,64 +705,87 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Voice Prompt Chips */}
-          <div className="p-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {quickChips.map((chip, i) => (
+          {/* ===================================================================== */}
+          {/* POPUP FOOTER                                                          */}
+          {/* Exact Spec:                                                          */}
+          {/* - 🎙️ Mic Button: Voice command/question के लिए।                        */}
+          {/* - Type Bar: Customer text type कर सके।                                */}
+          {/* - Send Button ➤: Typed message भेजने के लिए।                           */}
+          {/* - Customer Voice या Text—दोनों तरीकों से AI से बातचीत कर सके।         */}
+          {/* ===================================================================== */}
+          <div className="p-3 bg-slate-50 border-t border-slate-200 rounded-b-3xl">
+            <div className="flex items-center gap-2">
+              {/* 1. Mic Button 🎙️ */}
               <button
-                key={i}
                 type="button"
-                onClick={() => submitUserQuery(chip.prompt, false)}
-                className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                onClick={isListening ? () => handleStopAndSubmitSpeech() : startListening}
+                className={`relative flex items-center justify-center w-10 h-10 rounded-xl text-white transition-all cursor-pointer shrink-0 shadow-md ${
+                  isListening
+                    ? 'bg-rose-600 hover:bg-rose-700 ring-4 ring-rose-400/30 active:scale-95'
+                    : 'bg-[#123B6D] hover:bg-[#0e2c52] active:scale-95'
+                }`}
+                title={isListening ? 'बोलना बंद करें और भेजें' : 'बोलकर सवाल पूछें (Voice Command)'}
+                aria-label="Voice input"
               >
-                {chip.label}
+                {isListening ? (
+                  <MicOff className="w-5 h-5 text-white animate-pulse" />
+                ) : (
+                  <Mic className="w-5 h-5 text-amber-300" />
+                )}
               </button>
-            ))}
-          </div>
 
-          {/* Voice Input & Text Input Bar */}
-          <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
-            {/* Primary Large Microphone Button */}
-            <button
-              type="button"
-              onClick={isListening ? () => handleStopAndSubmitSpeech() : startListening}
-              className={`relative flex items-center justify-center w-11 h-11 rounded-2xl text-white transition-all cursor-pointer shrink-0 shadow-md ${
-                isListening
-                  ? 'bg-red-500 hover:bg-red-600 scale-105 ring-4 ring-red-400/30'
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95'
-              }`}
-              title={isListening ? 'बोलना बंद करें और भेजें' : 'बोलकर सवाल पूछें'}
-            >
-              {isListening ? (
-                <MicOff className="w-5 h-5 animate-pulse" />
-              ) : (
-                <Mic className="w-5 h-5" />
-              )}
-            </button>
+              {/* 2. Type Bar */}
+              <div className="flex-1 relative flex items-center">
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      submitUserQuery(inputText, false);
+                    }
+                  }}
+                  placeholder={
+                    isListening
+                      ? 'सुन रहे हैं... बोलिए'
+                      : 'सवाल पूछें या बोलें... (Ask here)'
+                  }
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 placeholder-slate-400 font-medium"
+                />
+              </div>
 
-            {/* Optional Text typing input for quiet environments */}
-            <div className="flex-1 relative flex items-center">
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+              {/* 3. Send Button ➤ */}
+              <button
+                type="button"
+                disabled={!inputText.trim() && !transcript.trim()}
+                onClick={() => {
+                  if (isListening) {
+                    handleStopAndSubmitSpeech();
+                  } else {
                     submitUserQuery(inputText, false);
                   }
                 }}
-                placeholder={isListening ? 'सुन रहे हैं...' : 'या यहाँ टाइप करके पूछें...'}
-                className="w-full pl-3 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 placeholder-slate-400"
-              />
-              {inputText.trim() && (
-                <button
-                  type="button"
-                  onClick={() => submitUserQuery(inputText, false)}
-                  className="absolute right-1.5 p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer"
-                  title="Send"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              )}
+                className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white flex items-center justify-center transition-all shadow-md cursor-pointer shrink-0 active:scale-95"
+                title="Send Message"
+                aria-label="Send"
+              >
+                <Send className="w-4 h-4 text-white" />
+              </button>
+            </div>
+
+            {/* Subtle Language Indicator */}
+            <div className="flex items-center justify-between mt-2 px-1 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1 font-medium">
+                <Sparkles className="w-3 h-3 text-indigo-500" />
+                <span>Voice: Hindi • English • Hinglish</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSpeechLanguage(speechLanguage === 'hi-IN' ? 'en-IN' : 'hi-IN')}
+                className="font-bold text-blue-700 hover:underline cursor-pointer"
+              >
+                Lang: {speechLanguage === 'hi-IN' ? 'हिंदी/Hinglish' : 'English'}
+              </button>
             </div>
           </div>
         </div>
