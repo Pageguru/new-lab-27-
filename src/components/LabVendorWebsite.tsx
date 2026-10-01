@@ -72,6 +72,7 @@ import { HeroBookingForm } from './vendor/HeroBookingForm';
 import { LabWelcomeFirstScreen } from './vendor/LabWelcomeFirstScreen';
 import { TermsConditionsModal } from './TermsConditionsModal';
 import { VendorPolicyModal, PolicyTabType } from './vendor/VendorPolicyModal';
+import { DownloadAppModal } from './DownloadAppModal';
 import { getTenantWebsiteUrl, getTenantSubdomain, getTenantBrowserUrl, SUPER_ADMIN_DOMAIN } from '../constants/domains';
 import { isTenantMatch } from '../utils/tenantSecurity';
 import { optimizeImageFile } from '../utils/imageOptimizer';
@@ -400,6 +401,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isWebsiteQrModalOpen, setIsWebsiteQrModalOpen] = useState(false);
   const [copiedWebsiteUrl, setCopiedWebsiteUrl] = useState(false);
+  const [isDownloadAppModalOpen, setIsDownloadAppModalOpen] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [policyModalTab, setPolicyModalTab] = useState<PolicyTabType>('terms');
   const [fullScreenImage, setFullScreenImage] = useState<{
@@ -434,12 +436,51 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   };
 
   const websiteDirectUrl = React.useMemo(() => {
-    const vendorId = currentLabItem?.id || 'lab-apex';
-    if (typeof window !== 'undefined' && window.location.origin) {
-      return `${window.location.origin}/shop/${vendorId}`;
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin;
+      const search = window.location.search;
+      if (search && search.includes('lab=')) {
+        return `${origin}${window.location.pathname}${search}`;
+      }
+      const slug = currentLabItem?.domainPreview?.replace(`.${SUPER_ADMIN_DOMAIN}`, '') || currentLabItem?.id || 'apexdiagnostics';
+      return `${origin}/?lab=${slug}`;
     }
-    return `https://${SUPER_ADMIN_DOMAIN}/shop/${vendorId}`;
-  }, [currentLabItem]);
+    return canonicalUrl;
+  }, [currentLabItem, canonicalUrl]);
+
+  // Direct URL for Download App QR (Directly opens Download App page/modal when scanned)
+  const downloadAppUrl = React.useMemo(() => {
+    const base = websiteDirectUrl;
+    return `${base}${base.includes('?') ? '&' : '?'}page=download-app`;
+  }, [websiteDirectUrl]);
+
+  // Auto-open Download App Modal if URL contains ?page=download-app or #download-app
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search;
+      const hash = window.location.hash;
+      const params = new URLSearchParams(search);
+      if (params.get('page') === 'download-app' || hash === '#download-app') {
+        setIsDownloadAppModalOpen(true);
+      }
+    }
+  }, []);
+
+  const handleCloseDownloadAppModal = () => {
+    setIsDownloadAppModalOpen(false);
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('page') === 'download-app') {
+          url.searchParams.delete('page');
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        }
+        if (url.hash === '#download-app') {
+          window.history.replaceState({}, '', url.pathname + url.search);
+        }
+      } catch {}
+    }
+  };
 
   // Default Pathology & Diagnostic Banners
   const DEFAULT_HERO_BANNER_IMAGES = React.useMemo(() => [
@@ -2426,20 +2467,57 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     Contact &amp; Location
                   </button>
 
-                  {/* Payment QR Button in Drawer - Text Only */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      setIsPaymentQrModalOpen(true);
-                    }}
-                    className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-amber-50 text-amber-900 border border-amber-200 transition text-xs font-bold cursor-pointer mt-2 flex items-center justify-between"
-                  >
-                    <span>Lab Payment QR Code (UPI)</span>
-                    <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-black">
-                      UPI
-                    </span>
-                  </button>
+                  {/* Download App & Visit Website Buttons in Drawer */}
+                  <div className="pt-2 space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setIsDownloadAppModalOpen(true);
+                      }}
+                      className="w-full text-left py-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 transition text-xs font-bold cursor-pointer flex items-center justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-emerald-600" />
+                        <span>Download Mobile App</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-black">
+                        App QR
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setIsWebsiteQrModalOpen(true);
+                      }}
+                      className="w-full text-left py-2.5 px-3.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 transition text-xs font-bold cursor-pointer flex items-center justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-indigo-600" />
+                        <span>Visit Website QR</span>
+                      </span>
+                      <span className="text-[10px] bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded-full font-black">
+                        Live QR
+                      </span>
+                    </button>
+
+                    {/* Payment QR Button in Drawer */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setIsPaymentQrModalOpen(true);
+                      }}
+                      className="w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-amber-50 text-amber-900 border border-amber-200 transition text-xs font-bold cursor-pointer flex items-center justify-between"
+                    >
+                      <span>Lab Payment QR Code (UPI)</span>
+                      <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-black">
+                        UPI
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Drawer Footer Actions (Staff Login, T&C, Call Support) */}
@@ -4379,21 +4457,39 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 <li>
                   <button
                     type="button"
-                    onClick={() => setIsPaymentQrModalOpen(true)}
-                    className="hover:text-[#123B6D] hover:font-bold text-slate-600 flex items-center gap-1.5 cursor-pointer text-left transition"
+                    id="btn-footer-download-app"
+                    onClick={() => setIsDownloadAppModalOpen(true)}
+                    className="hover:text-[#123B6D] text-emerald-700 font-bold flex items-center gap-1.5 cursor-pointer text-left transition"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>Lab Payment UPI QR</span>
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Download App</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-mono font-bold border border-emerald-200">
+                      QR
+                    </span>
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
+                    id="btn-footer-visit-website"
                     onClick={() => setIsWebsiteQrModalOpen(true)}
+                    className="hover:text-[#123B6D] text-indigo-700 font-bold flex items-center gap-1.5 cursor-pointer text-left transition"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span>Visit website</span>
+                    <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded font-mono font-bold border border-indigo-200">
+                      QR
+                    </span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentQrModalOpen(true)}
                     className="hover:text-[#123B6D] hover:font-bold text-slate-600 flex items-center gap-1.5 cursor-pointer text-left transition"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    <span>Website QR (Lab Website QR)</span>
+                    <QrCode className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Lab Payment UPI QR</span>
                   </button>
                 </li>
               </ul>
@@ -4475,6 +4571,94 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   </button>
                 </li>
               </ul>
+            </div>
+          </div>
+
+          {/* Scan & Connect: Download App QR & Visit Website QR */}
+          <div className="border-t border-slate-200 pt-8 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Card 1: Download App (QR Code) */}
+              <div className="bg-gradient-to-br from-emerald-50/70 via-white to-slate-50 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 flex items-center gap-4 shadow-xs">
+                <div
+                  className="bg-white p-2 rounded-xl border border-emerald-200 shadow-2xs shrink-0 cursor-pointer hover:scale-105 transition"
+                  onClick={() => setIsDownloadAppModalOpen(true)}
+                  title="Click to open Download App page & QR"
+                >
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(downloadAppUrl)}`}
+                    alt="Download App QR Code"
+                    className="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-lg"
+                  />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-extrabold text-[#123B6D] text-xs sm:text-sm">
+                      Download App (Scan QR)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                      Android &amp; iOS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    QR Code scan करके सीधे Download App page पर जाएँ — Android App व iOS App install options तथा How to Install instructions उपलब्ध।
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsDownloadAppModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0F766E] hover:bg-[#0d655e] text-white text-[11px] font-bold transition shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Download App &amp; Instructions</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 2: Visit website (QR Code) */}
+              <div className="bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 border border-indigo-200/80 rounded-2xl p-4 sm:p-5 flex items-center gap-4 shadow-xs">
+                <div
+                  className="bg-white p-2 rounded-xl border border-indigo-200 shadow-2xs shrink-0 cursor-pointer hover:scale-105 transition"
+                  onClick={() => setIsWebsiteQrModalOpen(true)}
+                  title="Click to view Visit Website QR"
+                >
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(websiteDirectUrl)}`}
+                    alt="Visit Website QR Code"
+                    className="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-lg"
+                  />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-extrabold text-[#123B6D] text-xs sm:text-sm">
+                      Visit website (Scan QR)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold border border-indigo-300">
+                      Live Portal
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    QR Code scan करके सीधे {labName} की आधिकारिक वेबसाइट पेज पर जाएँ।
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsWebsiteQrModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#123B6D] hover:bg-[#0e2c52] text-white text-[11px] font-bold transition shadow-2xs cursor-pointer active:scale-95"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-amber-300" />
+                      <span>View Full QR</span>
+                    </button>
+                    <a
+                      href={websiteDirectUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-[11px] font-bold transition cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Visit Website</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -4723,7 +4907,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         customRefund={vendorLabSettings?.refundPolicy}
       />
 
-      {/* Website QR Modal */}
+      {/* Download App Modal (Android & iOS with How to Install Instructions & QR) */}
+      <DownloadAppModal
+        isOpen={isDownloadAppModalOpen}
+        onClose={handleCloseDownloadAppModal}
+        labName={labName}
+        labId={labShopId}
+        downloadAppUrl={downloadAppUrl}
+        websiteDirectUrl={websiteDirectUrl}
+      />
+
+      {/* Visit Website QR Modal */}
       {isWebsiteQrModalOpen && (
         <div
           role="dialog"
@@ -4739,7 +4933,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             <button
               onClick={() => setIsWebsiteQrModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition cursor-pointer"
-              aria-label="Close Website QR Modal"
+              aria-label="Close Visit Website QR Modal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -4749,7 +4943,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </div>
 
             <h3 id="website-qr-modal-title" className="text-base font-extrabold text-slate-900 leading-tight mb-1">
-              Official Website QR Code
+              Visit Website (Official Lab QR)
             </h3>
             <p className="text-xs text-slate-500 mb-4 line-clamp-1">
               {labName}
@@ -4763,7 +4957,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               />
               <span className="text-[11px] font-semibold text-slate-500 mt-2 flex items-center gap-1">
                 <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
-                Scan to open vendor lab website
+                Scan to open vendor lab website page
               </span>
             </div>
 
@@ -4788,10 +4982,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 href={websiteDirectUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-slate-100 hover:bg-slate-200 text-slate-800 py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition"
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition shadow-xs"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
-                <span>Visit Link</span>
+                <ExternalLink className="w-3.5 h-3.5 text-amber-300" />
+                <span>Visit Website</span>
               </a>
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(`Visit ${labName} Website: ${websiteDirectUrl}`)}`}
