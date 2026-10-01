@@ -26,6 +26,8 @@ import {
   Sparkles,
   Download,
   Smartphone,
+  CreditCard,
+  Lock,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { TestItem, ReceptionPatientEntry } from '../../types';
@@ -88,6 +90,30 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
   const [copiedUpi, setCopiedUpi] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // PhonePe Simulation State
+  const [isPhonePeModalOpen, setIsPhonePeModalOpen] = useState(false);
+  const [phonePeProcessing, setPhonePeProcessing] = useState(false);
+  const [phonePeMethod, setPhonePeMethod] = useState<'upi' | 'card' | 'netbanking'>('upi');
+
+  // Domain & Payment Method Resolution
+  // 1. Default IndianLalaji.com Shop URL -> ONLY Manual UPI available
+  // 2. Vendor Custom Domain -> Vendor's choice (Manual UPI OR PhonePe Gateway)
+  const isCustomDomain = Boolean(
+    vendorLabSettings?.isCustomDomainActive ||
+    (typeof window !== 'undefined' &&
+      !window.location.hostname.includes('indianlalaji.com') &&
+      !window.location.hostname.includes('indianalala.com') &&
+      !window.location.hostname.includes('run.app') &&
+      !window.location.hostname.includes('localhost') &&
+      Boolean(vendorLabSettings?.websiteDomain))
+  );
+
+  const activeOnlineMethod: 'manual_upi' | 'phonepe' = isCustomDomain
+    ? (vendorLabSettings?.activeOnlinePaymentMethod || 'manual_upi')
+    : 'manual_upi';
+
+  const isPayOnSpotAllowed = vendorLabSettings?.isPayOnSpotEnabled !== false;
+
   // 4. Booking Receipt State
   const [createdReceipt, setCreatedReceipt] = useState<{
     receiptNo: string;
@@ -109,7 +135,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
     pincode?: string;
     preferredTimeSlot?: string;
     paymentMethod: 'Online' | 'Spot';
-    paymentStatus: 'Pending Verification' | 'Pay on Spot / Unpaid';
+    paymentStatus: string;
     utrNumber?: string;
     screenshotPreview?: string;
     bookingDate: string;
@@ -311,126 +337,293 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
       return;
     }
 
-    // Generate Unique Token & Receipt / Booking Number
-    const currentYear = new Date().getFullYear();
-    const randomSeq = Math.floor(100000 + Math.random() * 900000);
-    const receiptNo = `LAB-${currentYear}-${randomSeq}`;
-    const tokenNumber = String(Math.floor(100 + Math.random() * 899));
-    const uhid = `UHID-W-${Date.now().toString().slice(-6)}`;
-    const nowStr = new Date().toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Central Booking Dispatcher
+    const executeBooking = (bookingData: {
+      gateway: 'Manual UPI' | 'PhonePe' | 'Pay on Spot';
+      autoVerified: boolean;
+      verificationStatus: 'Pending Verification' | 'Verified' | 'Pay on Spot / Unpaid';
+      paymentStatus: 'Full Payment' | 'Pending' | 'Due';
+      paidAmount: number;
+      dueAmount: number;
+      paymentMode: 'UPI' | 'PhonePe' | 'Cash';
+      utr?: string;
+      screenshot?: string;
+      txnId?: string;
+    }) => {
+      const currentYear = new Date().getFullYear();
+      const randomSeq = Math.floor(100000 + Math.random() * 900000);
+      const receiptNo = `LAB-${currentYear}-${randomSeq}`;
+      const tokenNumber = String(Math.floor(100 + Math.random() * 899));
+      const uhid = `UHID-W-${Date.now().toString().slice(-6)}`;
+      const nowStr = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
 
-    const paymentStatus: 'Pending Verification' | 'Pay on Spot / Unpaid' =
-      paymentMethod === 'Online' ? 'Pending Verification' : 'Pay on Spot / Unpaid';
+      const selectedTestsBreakdown = selectedTestsList.map((t) => ({
+        name: t.name,
+        price: t.priceINR,
+      }));
 
-    const selectedTestsBreakdown = selectedTestsList.map((t) => ({
-      name: t.name,
-      price: t.priceINR,
-    }));
+      const isPackage = selectedTestsList.some(
+        (t) =>
+          t.name.toLowerCase().includes('package') ||
+          t.name.toLowerCase().includes('profile') ||
+          t.name.toLowerCase().includes('checkup')
+      );
+      const sourceLabel = isPackage ? 'Website Package Booking' : 'Website Booking Form';
 
-    const isPackage = selectedTestsList.some(
-      (t) =>
-        t.name.toLowerCase().includes('package') ||
-        t.name.toLowerCase().includes('profile') ||
-        t.name.toLowerCase().includes('checkup')
-    );
-    const sourceLabel = isPackage ? 'Website Package Booking' : 'Website Booking Form';
+      // Construct address string
+      const assembledAddress =
+        collectionType === 'Home'
+          ? `${fullAddress.trim()}, ${areaLocality.trim()}, ${city.trim()}${pincode.trim() ? ` - ${pincode.trim()}` : ''}`
+          : 'Walk-in to Lab Branch';
 
-    // Construct address string
-    const assembledAddress =
-      collectionType === 'Home'
-        ? `${fullAddress.trim()}, ${areaLocality.trim()}, ${city.trim()}${pincode.trim() ? ` - ${pincode.trim()}` : ''}`
-        : 'Walk-in to Lab Branch';
+      // 1. Add to Reception Queue (for immediate staff visibility)
+      const newReceptionEntry: Omit<ReceptionPatientEntry, 'id'> = {
+        uhid,
+        tokenNumber,
+        tokenNo: tokenNumber,
+        receiptNumber: receiptNo,
+        patientName: patientName.trim(),
+        age: Number(age),
+        gender,
+        mobile: mobileNumber.replace(/\D/g, ''),
+        referringDoctor: doctorOrHospital.trim() || 'Self / Direct',
+        tests: selectedTestsList.map((t) => t.name),
+        sampleType: selectedTestsList[0]?.sampleType || 'Blood / Serum',
+        totalAmount: grandTotal,
+        discountINR: 0,
+        paidAmount: bookingData.paidAmount,
+        dueAmount: bookingData.dueAmount,
+        paymentMode: bookingData.paymentMode,
+        paymentStatus: bookingData.paymentStatus,
+        status: 'Waiting',
+        registeredAt: `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
+        bookingSource: sourceLabel,
+        visitType: collectionType === 'Home' ? 'Home Collection' : 'Walk-in',
+        address: assembledAddress,
+        preferredTimeSlot: collectionType === 'Home' ? preferredTimeSlot : undefined,
+        upiTransactionRef: bookingData.utr,
+        paymentVerificationStatus: bookingData.verificationStatus,
+        paymentScreenshot: bookingData.screenshot,
+        paymentGateway: bookingData.gateway,
+        paymentGatewayTxnId: bookingData.txnId,
+        autoVerified: bookingData.autoVerified,
+        homeCollectionCharges: homeCollectionCharge,
+        areaLocality: areaLocality.trim() || undefined,
+        city: city.trim() || undefined,
+        pincode: pincode.trim() || undefined,
+        selectedTestsBreakdown,
+        notes: `Website Booking Form • Gateway: ${bookingData.gateway} • Status: ${
+          bookingData.autoVerified ? '⚡ Auto-Verified (PhonePe)' : bookingData.utr ? `Pending Verification (UTR: ${bookingData.utr})` : 'Pay at Spot'
+        } • ${collectionType === 'Home' ? `Address: ${assembledAddress}` : 'Walk-in'} • Slot: ${preferredTimeSlot}`,
+      };
 
-    // 1. Add to Reception Queue (for immediate staff visibility)
-    const newReceptionEntry: Omit<ReceptionPatientEntry, 'id'> = {
-      uhid,
-      tokenNumber,
-      tokenNo: tokenNumber,
-      receiptNumber: receiptNo,
-      patientName: patientName.trim(),
-      age: Number(age),
-      gender,
-      mobile: mobileNumber.replace(/\D/g, ''),
-      referringDoctor: doctorOrHospital.trim() || 'Self / Direct',
-      tests: selectedTestsList.map((t) => t.name),
-      sampleType: selectedTestsList[0]?.sampleType || 'Blood / Serum',
-      totalAmount: grandTotal,
-      discountINR: 0,
-      paidAmount: paymentMethod === 'Online' ? grandTotal : 0,
-      dueAmount: paymentMethod === 'Online' ? 0 : grandTotal,
-      paymentMode: paymentMethod === 'Online' ? 'UPI' : 'Cash',
-      paymentStatus: paymentMethod === 'Online' ? 'Pending' : 'Due',
-      status: 'Waiting',
-      registeredAt: `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
-      bookingSource: sourceLabel,
-      visitType: collectionType === 'Home' ? 'Home Collection' : 'Walk-in',
-      address: assembledAddress,
-      preferredTimeSlot: collectionType === 'Home' ? preferredTimeSlot : undefined,
-      upiTransactionRef: paymentMethod === 'Online' ? utrNumber.trim() : undefined,
-      paymentVerificationStatus: paymentStatus,
-      paymentScreenshot: screenshotPreview || undefined,
-      homeCollectionCharges: homeCollectionCharge,
-      areaLocality: areaLocality.trim() || undefined,
-      city: city.trim() || undefined,
-      pincode: pincode.trim() || undefined,
-      selectedTestsBreakdown,
-      notes: `Website Booking Form (${isPackage ? 'Package' : 'Individual Test'}) | Token: ${tokenNumber} | Receipt: ${receiptNo} | Method: ${paymentMethod} | Status: ${paymentStatus}${
-        utrNumber ? ` | UTR: ${utrNumber}` : ''
-      }`,
+      addReceptionEntry(newReceptionEntry);
+
+      // 2. If Home Collection, also record into Home Collection Dispatch records
+      if (collectionType === 'Home') {
+        addHomeCollectionBooking({
+          patientName: patientName.trim(),
+          mobile: mobileNumber.replace(/\D/g, ''),
+          address: assembledAddress,
+          timeSlot: preferredTimeSlot,
+          packageOrTest: selectedTestsList.map((t) => t.name).join(', '),
+          amountINR: grandTotal,
+          paymentMode: bookingData.gateway === 'PhonePe' ? 'PhonePe Online' : bookingData.gateway === 'Manual UPI' ? 'UPI Online' : 'Pay on Spot',
+        });
+      }
+
+      // Set confirmed receipt state
+      setCreatedReceipt({
+        receiptNo,
+        tokenNumber,
+        uhid,
+        patientName: patientName.trim(),
+        age: age.trim(),
+        gender,
+        mobile: mobileNumber.replace(/\D/g, ''),
+        doctor: doctorOrHospital.trim() || 'Direct / Self',
+        selectedTests: selectedTestsBreakdown,
+        testsTotal,
+        homeCollectionFee: homeCollectionCharge,
+        grandTotal,
+        collectionType,
+        fullAddress: fullAddress.trim(),
+        areaLocality: areaLocality.trim(),
+        city: city.trim(),
+        pincode: pincode.trim(),
+        preferredTimeSlot,
+        paymentMethod: bookingData.gateway === 'Pay on Spot' ? 'Spot' : 'Online',
+        paymentStatus: bookingData.verificationStatus,
+        utrNumber: bookingData.utr,
+        screenshotPreview: bookingData.screenshot,
+        bookingDate: nowStr,
+      });
+
+      setFormStep(4);
+      if (onBookingSuccess) {
+        onBookingSuccess();
+      }
     };
 
-    addReceptionEntry(newReceptionEntry);
-
-    // 2. If Home Collection, also record into Home Collection Dispatch records
-    if (collectionType === 'Home') {
-      addHomeCollectionBooking({
-        patientName: patientName.trim(),
-        mobile: mobileNumber.replace(/\D/g, ''),
-        address: assembledAddress,
-        timeSlot: preferredTimeSlot,
-        packageOrTest: selectedTestsList.map((t) => t.name).join(', '),
-        amountINR: grandTotal,
-        paymentMode: paymentMethod === 'Online' ? 'UPI Online' : 'Pay on Spot',
+    if (paymentMethod === 'Spot') {
+      executeBooking({
+        gateway: 'Pay on Spot',
+        autoVerified: false,
+        verificationStatus: 'Pay on Spot / Unpaid',
+        paymentStatus: 'Due',
+        paidAmount: 0,
+        dueAmount: grandTotal,
+        paymentMode: 'Cash',
       });
+      return;
     }
 
-    // Set confirmed receipt state
-    setCreatedReceipt({
-      receiptNo,
-      tokenNumber,
-      uhid,
-      patientName: patientName.trim(),
-      age: age.trim(),
-      gender,
-      mobile: mobileNumber.replace(/\D/g, ''),
-      doctor: doctorOrHospital.trim() || 'Direct / Self',
-      selectedTests: selectedTestsBreakdown,
-      testsTotal,
-      homeCollectionFee: homeCollectionCharge,
-      grandTotal,
-      collectionType,
-      fullAddress: fullAddress.trim(),
-      areaLocality: areaLocality.trim(),
-      city: city.trim(),
-      pincode: pincode.trim(),
-      preferredTimeSlot,
-      paymentMethod,
-      paymentStatus,
-      utrNumber: utrNumber.trim(),
-      screenshotPreview,
-      bookingDate: nowStr,
+    if (activeOnlineMethod === 'phonepe') {
+      setIsPhonePeModalOpen(true);
+      return;
+    }
+
+    // Manual UPI
+    if (!utrNumber.trim()) {
+      setErrorMessage('Please enter 12-digit UPI UTR / Transaction Reference Number to confirm payment.');
+      return;
+    }
+
+    executeBooking({
+      gateway: 'Manual UPI',
+      autoVerified: false,
+      verificationStatus: 'Pending Verification',
+      paymentStatus: 'Pending',
+      paidAmount: grandTotal,
+      dueAmount: 0,
+      paymentMode: 'UPI',
+      utr: utrNumber.trim(),
+      screenshot: screenshotPreview || undefined,
     });
+  };
 
-    setFormStep(4);
-    if (onBookingSuccess) {
-      onBookingSuccess();
-    }
+  const handlePhonePeSuccess = () => {
+    setPhonePeProcessing(true);
+    setTimeout(() => {
+      setPhonePeProcessing(false);
+      setIsPhonePeModalOpen(false);
+      const generatedTxnId = `PP_${Date.now().toString().slice(-8)}`;
+      // Call booking execution
+      const currentYear = new Date().getFullYear();
+      const randomSeq = Math.floor(100000 + Math.random() * 900000);
+      const receiptNo = `LAB-${currentYear}-${randomSeq}`;
+      const tokenNumber = String(Math.floor(100 + Math.random() * 899));
+      const uhid = `UHID-W-${Date.now().toString().slice(-6)}`;
+      const nowStr = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      const selectedTestsBreakdown = selectedTestsList.map((t) => ({
+        name: t.name,
+        price: t.priceINR,
+      }));
+
+      const isPackage = selectedTestsList.some(
+        (t) =>
+          t.name.toLowerCase().includes('package') ||
+          t.name.toLowerCase().includes('profile') ||
+          t.name.toLowerCase().includes('checkup')
+      );
+      const sourceLabel = isPackage ? 'Website Package Booking' : 'Website Booking Form';
+      const assembledAddress =
+        collectionType === 'Home'
+          ? `${fullAddress.trim()}, ${areaLocality.trim()}, ${city.trim()}${pincode.trim() ? ` - ${pincode.trim()}` : ''}`
+          : 'Walk-in to Lab Branch';
+
+      const newReceptionEntry: Omit<ReceptionPatientEntry, 'id'> = {
+        uhid,
+        tokenNumber,
+        tokenNo: tokenNumber,
+        receiptNumber: receiptNo,
+        patientName: patientName.trim(),
+        age: Number(age),
+        gender,
+        mobile: mobileNumber.replace(/\D/g, ''),
+        referringDoctor: doctorOrHospital.trim() || 'Self / Direct',
+        tests: selectedTestsList.map((t) => t.name),
+        sampleType: selectedTestsList[0]?.sampleType || 'Blood / Serum',
+        totalAmount: grandTotal,
+        discountINR: 0,
+        paidAmount: grandTotal,
+        dueAmount: 0,
+        paymentMode: 'PhonePe',
+        paymentStatus: 'Full Payment',
+        status: 'Waiting',
+        registeredAt: `Today, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
+        bookingSource: sourceLabel,
+        visitType: collectionType === 'Home' ? 'Home Collection' : 'Walk-in',
+        address: assembledAddress,
+        preferredTimeSlot: collectionType === 'Home' ? preferredTimeSlot : undefined,
+        paymentVerificationStatus: 'Verified',
+        paymentGateway: 'PhonePe',
+        paymentGatewayTxnId: generatedTxnId,
+        autoVerified: true,
+        homeCollectionCharges: homeCollectionCharge,
+        areaLocality: areaLocality.trim() || undefined,
+        city: city.trim() || undefined,
+        pincode: pincode.trim() || undefined,
+        selectedTestsBreakdown,
+        notes: `Website Booking Form • Gateway: PhonePe • Status: ⚡ Auto-Verified (PhonePe Gateway) • Txn: ${generatedTxnId} • ${collectionType === 'Home' ? `Address: ${assembledAddress}` : 'Walk-in'} • Slot: ${preferredTimeSlot}`,
+      };
+
+      addReceptionEntry(newReceptionEntry);
+
+      if (collectionType === 'Home') {
+        addHomeCollectionBooking({
+          patientName: patientName.trim(),
+          mobile: mobileNumber.replace(/\D/g, ''),
+          address: assembledAddress,
+          timeSlot: preferredTimeSlot,
+          packageOrTest: selectedTestsList.map((t) => t.name).join(', '),
+          amountINR: grandTotal,
+          paymentMode: 'PhonePe Online',
+        });
+      }
+
+      setCreatedReceipt({
+        receiptNo,
+        tokenNumber,
+        uhid,
+        patientName: patientName.trim(),
+        age: age.trim(),
+        gender,
+        mobile: mobileNumber.replace(/\D/g, ''),
+        doctor: doctorOrHospital.trim() || 'Direct / Self',
+        selectedTests: selectedTestsBreakdown,
+        testsTotal,
+        homeCollectionFee: homeCollectionCharge,
+        grandTotal,
+        collectionType,
+        fullAddress: fullAddress.trim(),
+        areaLocality: areaLocality.trim(),
+        city: city.trim(),
+        pincode: pincode.trim(),
+        preferredTimeSlot,
+        paymentMethod: 'Online',
+        paymentStatus: 'Verified',
+        bookingDate: nowStr,
+      });
+
+      setFormStep(4);
+      if (onBookingSuccess) {
+        onBookingSuccess();
+      }
+    }, 1200);
   };
 
   // Reset form to book another test
@@ -1079,52 +1272,73 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
             <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1.5">
               Choose Payment Method
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid ${isPayOnSpotAllowed ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
               {/* Pay on Spot (First) */}
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('Spot')}
-                className={`p-2.5 rounded-xl border text-left transition cursor-pointer relative ${
-                  paymentMethod === 'Spot'
-                    ? 'bg-amber-50/90 border-amber-500 text-slate-950 ring-2 ring-amber-500/30'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Pay at Spot</span>
-                  </span>
-                  <span className="text-[9px] bg-amber-200 text-amber-900 font-bold px-1.5 py-0.2 rounded">
-                    Cash / Card
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  Pay at lab counter or during sample pickup
-                </p>
-              </button>
+              {isPayOnSpotAllowed && (
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('Spot')}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer relative ${
+                    paymentMethod === 'Spot'
+                      ? 'bg-amber-50/90 border-amber-500 text-slate-950 ring-2 ring-amber-500/30'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Pay at Spot</span>
+                    </span>
+                    <span className="text-[9px] bg-amber-200 text-amber-900 font-bold px-1.5 py-0.2 rounded">
+                      Cash / Card
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Pay at lab counter or during sample pickup
+                  </p>
+                </button>
+              )}
 
-              {/* Pay via QR (Second) */}
+              {/* Online Payment Method (Second - PhonePe Gateway OR Manual UPI) */}
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Online')}
                 className={`p-2.5 rounded-xl border text-left transition cursor-pointer relative ${
                   paymentMethod === 'Online'
-                    ? 'bg-emerald-50/90 border-emerald-600 text-slate-950 ring-2 ring-emerald-600/30'
+                    ? activeOnlineMethod === 'phonepe'
+                      ? 'bg-purple-50/90 border-purple-600 text-slate-950 ring-2 ring-purple-600/30'
+                      : 'bg-emerald-50/90 border-emerald-600 text-slate-950 ring-2 ring-emerald-600/30'
                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-bold text-xs text-emerald-800 flex items-center gap-1.5">
-                    <QrCode className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Pay via QR</span>
+                  <span className={`font-bold text-xs flex items-center gap-1.5 ${
+                    activeOnlineMethod === 'phonepe' ? 'text-purple-900' : 'text-emerald-800'
+                  }`}>
+                    {activeOnlineMethod === 'phonepe' ? (
+                      <>
+                        <CreditCard className="w-3.5 h-3.5 text-purple-700" />
+                        <span>Pay via PhonePe</span>
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Pay via QR</span>
+                      </>
+                    )}
                   </span>
-                  <span className="text-[9px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.2 rounded">
-                    UPI Instant
+                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                    activeOnlineMethod === 'phonepe'
+                      ? 'bg-purple-200 text-purple-900'
+                      : 'bg-emerald-200 text-emerald-900'
+                  }`}>
+                    {activeOnlineMethod === 'phonepe' ? 'PhonePe Gateway' : 'UPI Instant'}
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  Scan QR or Pay via UPI App (GPay/PhonePe)
+                  {activeOnlineMethod === 'phonepe'
+                    ? 'PhonePe • Instant Automatic Verification'
+                    : 'Scan QR / UPI App • UTR & Screenshot submit'}
                 </p>
               </button>
             </div>
@@ -1132,138 +1346,188 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
 
           {/* Payment Details Container */}
           {paymentMethod === 'Online' ? (
-            <div className="space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              {/* QR & UPI ID Box */}
-              <div className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-slate-200">
-                <div className="w-24 h-24 bg-white p-1 rounded-lg border border-slate-300 shrink-0 flex items-center justify-center">
-                  <img
-                    src={dynamicQrUrl}
-                    alt="Lab UPI Payment QR"
-                    className="w-full h-full object-contain"
+            activeOnlineMethod === 'phonepe' ? (
+              /* PHONEPE PAYMENT GATEWAY DETAILS */
+              <div className="space-y-3 bg-purple-50/70 p-3.5 rounded-2xl border-2 border-purple-300">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-xs shadow-xs">
+                      पे
+                    </div>
+                    <div>
+                      <div className="font-black text-xs text-purple-950">
+                        PhonePe Official Merchant Gateway
+                      </div>
+                      <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>100% Automatic Instant Payment Verification</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-base font-black text-purple-950">₹{grandTotal}</span>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-purple-200 space-y-2 text-slate-700">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-950">
+                    <Sparkles className="w-4 h-4 text-purple-700" />
+                    <span>Instant Direct Gateway Flow:</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Click below to open <strong>PhonePe Payment Gateway</strong>. Pay seamlessly using PhonePe UPI, any Debit/Credit Card, or NetBanking. Once completed, your payment is <strong>automatically verified in real time</strong> with no manual UTR entry needed.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1 text-[10px] font-semibold text-slate-500 flex-wrap">
+                    <span className="bg-purple-50 text-purple-900 border border-purple-200 px-2 py-0.5 rounded">PhonePe UPI</span>
+                    <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded">Visa / Mastercard / RuPay</span>
+                    <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded">Net Banking</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPhonePeModalOpen(true)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-98"
+                >
+                  <CreditCard className="w-4 h-4 text-amber-300" />
+                  <span>Pay ₹{grandTotal} via PhonePe Gateway</span>
+                </button>
+              </div>
+            ) : (
+              /* MANUAL UPI QR & UTR DETAILS (Default Shop URL or Custom Domain + Manual UPI) */
+              <div className="space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                {/* QR & UPI ID Box */}
+                <div className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-slate-200">
+                  <div className="w-24 h-24 bg-white p-1 rounded-lg border border-slate-300 shrink-0 flex items-center justify-center">
+                    <img
+                      src={dynamicQrUrl}
+                      alt="Lab UPI Payment QR"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[9px] font-bold">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      <span>Verified Lab Account</span>
+                    </div>
+
+                    <div className="font-bold text-slate-900 text-xs truncate">
+                      {labMerchantName}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-black text-[11px] text-[#123B6D] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate max-w-[150px]">
+                        {labUpiId}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={copyUpiId}
+                        className="px-2 py-0.5 rounded bg-[#123B6D] text-white text-[10px] font-bold hover:bg-[#0c294d] transition cursor-pointer shrink-0"
+                      >
+                        {copiedUpi ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <div className="text-[9px] text-slate-400">
+                      Scan via any UPI App for ₹{grandTotal}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile Direct Pay & Safe Download QR Buttons */}
+                <div className="flex items-center gap-2">
+                  <a
+                    href={dynamicUpiUri}
+                    className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
+                    title="Open directly in GPay / PhonePe / Paytm without scanning"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Pay via UPI App</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const link = document.createElement('a');
+                      link.href = dynamicQrUrl;
+                      link.download = `UPI-QR-${labMerchantName.replace(/\s+/g, '-')}.png`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="py-1.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    title="Download QR code to phone gallery"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Download QR</span>
+                  </button>
+                </div>
+
+                {/* Mobile Helper Message */}
+                <div className="text-[10px] text-amber-900 bg-amber-50 p-2 rounded-lg border border-amber-200 space-y-0.5">
+                  <div className="font-extrabold flex items-center gap-1 text-amber-950">
+                    <Smartphone className="w-3 h-3 text-amber-600" />
+                    <span>Mobile Payment Note:</span>
+                  </div>
+                  <p className="leading-snug text-amber-800">
+                    Tap <strong>"Pay via UPI App"</strong> above to pay directly via GPay/PhonePe (no self-scan needed). Then enter your 12-digit UTR below.
+                  </p>
+                </div>
+
+                {/* UTR Number Input */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-0.5">
+                    12-Digit UPI UTR / Transaction Reference Number <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                    placeholder="e.g. 526371829102 (From payment app)"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white"
+                    id="hero-utr-number-input"
                   />
                 </div>
 
-                <div className="space-y-1 min-w-0 flex-1">
-                  <div className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[9px] font-bold">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                    <span>Verified Lab Account</span>
-                  </div>
+                {/* Screenshot Upload (Optional) */}
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleScreenshotChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Upload className="w-3 h-3 text-slate-500" />
+                    <span>Attach Screenshot (Optional)</span>
+                  </button>
 
-                  <div className="font-bold text-slate-900 text-xs truncate">
-                    {labMerchantName}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-black text-[11px] text-[#123B6D] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate max-w-[150px]">
-                      {labUpiId}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={copyUpiId}
-                      className="px-2 py-0.5 rounded bg-[#123B6D] text-white text-[10px] font-bold hover:bg-[#0c294d] transition cursor-pointer shrink-0"
-                    >
-                      {copiedUpi ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  <div className="text-[9px] text-slate-400">
-                    Scan via any UPI App for ₹{grandTotal}
-                  </div>
+                  {screenshotPreview && (
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src={screenshotPreview}
+                        alt="Uploaded proof"
+                        className="w-6 h-6 rounded object-cover border border-slate-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setScreenshotPreview('')}
+                        className="text-rose-500 hover:text-rose-700 text-[10px] font-bold cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Mobile Direct Pay & Safe Download QR Buttons */}
-              <div className="flex items-center gap-2">
-                <a
-                  href={dynamicUpiUri}
-                  className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
-                  title="Open directly in GPay / PhonePe / Paytm without scanning"
-                >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>Pay via UPI App</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const link = document.createElement('a');
-                    link.href = dynamicQrUrl;
-                    link.download = `UPI-QR-${labMerchantName.replace(/\s+/g, '-')}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  className="py-1.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
-                  title="Download QR code to phone gallery"
-                >
-                  <Download className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Download QR</span>
-                </button>
-              </div>
-
-              {/* Mobile Helper Message */}
-              <div className="text-[10px] text-amber-900 bg-amber-50 p-2 rounded-lg border border-amber-200 space-y-0.5">
-                <div className="font-extrabold flex items-center gap-1 text-amber-950">
-                  <Smartphone className="w-3 h-3 text-amber-600" />
-                  <span>Mobile Payment Note:</span>
-                </div>
-                <p className="leading-snug text-amber-800">
-                  Tap <strong>"Pay via UPI App"</strong> above to pay directly via GPay/PhonePe (no self-scan needed). Then enter your 12-digit UTR below.
-                </p>
-              </div>
-
-              {/* UTR Number Input */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-700 mb-0.5">
-                  12-Digit UPI UTR / Transaction Reference Number <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={utrNumber}
-                  onChange={(e) => setUtrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
-                  placeholder="e.g. 526371829102 (From payment app)"
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white"
-                  id="hero-utr-number-input"
-                />
-              </div>
-
-              {/* Screenshot Upload (Optional) */}
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleScreenshotChange}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Upload className="w-3 h-3 text-slate-500" />
-                  <span>Attach Screenshot (Optional)</span>
-                </button>
-
-                {screenshotPreview && (
-                  <div className="flex items-center gap-1.5">
-                    <img
-                      src={screenshotPreview}
-                      alt="Uploaded proof"
-                      className="w-6 h-6 rounded object-cover border border-slate-300"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setScreenshotPreview('')}
-                      className="text-rose-500 hover:text-rose-700 text-[10px] font-bold cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            )
           ) : (
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
               <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
@@ -1292,13 +1556,19 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
 
             <button
               type="submit"
-              className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white py-2.5 rounded-xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              className={`flex-1 text-white py-2.5 rounded-xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer ${
+                paymentMethod === 'Online' && activeOnlineMethod === 'phonepe'
+                  ? 'bg-purple-700 hover:bg-purple-800'
+                  : 'bg-emerald-700 hover:bg-emerald-800'
+              }`}
               id="hero-form-confirm-booking-btn"
             >
               <CheckCircle2 className="w-4 h-4 text-amber-300" />
               <span>
                 {paymentMethod === 'Online'
-                  ? `Confirm Booking & Generate Token (Paid ₹${grandTotal} via QR)`
+                  ? activeOnlineMethod === 'phonepe'
+                    ? `Proceed to PhonePe Gateway (₹${grandTotal})`
+                    : `Confirm Booking & Generate Token (Paid ₹${grandTotal} via QR)`
                   : `Confirm Booking & Generate Token (Pay ₹${grandTotal} at Spot)`}
               </span>
             </button>
@@ -1337,6 +1607,146 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
             }}
             onBookAnother={handleBookAnother}
           />
+        </div>
+      )}
+
+      {/* PHONEPE PAYMENT GATEWAY CHECKOUT MODAL */}
+      {isPhonePeModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => !phonePeProcessing && setIsPhonePeModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-purple-200 text-slate-800 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* PhonePe Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-purple-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-sm shadow-xs">
+                  पे
+                </div>
+                <div>
+                  <div className="font-black text-xs text-purple-950">PhonePe Payment Gateway</div>
+                  <div className="text-[10px] text-slate-400 font-mono">Verified Merchant</div>
+                </div>
+              </div>
+              {!phonePeProcessing && (
+                <button
+                  type="button"
+                  onClick={() => setIsPhonePeModalOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Amount Box */}
+            <div className="bg-purple-50 p-3.5 rounded-2xl border border-purple-200 text-center">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-purple-700 block">
+                Amount to Pay
+              </span>
+              <span className="text-2xl font-black text-purple-950 font-mono">
+                ₹{grandTotal}
+              </span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">
+                Order for: {patientName} ({selectedTestsList.length} Tests)
+              </span>
+            </div>
+
+            {/* Choose Payment Mode in PhonePe */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Select Payment Option:
+              </span>
+
+              {/* Option 1: PhonePe UPI */}
+              <button
+                type="button"
+                onClick={() => setPhonePeMethod('upi')}
+                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
+                  phonePeMethod === 'upi'
+                    ? 'border-purple-600 bg-purple-50/80 shadow-2xs font-bold'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-purple-700" />
+                  <div>
+                    <div className="text-xs text-slate-800">PhonePe UPI / App</div>
+                    <div className="text-[10px] text-slate-400">Instant approval from PhonePe App</div>
+                  </div>
+                </div>
+                {phonePeMethod === 'upi' && <Check className="w-4 h-4 text-purple-700" />}
+              </button>
+
+              {/* Option 2: Debit/Credit Card */}
+              <button
+                type="button"
+                onClick={() => setPhonePeMethod('card')}
+                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
+                  phonePeMethod === 'card'
+                    ? 'border-purple-600 bg-purple-50/80 shadow-2xs font-bold'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-purple-700" />
+                  <div>
+                    <div className="text-xs text-slate-800">Debit / Credit Card</div>
+                    <div className="text-[10px] text-slate-400">Visa, Mastercard, RuPay</div>
+                  </div>
+                </div>
+                {phonePeMethod === 'card' && <Check className="w-4 h-4 text-purple-700" />}
+              </button>
+
+              {/* Option 3: NetBanking */}
+              <button
+                type="button"
+                onClick={() => setPhonePeMethod('netbanking')}
+                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
+                  phonePeMethod === 'netbanking'
+                    ? 'border-purple-600 bg-purple-50/80 shadow-2xs font-bold'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-purple-700" />
+                  <div>
+                    <div className="text-xs text-slate-800">Net Banking</div>
+                    <div className="text-[10px] text-slate-400">All Indian Banks Supported</div>
+                  </div>
+                </div>
+                {phonePeMethod === 'netbanking' && <Check className="w-4 h-4 text-purple-700" />}
+              </button>
+            </div>
+
+            {/* Complete Payment Button */}
+            <button
+              type="button"
+              disabled={phonePeProcessing}
+              onClick={handlePhonePeSuccess}
+              className="w-full py-3 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white font-black text-xs transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            >
+              {phonePeProcessing ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Verifying with PhonePe...</span>
+                </span>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Authorize & Pay ₹{grandTotal}</span>
+                </>
+              )}
+            </button>
+
+            <div className="text-center text-[10px] text-slate-400 flex items-center justify-center gap-1">
+              <Lock className="w-3 h-3 text-slate-400" />
+              <span>256-bit SSL Encrypted • PhonePe PG Direct</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

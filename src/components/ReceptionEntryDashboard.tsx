@@ -530,7 +530,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
       setCustomPaidAmount(String(entry.paidAmount));
     }
 
-    setPaymentMode(entry.paymentMode || 'UPI');
+    setPaymentMode(entry.paymentMode === 'Cash' || entry.paymentMode === 'Card' ? entry.paymentMode : 'UPI');
     setNotes(entry.notes || '');
 
     // Scroll smoothly to the form container
@@ -2403,10 +2403,60 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                               </span>
                             </>
                           )}
+
+                          {/* Verification Status Badges */}
+                          {entry.autoVerified || entry.paymentGateway === 'PhonePe' ? (
+                            <>
+                              <span className="text-slate-300">|</span>
+                              <span className="bg-purple-100 text-purple-900 border border-purple-200 text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">
+                                ⚡ PhonePe Auto-Verified
+                              </span>
+                            </>
+                          ) : entry.paymentVerificationStatus === 'Pending Verification' || (entry.upiTransactionRef && entry.paymentVerificationStatus !== 'Verified') ? (
+                            <>
+                              <span className="text-slate-300">|</span>
+                              <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">
+                                ⚠️ Pending Manual UPI Verify {entry.upiTransactionRef ? `(UTR: ${entry.upiTransactionRef})` : ''}
+                              </span>
+                            </>
+                          ) : null}
                         </div>
 
-                        {/* Right: Actions — Edit | Update Payment | Delete | Print (Icon-only with clear tooltips, NO text labels) */}
+                        {/* Right: Actions — Verify UPI | Edit | Update Payment | Delete | Print */}
                         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                          {/* 0. Verify Manual UPI (If pending verification) */}
+                          {(entry.paymentVerificationStatus === 'Pending Verification' || (entry.upiTransactionRef && entry.paymentVerificationStatus !== 'Verified')) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateReceptionEntry(entry.id, {
+                                  paymentVerificationStatus: 'Verified',
+                                  paymentStatus: 'Full Payment',
+                                  paidAmount: entry.totalAmount,
+                                  dueAmount: 0,
+                                });
+                                showToast(`✅ Manual UPI verified & approved for ${entry.patientName} (Token ${entry.tokenNumber})!`);
+                              }}
+                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black transition cursor-pointer shadow-2xs flex items-center gap-1"
+                              title="Verify customer's manual UPI payment & approve booking"
+                            >
+                              <Check className="w-3 h-3 text-amber-300" />
+                              <span>Verify UPI</span>
+                            </button>
+                          )}
+
+                          {/* View Screenshot if attached */}
+                          {entry.paymentScreenshot && (
+                            <button
+                              type="button"
+                              onClick={() => window.open(entry.paymentScreenshot, '_blank')}
+                              className="p-1.5 sm:p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg transition cursor-pointer shadow-2xs"
+                              title="View Customer's Payment Screenshot Proof"
+                            >
+                              <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700" />
+                            </button>
+                          )}
+
                           {/* 1. Edit */}
                           <button
                             type="button"

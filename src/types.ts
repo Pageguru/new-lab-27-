@@ -312,6 +312,16 @@ export interface VendorLabSettings {
   bookingTimeSlots?: string[];
   freeHomeCollectionThreshold?: number;
   statCollectionCharge?: number;
+  // Payment Method Logic (Mutual Exclusion: Manual UPI vs PhonePe)
+  activeOnlinePaymentMethod?: 'manual_upi' | 'phonepe'; // Only 1 Online Payment Method can be active at a time!
+  isPayOnSpotEnabled?: boolean; // Separate option, can remain ON in both cases (defaults to true)
+  isCustomDomainActive?: boolean; // Vendor custom domain active status
+  // PhonePe Payment Gateway Credentials
+  phonepeMerchantId?: string;
+  phonepeSaltKey?: string;
+  phonepeSaltIndex?: string;
+  phonepeEnvironment?: 'SANDBOX' | 'PRODUCTION';
+  phonepeAutoVerify?: boolean;
 }
 
 export interface VendorPackage {
@@ -447,7 +457,7 @@ export interface Patient {
   totalBill: number;
   paidAmount: number;
   dueAmount: number;
-  paymentMode: 'UPI' | 'Cash' | 'Card';
+  paymentMode: 'UPI' | 'Cash' | 'Card' | 'PhonePe' | string;
   labId?: string;
   branchId?: string;
   branchName?: string;
@@ -626,7 +636,7 @@ export interface ReceptionPatientEntry {
   discountINR?: number;
   paidAmount: number;
   dueAmount: number;
-  paymentMode: 'Cash' | 'UPI' | 'Card';
+  paymentMode: 'Cash' | 'UPI' | 'Card' | 'PhonePe' | string;
   paymentStatus: 'Full Payment' | 'Paid' | 'Advance' | 'Pending' | 'Partial' | 'Due' | 'Due Payment';
   status: 'Waiting' | 'Sample Collected' | 'In Lab' | 'Report Ready';
   registeredAt?: string;
@@ -640,7 +650,7 @@ export interface ReceptionPatientEntry {
   reportId?: string;
   technicianNotes?: string;
   balancePaidAmount?: number;
-  balancePaymentMode?: 'Cash' | 'UPI' | 'Card';
+  balancePaymentMode?: 'Cash' | 'UPI' | 'Card' | 'PhonePe' | string;
   balancePaidAt?: string;
   labId?: string;
   branchId?: string;
@@ -652,6 +662,9 @@ export interface ReceptionPatientEntry {
   upiTransactionRef?: string;
   receiptNumber?: string;
   paymentScreenshot?: string;
+  paymentGateway?: 'Manual UPI' | 'PhonePe' | 'Pay on Spot';
+  paymentGatewayTxnId?: string;
+  autoVerified?: boolean;
   paymentVerificationStatus?: 'Pending Verification' | 'Verified' | 'Pay on Spot / Unpaid';
   homeCollectionCharges?: number;
   areaLocality?: string;

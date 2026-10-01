@@ -128,6 +128,18 @@ export const VendorBillingTab: React.FC = () => {
     setTimeout(() => setCopiedUpi(null), 2000);
   };
 
+  // Vendor Manual UPI Payment Verification Helper
+  const handleVerifyManualUpi = (entry: ReceptionPatientEntry) => {
+    updateReceptionEntry(entry.id, {
+      paymentVerificationStatus: 'Verified',
+      paymentStatus: 'Full Payment',
+      paidAmount: entry.totalAmount,
+      dueAmount: 0,
+      notes: `${entry.notes ? entry.notes + ' • ' : ''}Payment verified manually by Vendor on ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
+    });
+    showNotification(`✅ Manual UPI Payment Verified & Approved for ${entry.patientName} (UTR: ${entry.upiTransactionRef || 'Verified'})!`);
+  };
+
   // Handle File Upload 1
   const handleFileUpload1 = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -673,22 +685,76 @@ export const VendorBillingTab: React.FC = () => {
 
                       {/* Status */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span
-                          className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
-                            isFullyPaid
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : paid > 0
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {isFullyPaid ? 'Full Paid' : paid > 0 ? 'Partial' : 'Due / Unpaid'}
-                        </span>
+                        <div className="space-y-1">
+                          {/* Payment Verification Status Badge */}
+                          {inv.autoVerified || inv.paymentGateway === 'PhonePe' ? (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center gap-1">
+                              ⚡ Auto-Verified (PhonePe)
+                            </span>
+                          ) : inv.paymentVerificationStatus === 'Pending Verification' || (inv.upiTransactionRef && inv.paymentVerificationStatus !== 'Verified') ? (
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
+                                ⚠️ Pending Manual UPI Verify
+                              </span>
+                              {inv.upiTransactionRef && (
+                                <div className="text-[9px] font-mono text-slate-500 font-bold">
+                                  UTR: {inv.upiTransactionRef}
+                                </div>
+                              )}
+                            </div>
+                          ) : inv.paymentVerificationStatus === 'Verified' ? (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                              ✓ Verified
+                            </span>
+                          ) : inv.paymentVerificationStatus === 'Pay on Spot / Unpaid' ? (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 inline-flex items-center gap-1">
+                              Pay on Spot
+                            </span>
+                          ) : null}
+
+                          {/* Payment Completion Status */}
+                          <div>
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                isFullyPaid
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : paid > 0
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {isFullyPaid ? 'Full Paid' : paid > 0 ? 'Partial' : 'Due / Unpaid'}
+                            </span>
+                          </div>
+                        </div>
                       </td>
 
                       {/* Actions */}
                       <td className="px-4 py-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Manual UPI Verify Action Button (If pending manual verification) */}
+                          {(inv.paymentVerificationStatus === 'Pending Verification' || (inv.upiTransactionRef && inv.paymentVerificationStatus !== 'Verified')) && (
+                            <button
+                              onClick={() => handleVerifyManualUpi(inv)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg text-[10px] font-black transition cursor-pointer shadow-2xs flex items-center gap-1"
+                              title="Verify customer's manual UPI payment & approve booking"
+                            >
+                              <Check className="w-3 h-3 text-amber-300" />
+                              <span>Verify UPI</span>
+                            </button>
+                          )}
+
+                          {/* View Screenshot if attached */}
+                          {inv.paymentScreenshot && (
+                            <button
+                              onClick={() => window.open(inv.paymentScreenshot, '_blank')}
+                              className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 border border-emerald-200 transition cursor-pointer"
+                              title="View UPI Payment Screenshot Proof"
+                            >
+                              <QrCode className="w-4 h-4" />
+                            </button>
+                          )}
+
                           {/* Print Invoice */}
                           <button
                             onClick={() => setViewInvoiceEntry(inv)}

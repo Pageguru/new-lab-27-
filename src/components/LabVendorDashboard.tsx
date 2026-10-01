@@ -59,6 +59,7 @@ import {
   Headphones,
   Database,
   Layers,
+  CreditCard,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { DashboardFooter } from './DashboardFooter';
@@ -78,7 +79,7 @@ import { VendorPackagesTab } from './vendor/VendorPackagesTab';
 import { VendorFormsTab } from './vendor/VendorFormsTab';
 import { VendorDashboardsTab } from './vendor/VendorDashboardsTab';
 import { VendorDomainRequestTab } from './vendor/VendorDomainRequestTab';
-import { VendorSiteSettingsTab } from './vendor/VendorSiteSettingsTab';
+import { VendorSiteSettingsTab, SiteSettingsSubSection } from './vendor/VendorSiteSettingsTab';
 import { VendorAdminSettingsTab } from './vendor/VendorAdminSettingsTab';
 import { VendorBookingSettingsTab } from './vendor/VendorBookingSettingsTab';
 import { VendorStaffManagementTab } from './vendor/VendorStaffManagementTab';
@@ -143,9 +144,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
   const [formSubTab, setFormSubTab] = useState<'bookings' | 'contacts'>('contacts');
   const [dashboardSubTab, setDashboardSubTab] = useState<'reception' | 'technician' | 'overview'>('reception');
   const [domainSubTab, setDomainSubTab] = useState<'add' | 'list'>('add');
-  const [settingsSubTab, setSettingsSubTab] = useState<
-    'logo' | 'name' | 'description' | 'feature' | 'payment_qr' | 'plan' | 'all'
-  >('logo');
+  const [settingsSubTab, setSettingsSubTab] = useState<SiteSettingsSubSection>('logo');
   const [bookingSettingsSubTab, setBookingSettingsSubTab] = useState<'all' | 'charges' | 'timing'>('all');
   const [staffSubTab, setStaffSubTab] = useState<'list' | 'add'>('list');
   // Single open accordion section under CMS Management sidebar: opening one closes previously opened tab
@@ -1753,30 +1752,30 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
                       </span>
                     </button>
 
-                    {/* 5. Payment QR */}
+                    {/* 5. Payment Settings */}
                     <button
                       type="button"
                       onClick={() => {
                         setActiveTab('settings');
-                        setSettingsSubTab('payment_qr');
+                        setSettingsSubTab('payment_settings' as any);
                         setIsMobileSidebarOpen(false);
                       }}
                       className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between gap-1.5 transition text-left cursor-pointer ${
-                        activeTab === 'settings' && settingsSubTab === 'payment_qr'
+                        activeTab === 'settings' && (settingsSubTab === 'payment_qr' || (settingsSubTab as any) === 'payment_settings')
                           ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                           : 'text-slate-700 hover:bg-indigo-50'
                       }`}
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <QrCode className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && settingsSubTab === 'payment_qr' ? 'text-amber-400' : 'text-purple-600'}`} />
-                        <span className="truncate">Payment QR</span>
+                        <CreditCard className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'settings' && (settingsSubTab === 'payment_qr' || (settingsSubTab as any) === 'payment_settings') ? 'text-amber-400' : 'text-purple-600'}`} />
+                        <span className="truncate">Payment Settings</span>
                       </div>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                        activeTab === 'settings' && settingsSubTab === 'payment_qr'
+                        activeTab === 'settings' && (settingsSubTab === 'payment_qr' || (settingsSubTab as any) === 'payment_settings')
                           ? 'bg-white/20 text-white'
                           : 'bg-purple-50 text-purple-700 border border-purple-200'
                       }`}>
-                        UPI
+                        UPI / Gateway
                       </span>
                     </button>
 

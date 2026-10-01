@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Send,
   Lock,
+  Building2,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { VendorLabSettings } from '../../types';
@@ -41,6 +42,7 @@ export type SiteSettingsSubSection =
   | 'description'
   | 'feature'
   | 'payment_qr'
+  | 'payment_settings'
   | 'plan'
   | 'all';
 
@@ -149,6 +151,18 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
     merchantName: vendorLabSettings.merchantName || 'Apex Diagnostic Lab Pvt Ltd',
     qrCode2Url: vendorLabSettings.qrCode2Url || '',
     upiId2: vendorLabSettings.upiId2 || 'apexdiag@oksbi',
+    // Payment Method Settings (Mutual Exclusion: Manual UPI vs PhonePe)
+    activeOnlinePaymentMethod: vendorLabSettings.activeOnlinePaymentMethod || 'manual_upi',
+    isPayOnSpotEnabled: vendorLabSettings.isPayOnSpotEnabled !== false,
+    isCustomDomainActive: Boolean(
+      vendorLabSettings.isCustomDomainActive ||
+      (vendorLabSettings.websiteDomain && !vendorLabSettings.websiteDomain.includes('indianlalaji.com'))
+    ),
+    phonepeMerchantId: vendorLabSettings.phonepeMerchantId || 'M22PGTESTMID01',
+    phonepeSaltKey: vendorLabSettings.phonepeSaltKey || 'd248b813-0975-47e2-8877-6d6f254e0b52',
+    phonepeSaltIndex: vendorLabSettings.phonepeSaltIndex || '1',
+    phonepeEnvironment: vendorLabSettings.phonepeEnvironment || 'SANDBOX',
+    phonepeAutoVerify: vendorLabSettings.phonepeAutoVerify !== false,
     purchasedPlan: vendorLabSettings.purchasedPlan || '1 Month',
     planDurationDays: vendorLabSettings.planDurationDays || 30,
     remainingVisibilityDays: vendorLabSettings.remainingVisibilityDays ?? 24,
@@ -159,6 +173,8 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
   const [toastMessage, setToastMessage] = useState('Site settings saved successfully!');
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
+  const [copiedMid, setCopiedMid] = useState(false);
+  const [showPhonepeSecret, setShowPhonepeSecret] = useState(false);
   const [isCustomLogoUrlOpen, setIsCustomLogoUrlOpen] = useState(false);
   const [customLogoUrlInput, setCustomLogoUrlInput] = useState('');
   const [isCustomFeatureUrlOpen, setIsCustomFeatureUrlOpen] = useState(false);
@@ -191,6 +207,17 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
         merchantName: vendorLabSettings.merchantName || 'Apex Diagnostic Lab Pvt Ltd',
         qrCode2Url: vendorLabSettings.qrCode2Url || '',
         upiId2: vendorLabSettings.upiId2 || 'apexdiag@oksbi',
+        activeOnlinePaymentMethod: vendorLabSettings.activeOnlinePaymentMethod || 'manual_upi',
+        isPayOnSpotEnabled: vendorLabSettings.isPayOnSpotEnabled !== false,
+        isCustomDomainActive: Boolean(
+          vendorLabSettings.isCustomDomainActive ||
+          (vendorLabSettings.websiteDomain && !vendorLabSettings.websiteDomain.includes('indianlalaji.com'))
+        ),
+        phonepeMerchantId: vendorLabSettings.phonepeMerchantId || 'M22PGTESTMID01',
+        phonepeSaltKey: vendorLabSettings.phonepeSaltKey || 'd248b813-0975-47e2-8877-6d6f254e0b52',
+        phonepeSaltIndex: vendorLabSettings.phonepeSaltIndex || '1',
+        phonepeEnvironment: vendorLabSettings.phonepeEnvironment || 'SANDBOX',
+        phonepeAutoVerify: vendorLabSettings.phonepeAutoVerify !== false,
         purchasedPlan: vendorLabSettings.purchasedPlan || '1 Month',
         planDurationDays: vendorLabSettings.planDurationDays || 30,
         remainingVisibilityDays: vendorLabSettings.remainingVisibilityDays ?? 24,
@@ -520,18 +547,27 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
             <span>4. Feature Image</span>
           </button>
 
-          {/* 5. Payment QR */}
+          {/* 5. Payment Settings */}
           <button
             type="button"
-            onClick={() => handleSelectSection('payment_qr')}
+            onClick={() => handleSelectSection('payment_settings')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
-              activeSection === 'payment_qr'
+              activeSection === 'payment_qr' || activeSection === 'payment_settings'
                 ? 'bg-[#123B6D] text-white shadow-2xs font-black'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <QrCode className={`w-3.5 h-3.5 ${activeSection === 'payment_qr' ? 'text-amber-400' : 'text-purple-500'}`} />
-            <span>5. Payment QR</span>
+            <CreditCard className={`w-3.5 h-3.5 ${activeSection === 'payment_qr' || activeSection === 'payment_settings' ? 'text-amber-400' : 'text-purple-600'}`} />
+            <span>5. Payment Settings</span>
+            <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase ${
+              activeSection === 'payment_qr' || activeSection === 'payment_settings'
+                ? 'bg-amber-400 text-slate-950'
+                : formData.activeOnlinePaymentMethod === 'phonepe' && formData.isCustomDomainActive
+                ? 'bg-purple-100 text-purple-800'
+                : 'bg-emerald-100 text-emerald-800'
+            }`}>
+              {formData.activeOnlinePaymentMethod === 'phonepe' && formData.isCustomDomainActive ? 'PhonePe' : 'Manual UPI'}
+            </span>
           </button>
 
           {/* 6. Plan & Pricing */}
@@ -1128,216 +1164,810 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* 5. PAYMENT QR SECTION */}
+      {/* 5. PAYMENT SETTINGS SECTION                              */}
       {/* ======================================================== */}
-      {activeSection === 'payment_qr' && (
-        <div id="section-payment-qr" className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-purple-50 text-purple-700">
-                <QrCode className="w-4 h-4" />
-              </span>
-              <div>
-                <h2 className="text-sm font-black text-slate-900">5. Payment QR &amp; Digital Collections</h2>
-                <p className="text-xs text-slate-500">
-                  Displayed on the website "Payment QR" modal, booking checkout, reception desk receipts, and phlebotomist collections.
-                </p>
+      {(activeSection === 'payment_qr' || activeSection === 'payment_settings') && (
+        <div id="section-payment-settings" className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-purple-50 text-purple-700">
+                  <CreditCard className="w-5 h-5" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black text-slate-900">
+                      5. Payment Settings (पेमेंट सेटिंग्स)
+                    </h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 uppercase">
+                      Payment Methods
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Configure Online Payment Systems (Manual UPI vs PhonePe) and Pay on Spot counter billing.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSave('Payment Settings & Gateway configuration saved successfully!')}
+                  className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Save Payment Settings</span>
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                Site Setting
-              </span>
-              <button
-                type="button"
-                onClick={() => handleSave('Payment QR & Merchant UPI details saved successfully!')}
-                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-              >
-                <Save className="w-3.5 h-3.5 text-amber-400" />
-                <span>Save Payment QR</span>
-              </button>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            {/* Live Scan Card Preview */}
-            <div className="bg-gradient-to-b from-[#123B6D] to-[#0A2547] text-white p-5 rounded-2xl shadow-md text-center space-y-3">
-              <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
-                <span>Official UPI QR</span>
-                <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px]">Instant Credit</span>
-              </div>
-
-              {/* QR Image Box */}
-              <div className="bg-white p-3 rounded-2xl max-w-[200px] mx-auto shadow-inner">
-                <img
-                  src={effectiveQrCode1}
-                  alt="UPI Payment QR"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-auto object-contain mx-auto"
-                />
-              </div>
-
-              {/* Dynamic Amount Live Simulator Indicator */}
-              <div className="bg-white/10 rounded-xl p-2 border border-white/20 text-center space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-amber-300 font-bold px-1">
-                  <span>Dynamic Test Amount:</span>
-                  <span className="text-white font-black text-xs font-mono">₹{testDynamicAmount}</span>
+            {/* DOMAIN CONTEXT & PAYMENT LOGIC BANNER */}
+            <div className="p-4 rounded-2xl border bg-gradient-to-r from-slate-50 via-indigo-50/40 to-slate-50 border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-[#123B6D]" />
+                  <span className="text-xs font-bold text-slate-800">
+                    Current Domain Mode:
+                  </span>
+                  {formData.isCustomDomainActive ? (
+                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Vendor Custom Domain Active</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-1">
+                      <Globe className="w-3.5 h-3.5 text-blue-700" />
+                      <span>Default IndianLalaji.com Shop URL</span>
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center justify-center gap-1 pt-0.5">
-                  {[250, 500, 1000, 2500].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setTestDynamicAmount(amt)}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                        testDynamicAmount === amt
-                          ? 'bg-amber-400 text-slate-950 font-black'
-                          : 'bg-white/20 text-white hover:bg-white/30'
-                      }`}
-                    >
-                      ₹{amt}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[9px] text-slate-300 pt-0.5">
-                  ⚡ Pre-fills ₹{testDynamicAmount} when scanned with GPay/PhonePe
-                </p>
-              </div>
 
-              <div className="space-y-1">
-                <h4 className="text-xs font-black truncate">
-                  {formData.merchantName || formData.labName || 'Apex Diagnostic Lab Pvt Ltd'}
-                </h4>
-                <div className="bg-white/10 rounded-lg p-1.5 text-[11px] font-mono flex items-center justify-between gap-1">
-                  <span className="truncate">{formData.upiId1 || 'apexlab@icici'}</span>
+                {/* Domain Switch Simulator Toggle */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shrink-0">
+                  <span className="text-[10px] font-bold text-slate-500 px-2">Domain Status:</span>
                   <button
                     type="button"
                     onClick={() => {
-                      if (formData.upiId1) {
-                        navigator.clipboard.writeText(formData.upiId1);
-                        setCopiedUpi(true);
-                        setTimeout(() => setCopiedUpi(false), 2000);
-                      }
+                      const newActive = !formData.isCustomDomainActive;
+                      setFormData((prev) => {
+                        const nextOnline = (!newActive) ? 'manual_upi' : prev.activeOnlinePaymentMethod;
+                        return {
+                          ...prev,
+                          isCustomDomainActive: newActive,
+                          activeOnlinePaymentMethod: nextOnline,
+                        };
+                      });
                     }}
-                    className="p-1 hover:bg-white/20 rounded transition cursor-pointer"
-                    title="Copy UPI ID"
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      formData.isCustomDomainActive
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
                   >
-                    {copiedUpi ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-white/80" />
-                    )}
+                    <span>{formData.isCustomDomainActive ? 'Custom Domain' : 'Default Shop URL'}</span>
+                    <span className="text-[10px] opacity-75">(Click to Toggle)</span>
                   </button>
                 </div>
               </div>
 
-              <div className="pt-1 flex items-center justify-center gap-1.5 text-[10px] text-slate-300">
-                <span>PhonePe</span> • <span>Google Pay</span> • <span>Paytm</span> • <span>BHIM</span>
+              {/* Explanatory Box for the active mode */}
+              {!formData.isCustomDomainActive ? (
+                <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-3.5 text-xs text-amber-950 space-y-1.5">
+                  <div className="font-black text-amber-900 flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>Default IndianLalaji.com Shop URL (indianlalaji.com/?shop={vendorLabSettings.labId || 'SHOP_ID'})</span>
+                  </div>
+                  <ul className="list-disc pl-5 text-[11px] text-amber-900 space-y-0.5 leading-relaxed">
+                    <li>
+                      <strong>केवल Manual UPI available होगा।</strong>
+                    </li>
+                    <li>
+                      Customer QR scan/download करके payment करेगा।
+                    </li>
+                    <li>
+                      Customer UTR + screenshot submit करेगा और Vendor manually payment verify करेगा।
+                    </li>
+                    <li>
+                      <em>PhonePe Payment Gateway इस URL पर lock रहता है। PhonePe Gateway केवल Vendor Custom Domain पर activate होता है।</em>
+                    </li>
+                  </ul>
+                </div>
+              ) : (
+                <div className="bg-indigo-50/90 border border-indigo-200 rounded-xl p-3.5 text-xs text-indigo-950 space-y-1.5">
+                  <div className="font-black text-indigo-900 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-indigo-700 shrink-0" />
+                    <span>Vendor Custom Domain ({vendorLabSettings.websiteDomain || 'yourlabdomain.com'}) Active</span>
+                  </div>
+                  <ul className="list-disc pl-5 text-[11px] text-indigo-900 space-y-0.5 leading-relaxed">
+                    <li>
+                      <strong>Manual UPI</strong> और <strong>PhonePe Payment Gateway</strong> दोनों options available हैं।
+                    </li>
+                    <li>
+                      <strong>नियम:</strong> एक समय में केवल एक ही Online Payment Method ON हो सकता है।
+                    </li>
+                    <li>
+                      अगर Vendor Manual UPI ON करता है → PhonePe automatically OFF।
+                    </li>
+                    <li>
+                      अगर Vendor PhonePe ON करता है → Manual UPI automatically OFF।
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* ======================================================== */}
+            {/* ONLINE PAYMENT METHOD SELECTOR (MUTUAL EXCLUSION)       */}
+            {/* ======================================================== */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <span>Online Payment Method (केवल 1 Online Method ON रहेगा)</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Choose which online payment system is active on your public website.
+                  </p>
+                </div>
+                <div className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                  Active System: <strong className="text-[#123B6D]">
+                    {formData.activeOnlinePaymentMethod === 'phonepe' && formData.isCustomDomainActive
+                      ? 'PhonePe Gateway'
+                      : 'Manual UPI'}
+                  </strong>
+                </div>
+              </div>
+
+              {/* TWO MUTUALLY EXCLUSIVE ONLINE METHOD CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* METHOD 1: MANUAL UPI */}
+                <div
+                  onClick={() => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      activeOnlinePaymentMethod: 'manual_upi',
+                    }));
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition cursor-pointer relative flex flex-col justify-between ${
+                    formData.activeOnlinePaymentMethod === 'manual_upi' || !formData.isCustomDomainActive
+                      ? 'bg-emerald-50/70 border-emerald-600 shadow-xs ring-2 ring-emerald-500/20'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-2 rounded-xl ${
+                          formData.activeOnlinePaymentMethod === 'manual_upi' || !formData.isCustomDomainActive
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          <QrCode className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="font-black text-sm text-slate-900 flex items-center gap-1.5">
+                            <span>Manual UPI (QR Scan &amp; Pay)</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500">
+                            Counter Standee / Dynamic UPI QR Code
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status Toggle Switch / Indicator */}
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${
+                        formData.activeOnlinePaymentMethod === 'manual_upi' || !formData.isCustomDomainActive
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {formData.activeOnlinePaymentMethod === 'manual_upi' || !formData.isCustomDomainActive ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-slate-200/80 text-[11px] text-slate-700 space-y-1">
+                      <div className="font-bold text-slate-900">Customer Website Flow:</div>
+                      <div className="font-mono text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200 text-slate-800">
+                        Pay Online → UPI QR → UTR + Screenshot submit
+                      </div>
+                      <div className="text-[10px] text-slate-500 pt-0.5">
+                        ✓ Vendor manually payment verify करेगा in Dashboard / Billing
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">
+                      {formData.activeOnlinePaymentMethod === 'manual_upi' || !formData.isCustomDomainActive
+                        ? '✅ Active Online Method'
+                        : 'Click to Turn ON (PhonePe will turn OFF)'}
+                    </span>
+                    <input
+                      type="radio"
+                      name="onlinePaymentRadio"
+                      checked={formData.activeOnlinePaymentMethod === 'manual_upi' || !formData.isCustomDomainActive}
+                      onChange={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          activeOnlinePaymentMethod: 'manual_upi',
+                        }));
+                      }}
+                      className="accent-emerald-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* METHOD 2: PHONEPE PAYMENT GATEWAY */}
+                <div
+                  onClick={() => {
+                    if (!formData.isCustomDomainActive) {
+                      setToastMessage('⚠️ PhonePe Payment Gateway requires an Active Custom Domain. Activate Custom Domain first!');
+                      setIsSavedToast(true);
+                      setTimeout(() => setIsSavedToast(false), 3500);
+                      return;
+                    }
+                    setFormData((prev) => ({
+                      ...prev,
+                      activeOnlinePaymentMethod: 'phonepe',
+                    }));
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition relative flex flex-col justify-between ${
+                    !formData.isCustomDomainActive
+                      ? 'bg-slate-100/80 border-slate-200 opacity-70 cursor-not-allowed'
+                      : formData.activeOnlinePaymentMethod === 'phonepe'
+                      ? 'bg-purple-50/70 border-purple-600 shadow-xs ring-2 ring-purple-500/20 cursor-pointer'
+                      : 'bg-white border-slate-200 hover:border-slate-300 cursor-pointer'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-2 rounded-xl ${
+                          formData.activeOnlinePaymentMethod === 'phonepe' && formData.isCustomDomainActive
+                            ? 'bg-purple-700 text-white'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          <CreditCard className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="font-black text-sm text-slate-900 flex items-center gap-1.5">
+                            <span>PhonePe Payment Gateway</span>
+                            {!formData.isCustomDomainActive && (
+                              <span className="p-0.5 rounded bg-slate-300 text-slate-700">
+                                <Lock className="w-3 h-3" />
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-500">
+                            Instant Auto-Verification • UPI, Cards, NetBanking
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status Toggle Switch / Indicator */}
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${
+                        !formData.isCustomDomainActive
+                          ? 'bg-slate-300 text-slate-600'
+                          : formData.activeOnlinePaymentMethod === 'phonepe'
+                          ? 'bg-purple-700 text-white shadow-2xs'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {!formData.isCustomDomainActive ? 'LOCKED' : formData.activeOnlinePaymentMethod === 'phonepe' ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-slate-200/80 text-[11px] text-slate-700 space-y-1">
+                      <div className="font-bold text-slate-900">Customer Website Flow:</div>
+                      <div className="font-mono text-[10px] bg-slate-50 p-1.5 rounded border border-slate-200 text-purple-900">
+                        Pay Online → PhonePe → Automatic Payment Verification
+                      </div>
+                      <div className="text-[10px] text-emerald-700 font-bold pt-0.5">
+                        ⚡ 100% Instant Automatic Verification (No manual UTR checking needed)
+                      </div>
+                    </div>
+
+                    {!formData.isCustomDomainActive && (
+                      <p className="text-[10px] text-rose-600 font-bold mt-2">
+                        🔒 Requires Vendor Custom Domain. Activate Custom Domain above to enable.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">
+                      {!formData.isCustomDomainActive
+                        ? 'Custom Domain required'
+                        : formData.activeOnlinePaymentMethod === 'phonepe'
+                        ? '✅ Active Online Method'
+                        : 'Click to Turn ON (Manual UPI will turn OFF)'}
+                    </span>
+                    <input
+                      type="radio"
+                      name="onlinePaymentRadio"
+                      disabled={!formData.isCustomDomainActive}
+                      checked={formData.activeOnlinePaymentMethod === 'phonepe' && Boolean(formData.isCustomDomainActive)}
+                      onChange={() => {
+                        if (formData.isCustomDomainActive) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            activeOnlinePaymentMethod: 'phonepe',
+                          }));
+                        }
+                      }}
+                      className="accent-purple-600 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Payment QR Inputs */}
-            <div className="md:col-span-2 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Primary UPI ID (VPA) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.upiId1}
-                    onChange={(e) => setFormData({ ...formData, upiId1: e.target.value })}
-                    placeholder="e.g. apexlab@icici or 9876543210@paytm"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Direct bank linked Virtual Payment Address.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Merchant / Beneficiary Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.merchantName}
-                    onChange={(e) => setFormData({ ...formData, merchantName: e.target.value })}
-                    placeholder="e.g. Apex Diagnostic Lab Pvt Ltd"
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Name verified by banking app upon scanning.
-                  </p>
-                </div>
-              </div>
-
-              {/* Upload QR Image */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Upload Standee / Bank QR Code Image
-                </label>
-                <label className="flex flex-col items-center justify-center w-full h-24 px-4 transition bg-white border-2 border-slate-300 border-dashed rounded-xl appearance-none cursor-pointer hover:border-[#123B6D] hover:bg-slate-50">
-                  <div className="flex flex-col items-center justify-center">
-                    <Upload className="w-5 h-5 text-slate-400 mb-1" />
-                    <p className="text-xs text-slate-600 font-bold">
-                      <span className="text-[#123B6D]">Upload QR Code PNG / JPG</span>
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      Upload your official PhonePe, Google Pay, or Paytm merchant QR image
+            {/* ======================================================== */}
+            {/* SEPARATE OPTION: PAY ON SPOT (LAB COUNTER / CASH)         */}
+            {/* ======================================================== */}
+            <div className="p-4 rounded-2xl border-2 border-blue-200 bg-blue-50/40 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-blue-600 text-white shrink-0 mt-0.5">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-sm text-slate-900">
+                        Pay on Spot (लैब काउंटर / सैंपल पिकअप पर भुगतान)
+                      </h4>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300">
+                        अलग ऑप्शन
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                      Pay on Spot अलग option रहेगा और दोनों cases (Default URL और Custom Domain) में available रह सकता है।
+                      मरीज लैब काउंटर पर या होम सैंपल कलेक्शन के समय Cash / Card से भुगतान कर सकता है।
                     </p>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleQrUpload(e, 1)}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+                </div>
 
-              {/* Secondary QR (Optional) */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-xs font-bold text-slate-800 block mb-1">
-                  Optional: Secondary QR (For Phlebotomist Home Visits)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                  <input
-                    type="text"
-                    value={formData.upiId2 || ''}
-                    onChange={(e) => setFormData({ ...formData, upiId2: e.target.value })}
-                    placeholder="Secondary UPI ID (e.g. apexvisit@oksbi)"
-                    className="p-2 rounded-xl border border-slate-300 text-xs font-mono"
-                  />
-                  <label className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer">
-                    <Upload className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Upload 2nd QR</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="relative inline-flex items-center cursor-pointer">
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleQrUpload(e, 2)}
-                      className="hidden"
+                      type="checkbox"
+                      checked={formData.isPayOnSpotEnabled !== false}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          isPayOnSpotEnabled: e.target.checked,
+                        }))
+                      }
+                      className="sr-only peer"
                     />
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
+                  <span className={`text-xs font-black uppercase ${formData.isPayOnSpotEnabled !== false ? 'text-blue-900' : 'text-slate-400'}`}>
+                    {formData.isPayOnSpotEnabled !== false ? 'Enabled (ON)' : 'Disabled (OFF)'}
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-            <span className="text-[11px] text-slate-500">
-              Patients can scan your verified UPI QR directly during online booking and sample collection.
-            </span>
-            <button
-              type="button"
-              onClick={() => handleSave('Payment QR & Merchant UPI details saved successfully!')}
-              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-            >
-              <Save className="w-3.5 h-3.5 text-amber-400" />
-              <span>Save Payment QR</span>
-            </button>
+            {/* ======================================================== */}
+            {/* CONFIGURATION SECTION FOR THE ACTIVE ONLINE METHOD       */}
+            {/* ======================================================== */}
+
+            {/* PANEL A: MANUAL UPI CONFIGURATION */}
+            {(formData.activeOnlinePaymentMethod === 'manual_upi' || !formData.isCustomDomainActive) && (
+              <div className="border border-emerald-200 bg-emerald-50/20 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
+                  <div className="flex items-center gap-2">
+                    <QrCode className="w-4 h-4 text-emerald-700" />
+                    <h4 className="font-black text-sm text-emerald-950">
+                      Manual UPI QR Configuration (मैनुअल UPI क्रेडेंशियल्स)
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                    Active on Website
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                  {/* Live Scan Card Preview */}
+                  <div className="bg-gradient-to-b from-[#123B6D] to-[#0A2547] text-white p-5 rounded-2xl shadow-md text-center space-y-3">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-300">
+                      <span>Official UPI QR</span>
+                      <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px]">Instant Scan</span>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-2xl max-w-[200px] mx-auto shadow-inner">
+                      <img
+                        src={effectiveQrCode1}
+                        alt="UPI Payment QR"
+                        referrerPolicy="no-referrer"
+                        className="w-full h-auto object-contain mx-auto"
+                      />
+                    </div>
+
+                    <div className="bg-white/10 rounded-xl p-2 border border-white/20 text-center space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-amber-300 font-bold px-1">
+                        <span>Dynamic Test Amount:</span>
+                        <span className="text-white font-black text-xs font-mono">₹{testDynamicAmount}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-1 pt-0.5">
+                        {[250, 500, 1000, 2500].map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setTestDynamicAmount(amt)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                              testDynamicAmount === amt
+                                ? 'bg-amber-400 text-slate-950 font-black'
+                                : 'bg-white/20 text-white hover:bg-white/30'
+                            }`}
+                          >
+                            ₹{amt}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-slate-300 pt-0.5">
+                        ⚡ Pre-fills ₹{testDynamicAmount} when scanned with GPay/PhonePe
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black truncate">
+                        {formData.merchantName || formData.labName || 'Apex Diagnostic Lab Pvt Ltd'}
+                      </h4>
+                      <div className="bg-white/10 rounded-lg p-1.5 text-[11px] font-mono flex items-center justify-between gap-1">
+                        <span className="truncate">{formData.upiId1 || 'apexlab@icici'}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (formData.upiId1) {
+                              navigator.clipboard.writeText(formData.upiId1);
+                              setCopiedUpi(true);
+                              setTimeout(() => setCopiedUpi(false), 2000);
+                            }
+                          }}
+                          className="p-1 hover:bg-white/20 rounded transition cursor-pointer"
+                          title="Copy UPI ID"
+                        >
+                          {copiedUpi ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-white/80" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment QR Inputs */}
+                  <div className="md:col-span-2 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Primary UPI ID (VPA) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.upiId1 || ''}
+                          onChange={(e) => setFormData({ ...formData, upiId1: e.target.value })}
+                          placeholder="e.g. apexlab@icici or 9876543210@paytm"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Direct bank linked Virtual Payment Address.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Merchant / Beneficiary Name <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.merchantName || ''}
+                          onChange={(e) => setFormData({ ...formData, merchantName: e.target.value })}
+                          placeholder="e.g. Apex Diagnostic Lab Pvt Ltd"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Name verified by banking app upon scanning.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Upload QR Image */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Upload Standee / Bank QR Code Image
+                      </label>
+                      <label className="flex flex-col items-center justify-center w-full h-24 px-4 transition bg-white border-2 border-slate-300 border-dashed rounded-xl appearance-none cursor-pointer hover:border-[#123B6D] hover:bg-slate-50">
+                        <div className="flex flex-col items-center justify-center">
+                          <Upload className="w-5 h-5 text-slate-400 mb-1" />
+                          <p className="text-xs text-slate-600 font-bold">
+                            <span className="text-[#123B6D]">Upload QR Code PNG / JPG</span>
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            Upload your official PhonePe, Google Pay, or Paytm merchant QR image
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleQrUpload(e, 1)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Secondary QR (Optional) */}
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-xs font-bold text-slate-800 block mb-1">
+                        Optional: Secondary QR (For Phlebotomist Home Visits)
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        <input
+                          type="text"
+                          value={formData.upiId2 || ''}
+                          onChange={(e) => setFormData({ ...formData, upiId2: e.target.value })}
+                          placeholder="Secondary UPI ID (e.g. apexvisit@oksbi)"
+                          className="p-2 rounded-xl border border-slate-300 text-xs font-mono bg-white"
+                        />
+                        <label className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer">
+                          <Upload className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Upload 2nd QR</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleQrUpload(e, 2)}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PANEL B: PHONEPE PAYMENT GATEWAY CONFIGURATION */}
+            {formData.activeOnlinePaymentMethod === 'phonepe' && formData.isCustomDomainActive && (
+              <div className="border-2 border-purple-300 bg-purple-50/30 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-purple-200 flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-purple-700 text-white">
+                      <CreditCard className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h4 className="font-black text-sm text-purple-950">
+                        PhonePe Payment Gateway Settings (फोनपे गेटवे क्रेडेंशियल्स)
+                      </h4>
+                      <p className="text-[11px] text-purple-800">
+                        Direct merchant API integration for 100% Automatic Payment Verification.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          phonepeMerchantId: 'M22PGTESTMID01',
+                          phonepeSaltKey: 'd248b813-0975-47e2-8877-6d6f254e0b52',
+                          phonepeSaltIndex: '1',
+                          phonepeEnvironment: 'SANDBOX',
+                          phonepeAutoVerify: true,
+                        }));
+                        setToastMessage('✅ PhonePe Test Sandbox Credentials loaded!');
+                        setIsSavedToast(true);
+                        setTimeout(() => setIsSavedToast(false), 3000);
+                      }}
+                      className="px-3 py-1.5 rounded-xl border border-purple-300 bg-white hover:bg-purple-100 text-purple-900 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Fill Test Sandbox Keys</span>
+                    </button>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-200 text-purple-900">
+                      Auto-Verify: Active
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      PhonePe Merchant ID (MID) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={formData.phonepeMerchantId || ''}
+                        onChange={(e) => setFormData({ ...formData, phonepeMerchantId: e.target.value.trim() })}
+                        placeholder="e.g. M22PGTESTMID01 or YOUR_PROD_MID"
+                        className="w-full p-2.5 pr-8 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white font-bold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (formData.phonepeMerchantId) {
+                            navigator.clipboard.writeText(formData.phonepeMerchantId);
+                            setCopiedMid(true);
+                            setTimeout(() => setCopiedMid(false), 2000);
+                          }
+                        }}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-purple-700"
+                        title="Copy Merchant ID"
+                      >
+                        {copiedMid ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Provided in PhonePe Merchant Dashboard</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Salt Key / Production Secret <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPhonepeSecret ? 'text' : 'password'}
+                        required
+                        value={formData.phonepeSaltKey || ''}
+                        onChange={(e) => setFormData({ ...formData, phonepeSaltKey: e.target.value.trim() })}
+                        placeholder="e.g. d248b813-0975-47e2-8877-..."
+                        className="w-full p-2.5 pr-8 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white font-bold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPhonepeSecret(!showPhonepeSecret)}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-purple-700"
+                        title={showPhonepeSecret ? 'Hide key' : 'Show key'}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Used for cryptographic signature verification</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Salt Key Index <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.phonepeSaltIndex || '1'}
+                        onChange={(e) => setFormData({ ...formData, phonepeSaltIndex: e.target.value.trim() })}
+                        placeholder="1"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white text-center font-bold"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Default is 1</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Environment <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={formData.phonepeEnvironment || 'SANDBOX'}
+                        onChange={(e) => setFormData({ ...formData, phonepeEnvironment: e.target.value as any })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white font-bold"
+                      >
+                        <option value="SANDBOX">UAT Sandbox (Testing)</option>
+                        <option value="PRODUCTION">Production (Live)</option>
+                      </select>
+                      <p className="text-[10px] text-slate-400 mt-1">Live payments</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-purple-100/70 border border-purple-200 rounded-xl p-3 text-xs text-purple-900 flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5 text-[11px] leading-relaxed">
+                    <p className="font-bold">Automatic Payment Verification Guarantee:</p>
+                    <p className="text-purple-800">
+                      When patients pay via PhonePe on your website, PhonePe sends instant webhook authorization.
+                      The appointment token is marked <strong>"Paid &amp; Verified"</strong> automatically without requiring the patient to enter a UTR or the lab to check receipts!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* LIVE CUSTOMER CHECKOUT PREVIEW SIMULATOR                 */}
+            {/* ======================================================== */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Customer Website Checkout Preview (ग्राहक को क्या दिखेगा)</span>
+                </span>
+                <span className="text-[10px] font-bold text-slate-500">
+                  URL: {formData.isCustomDomainActive ? (vendorLabSettings.websiteDomain || 'yourlab.com') : `indianlalaji.com/?shop=${vendorLabSettings.labId || 'apex'}`}
+                </span>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+                <div className="text-xs font-bold text-slate-800">Select Payment Option on Booking Checkout:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Option 1: Pay at Spot (if enabled) */}
+                  {formData.isPayOnSpotEnabled !== false ? (
+                    <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        <div>
+                          <div className="font-black text-xs text-slate-900">Pay at Spot</div>
+                          <div className="text-[10px] text-slate-500">Pay Cash/Card at counter or pickup</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                        Counter
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 text-slate-400 text-xs italic flex items-center justify-center">
+                      Pay on Spot Disabled by Lab
+                    </div>
+                  )}
+
+                  {/* Option 2: Active Online Method */}
+                  {formData.activeOnlinePaymentMethod === 'phonepe' && formData.isCustomDomainActive ? (
+                    <div className="p-3 rounded-xl border-2 border-purple-500 bg-purple-50/80 flex items-center justify-between shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-purple-700" />
+                        <div>
+                          <div className="font-black text-xs text-purple-950 flex items-center gap-1">
+                            <span>Pay Online via PhonePe</span>
+                            <span className="text-[9px] bg-purple-200 text-purple-900 px-1 rounded font-bold">Gateway</span>
+                          </div>
+                          <div className="text-[10px] text-purple-700">UPI, Cards, NetBanking • Auto-Verified</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-purple-600 text-white shadow-2xs">
+                        ⚡ Instant
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/80 flex items-center justify-between shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <QrCode className="w-4 h-4 text-emerald-700" />
+                        <div>
+                          <div className="font-black text-xs text-emerald-950 flex items-center gap-1">
+                            <span>Pay via QR (Manual UPI)</span>
+                            <span className="text-[9px] bg-emerald-200 text-emerald-900 px-1 rounded font-bold">Manual</span>
+                          </div>
+                          <div className="text-[10px] text-emerald-700">Scan QR → Enter UTR &amp; Screenshot</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-600 text-white shadow-2xs">
+                        QR Scan
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <span className="text-[11px] text-slate-500">
+                Single online payment system active rule ensures zero confusion for patients during checkout.
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSave('Payment Settings & Gateway configuration saved successfully!')}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5 text-amber-400" />
+                <span>Save Payment Settings</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

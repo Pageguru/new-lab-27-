@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Check,
@@ -23,6 +23,9 @@ import {
   Printer,
   Smartphone,
   Download,
+  Upload,
+  CreditCard,
+  Lock,
 } from 'lucide-react';
 import { TestItem, VendorPackage, ReceptionPatientEntry } from '../../types';
 import { useCms } from '../../context/CmsContext';
@@ -76,11 +79,18 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
   const [preferredSlot, setPreferredSlot] = useState('Today (Within 2 Hours)');
 
   // Form State - Payment (Step 2)
-  const [paymentOption, setPaymentOption] = useState<'online_upi' | 'pay_at_branch'>('online_upi');
+  const [paymentOption, setPaymentOption] = useState<'online' | 'pay_at_branch'>('online');
   const [upiRefNumber, setUpiRefNumber] = useState('');
+  const [screenshotPreview, setScreenshotPreview] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // PhonePe Gateway Simulation State
+  const [isPhonePeModalOpen, setIsPhonePeModalOpen] = useState(false);
+  const [phonePeProcessing, setPhonePeProcessing] = useState(false);
+  const [phonePeMethod, setPhonePeMethod] = useState<'upi' | 'card' | 'netbanking'>('upi');
 
   // Form State - Confirmed Result (Step 3)
   const [confirmedEntry, setConfirmedEntry] = useState<ReceptionPatientEntry | null>(null);
@@ -90,6 +100,25 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
   const upiId = vendorLabSettings?.upiId1 || 'apexlab@icici';
   const labPhone = vendorLabSettings?.phone || '7087033009';
 
+  // Domain & Payment Method Resolution
+  // 1. Default IndianLalaji.com Shop URL -> ONLY Manual UPI available
+  // 2. Vendor Custom Domain -> Vendor's choice (Manual UPI OR PhonePe Gateway)
+  const isCustomDomain = Boolean(
+    vendorLabSettings?.isCustomDomainActive ||
+    (typeof window !== 'undefined' &&
+      !window.location.hostname.includes('indianlalaji.com') &&
+      !window.location.hostname.includes('indianalala.com') &&
+      !window.location.hostname.includes('run.app') &&
+      !window.location.hostname.includes('localhost') &&
+      Boolean(vendorLabSettings?.websiteDomain))
+  );
+
+  const activeOnlineMethod: 'manual_upi' | 'phonepe' = isCustomDomain
+    ? (vendorLabSettings?.activeOnlinePaymentMethod || 'manual_upi')
+    : 'manual_upi';
+
+  const isPayOnSpotAllowed = vendorLabSettings?.isPayOnSpotEnabled !== false;
+
   // Initialize selected test or package when modal opens
   useEffect(() => {
     if (!isOpen) return;
@@ -98,6 +127,9 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
     setIsSubmitting(false);
     setConfirmedEntry(null);
     setUpiRefNumber('');
+    setScreenshotPreview('');
+    setIsPhonePeModalOpen(false);
+    setPhonePeProcessing(false);
 
     if (initialTests && initialTests.length > 0) {
       setSelectedTests(initialTests);
@@ -199,20 +231,41 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
     setCurrentStep(2);
   };
 
-  // Step 2 Final Submission: Add entry to Reception Queue & Home Booking
-  const handleConfirmBooking = () => {
-    setPaymentError('');
+  // Handle Screenshot Upload for Manual UPI
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    if (paymentOption === 'online_upi' && !upiRefNumber.trim()) {
-      setPaymentError('Please enter 12-digit UPI UTR / Transaction Reference Number to confirm your online payment.');
+    if (file.size > 5 * 1024 * 1024) {
+      setPaymentError('File size too large. Maximum 5MB allowed.');
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setScreenshotPreview(event.target?.result as string);
+      setPaymentError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Central Booking Dispatcher
+  const executeBooking = (bookingData: {
+    gateway: 'Manual UPI' | 'PhonePe' | 'Pay on Spot';
+    autoVerified: boolean;
+    verificationStatus: 'Pending Verification' | 'Verified' | 'Pay on Spot / Unpaid';
+    paymentStatus: 'Full Payment' | 'Pending' | 'Due';
+    paidAmount: number;
+    dueAmount: number;
+    paymentMode: 'UPI' | 'PhonePe' | 'Cash';
+    utr?: string;
+    screenshot?: string;
+    txnId?: string;
+  }) => {
     setIsSubmitting(true);
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     const isCartBooking = Boolean(initialTests && initialTests.length > 1) || selectedTests.length > 1;
     const isPackageBooking = selectedTests.some(
       (t) =>
@@ -232,12 +285,6 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
     const randomToken = cleanTokenNum;
     const randomUhid = `UHID-W-${Date.now().toString().slice(-6)}`;
 
-    const isPaidOnline = paymentOption === 'online_upi';
-    const paid = isPaidOnline ? totalAmount : 0;
-    const due = isPaidOnline ? 0 : totalAmount;
-    const paymentMode = isPaidOnline ? 'UPI' : 'Cash';
-    const paymentStatus = isPaidOnline ? 'Full Payment' : 'Due';
-
     // 1. Create Reception Entry for Front-Desk Queue
     const newReceptionEntry = addReceptionEntry({
       uhid: randomUhid,
@@ -254,20 +301,25 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
         : 'EDTA Blood / Serum',
       totalAmount,
       discountINR: 0,
-      paidAmount: paid,
-      dueAmount: due,
-      paymentMode,
-      paymentStatus,
+      paidAmount: bookingData.paidAmount,
+      dueAmount: bookingData.dueAmount,
+      paymentMode: bookingData.paymentMode,
+      paymentStatus: bookingData.paymentStatus,
       status: 'Waiting',
       registeredAt: `Today, ${timeStr}`,
       bookingSource: bookingChannelSource,
       visitType,
       address: visitType === 'Home Collection' ? homeAddress.trim() : undefined,
       preferredTimeSlot: preferredSlot,
-      upiTransactionRef: isPaidOnline && upiRefNumber.trim() ? upiRefNumber.trim() : undefined,
-      notes: `🌐 Online Website Booking (${isCartBooking ? 'Multi-Cart' : isPackageBooking ? 'Health Package' : 'Direct Booking'}) • ${
-        isPaidOnline ? `Paid via UPI (Ref: ${upiRefNumber || 'Instant Online'})` : 'Pay at Lab Counter'
-      } • ${visitType === 'Home Collection' ? `Address: ${homeAddress}` : 'Walk-in at Lab'} • Slot: ${preferredSlot}`,
+      upiTransactionRef: bookingData.utr,
+      paymentScreenshot: bookingData.screenshot,
+      paymentGateway: bookingData.gateway,
+      paymentGatewayTxnId: bookingData.txnId,
+      autoVerified: bookingData.autoVerified,
+      paymentVerificationStatus: bookingData.verificationStatus,
+      notes: `🌐 Online Website Booking • Gateway: ${bookingData.gateway} • Status: ${
+        bookingData.autoVerified ? '⚡ Auto-Verified (PhonePe)' : bookingData.utr ? `Pending Verification (UTR: ${bookingData.utr})` : 'Pay at Spot'
+      } • ${visitType === 'Home Collection' ? `Address: ${homeAddress}` : 'Walk-in'} • Slot: ${preferredSlot}`,
       labId: activeTenantId !== 'all' ? activeTenantId : 'lab-apex',
       branchId: activeBranchId !== 'all' ? activeBranchId : 'branch-1',
     });
@@ -281,7 +333,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
         timeSlot: preferredSlot,
         packageOrTest: selectedTests.map((t) => t.name).join(', '),
         amountINR: totalAmount,
-        paymentMode: isPaidOnline ? 'UPI Online' : 'Pay at Counter / Visit',
+        paymentMode: bookingData.gateway === 'PhonePe' ? 'PhonePe Online' : bookingData.gateway === 'Manual UPI' ? 'UPI Online' : 'Pay at Visit',
       });
     }
 
@@ -291,6 +343,74 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
     if (onBookingSuccess) {
       onBookingSuccess();
     }
+  };
+
+  // Step 2 Final Submission
+  const handleConfirmBooking = () => {
+    setPaymentError('');
+
+    if (paymentOption === 'pay_at_branch') {
+      executeBooking({
+        gateway: 'Pay on Spot',
+        autoVerified: false,
+        verificationStatus: 'Pay on Spot / Unpaid',
+        paymentStatus: 'Due',
+        paidAmount: 0,
+        dueAmount: totalAmount,
+        paymentMode: 'Cash',
+      });
+      return;
+    }
+
+    // Online Payment Option
+    if (activeOnlineMethod === 'phonepe') {
+      // Launch PhonePe Gateway Modal
+      setIsPhonePeModalOpen(true);
+      return;
+    }
+
+    // Manual UPI
+    if (!upiRefNumber.trim()) {
+      setPaymentError('Please enter 12-digit UPI UTR / Transaction Reference Number to confirm your payment.');
+      return;
+    }
+
+    if (upiRefNumber.trim().length < 8) {
+      setPaymentError('Please enter a valid 12-digit UPI UTR number from your payment app screen.');
+      return;
+    }
+
+    executeBooking({
+      gateway: 'Manual UPI',
+      autoVerified: false,
+      verificationStatus: 'Pending Verification',
+      paymentStatus: 'Pending',
+      paidAmount: totalAmount,
+      dueAmount: 0,
+      paymentMode: 'UPI',
+      utr: upiRefNumber.trim(),
+      screenshot: screenshotPreview || undefined,
+    });
+  };
+
+  // Handle PhonePe Gateway Simulation Success
+  const handlePhonePeSuccess = () => {
+    setPhonePeProcessing(true);
+    setTimeout(() => {
+      setPhonePeProcessing(false);
+      setIsPhonePeModalOpen(false);
+      const generatedTxnId = `PP_${Date.now().toString().slice(-8)}`;
+      executeBooking({
+        gateway: 'PhonePe',
+        autoVerified: true,
+        verificationStatus: 'Verified',
+        paymentStatus: 'Full Payment',
+        paidAmount: totalAmount,
+        dueAmount: 0,
+        paymentMode: 'PhonePe',
+        txnId: generatedTxnId,
+      });
+    }, 1200);
   };
 
   const dynamicUpiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Test Booking - ${patientName || 'Patient'}`)}`;
@@ -746,70 +866,133 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                 </div>
               </div>
 
-              {/* Choice of Payment: Option A (Pay at Spot) vs Option B (Pay via QR) */}
+              {/* Choice of Payment: Pay at Spot vs Active Online Payment Method */}
               <div className="space-y-2">
                 <label className="block text-[11px] font-bold text-slate-700">
                   Select Payment Option:
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Option 1: Pay at Spot */}
-                  <button
-                    type="button"
-                    onClick={() => setPaymentOption('pay_at_branch')}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                      paymentOption === 'pay_at_branch'
-                        ? 'border-[#123B6D] bg-blue-50/70 ring-2 ring-[#123B6D]/20 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
-                        <Building2 className="w-4 h-4 text-[#123B6D]" />
-                        <span>Pay at Spot</span>
+                <div className={`grid ${isPayOnSpotAllowed ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+                  {/* Option 1: Pay at Spot (Independent Option) */}
+                  {isPayOnSpotAllowed && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentOption('pay_at_branch')}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                        paymentOption === 'pay_at_branch'
+                          ? 'border-[#123B6D] bg-blue-50/70 ring-2 ring-[#123B6D]/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+                          <Building2 className="w-4 h-4 text-[#123B6D]" />
+                          <span>Pay at Spot</span>
+                        </span>
+                        {paymentOption === 'pay_at_branch' && (
+                          <Check className="w-4 h-4 text-[#123B6D]" />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-500">
+                        Pay with Cash, Card, or UPI upon visit / counter
                       </span>
-                      {paymentOption === 'pay_at_branch' && (
-                        <Check className="w-4 h-4 text-[#123B6D]" />
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-500">
-                      Pay with Cash, Card, or UPI upon visit / counter
-                    </span>
-                  </button>
+                    </button>
+                  )}
 
-                  {/* Option 2: Pay via QR */}
+                  {/* Option 2: Active Online Payment Method (Only 1 Online Method is Active) */}
                   <button
                     type="button"
-                    onClick={() => setPaymentOption('online_upi')}
+                    onClick={() => setPaymentOption('online')}
                     className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                      paymentOption === 'online_upi'
-                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/20 shadow-xs'
+                      paymentOption === 'online'
+                        ? activeOnlineMethod === 'phonepe'
+                          ? 'border-purple-600 bg-purple-50/70 ring-2 ring-purple-600/20 shadow-xs'
+                          : 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/20 shadow-xs'
                         : 'border-slate-200 bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
-                        <QrCode className="w-4 h-4 text-emerald-600" />
-                        <span>Pay via QR</span>
+                        {activeOnlineMethod === 'phonepe' ? (
+                          <>
+                            <CreditCard className="w-4 h-4 text-purple-700" />
+                            <span>Pay via PhonePe</span>
+                          </>
+                        ) : (
+                          <>
+                            <QrCode className="w-4 h-4 text-emerald-600" />
+                            <span>Pay via QR (UPI)</span>
+                          </>
+                        )}
                       </span>
-                      {paymentOption === 'online_upi' && (
-                        <Check className="w-4 h-4 text-emerald-600" />
+                      {paymentOption === 'online' && (
+                        <Check className={`w-4 h-4 ${activeOnlineMethod === 'phonepe' ? 'text-purple-700' : 'text-emerald-600'}`} />
                       )}
                     </div>
                     <span className="text-[10px] text-slate-500">
-                      Scan QR or Pay via UPI App (GPay/PhonePe/Paytm)
+                      {activeOnlineMethod === 'phonepe'
+                        ? 'PhonePe Gateway • Instant Automatic Verification'
+                        : 'Scan QR / UPI App • UTR & Screenshot submit'}
                     </span>
                   </button>
                 </div>
               </div>
 
-              {/* OPTION 1: Real UPI QR Code & UPI ID Display */}
-              {paymentOption === 'online_upi' && (
+              {/* PAYMENT DETAILS: ONLINE METHOD A - PHONEPE GATEWAY */}
+              {paymentOption === 'online' && activeOnlineMethod === 'phonepe' && (
+                <div className="bg-purple-50/60 border-2 border-purple-300 rounded-2xl p-4 flex flex-col items-center text-center space-y-3">
+                  <div className="flex items-center justify-between w-full pb-2 border-b border-purple-200 text-left">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-purple-700 text-white flex items-center justify-center font-black text-xs">
+                        पे
+                      </div>
+                      <div>
+                        <div className="font-black text-xs text-slate-900">PhonePe Payment Gateway</div>
+                        <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>100% Automatic Instant Payment Verification</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-base font-black text-purple-900">₹{totalAmount}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-purple-200 w-full text-left space-y-2 text-slate-700">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-purple-950">
+                      <Sparkles className="w-4 h-4 text-purple-700" />
+                      <span>Direct Gateway Flow:</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Click below to open <strong>PhonePe Payment Gateway</strong>. Pay seamlessly using PhonePe UPI, any Debit/Credit Card, or NetBanking. Once completed, your payment is <strong>automatically verified in real time</strong> with no manual UTR entry needed.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1 text-[10px] font-semibold text-slate-500">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">PhonePe UPI</span>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Visa / Mastercard / RuPay</span>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Net Banking</span>
+                    </div>
+                  </div>
+
+                  {/* Pay with PhonePe Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsPhonePeModalOpen(true)}
+                    className="w-full py-3 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-98"
+                  >
+                    <CreditCard className="w-4 h-4 text-amber-300" />
+                    <span>Pay ₹{totalAmount} via PhonePe Gateway</span>
+                  </button>
+                </div>
+              )}
+
+              {/* PAYMENT DETAILS: ONLINE METHOD B - MANUAL UPI (Default Shop URL or Custom Domain + Manual UPI) */}
+              {paymentOption === 'online' && activeOnlineMethod === 'manual_upi' && (
                 <div className="bg-slate-50 border-2 border-dashed border-emerald-300 rounded-2xl p-4 flex flex-col items-center text-center space-y-3">
                   <div className="flex items-center justify-between w-full pb-2 border-b border-slate-200 text-left">
                     <div>
                       <div className="font-black text-xs text-slate-800">{merchantName}</div>
                       <div className="text-[10px] text-emerald-700 font-bold">
-                        Official Verified Lab UPI QR
+                        Official Verified Lab UPI QR (Manual Verification)
                       </div>
                     </div>
                     <div className="text-right">
@@ -856,17 +1039,6 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Mobile Instruction Note */}
-                  <div className="w-full bg-amber-50/90 border border-amber-200/90 p-2 rounded-xl text-left text-[11px] text-amber-950 space-y-0.5">
-                    <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
-                      <Smartphone className="w-3 h-3 text-amber-700" />
-                      <span>Mobile Payment Help:</span>
-                    </div>
-                    <p className="text-[10px] text-amber-800 leading-snug">
-                      Tap <strong>"Pay via UPI App"</strong> to launch GPay/PhonePe directly without scanning, or copy the UPI ID below. Once paid, paste the 12-digit UTR to get your token.
-                    </p>
-                  </div>
-
                   {/* 1-Click Copy UPI Bar */}
                   <div className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
                     <div className="text-left min-w-0">
@@ -899,16 +1071,7 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                     </button>
                   </div>
 
-                  {/* Supported UPI Apps */}
-                  <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 font-bold">
-                    <span className="bg-white px-2 py-0.5 rounded border border-slate-200">GPay</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-slate-200">PhonePe</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-slate-200">Paytm</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-slate-200">BHIM</span>
-                    <span className="bg-white px-2 py-0.5 rounded border border-slate-200">Any UPI</span>
-                  </div>
-
-                  {/* 12-Digit UTR Input */}
+                  {/* 12-Digit UTR Input (Required) */}
                   <div className="w-full text-left pt-1">
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       12-Digit UPI Reference / UTR Number <span className="text-rose-500">*</span>
@@ -923,22 +1086,72 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                       placeholder="e.g. 523412345678 (From Payment App Screen)"
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-mono font-bold text-slate-900"
                     />
+                  </div>
+
+                  {/* Attach Screenshot Input */}
+                  <div className="w-full text-left">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700">
+                        Payment Screenshot / Slip
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>{screenshotPreview ? 'Change Slip' : 'Upload Slip / Photo'}</span>
+                      </button>
+                    </div>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleScreenshotChange}
+                      className="hidden"
+                    />
+
+                    {screenshotPreview ? (
+                      <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <img
+                          src={screenshotPreview}
+                          alt="Screenshot Proof"
+                          className="w-10 h-10 object-cover rounded-lg border border-slate-300"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-bold text-emerald-950 block truncate">
+                            Payment Screenshot Attached
+                          </span>
+                          <span className="text-[10px] text-emerald-700">Ready for vendor verification</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setScreenshotPreview('')}
+                          className="text-rose-500 hover:text-rose-700 p-1 font-bold text-xs cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full p-2.5 border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white rounded-xl text-center text-xs text-slate-500 font-semibold cursor-pointer transition flex items-center justify-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Click to attach payment screenshot proof</span>
+                      </button>
+                    )}
+
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Pay using any UPI app and enter the 12-digit UTR/Ref number from your payment confirmation screen.
+                      ✓ UTR + Screenshot submit hone ke baad Vendor manually payment verify karega.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Error Message Display if any */}
-              {paymentError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>{paymentError}</span>
-                </div>
-              )}
-
-              {/* OPTION 2: Pay at Spot Note */}
+              {/* PAYMENT DETAILS: OPTION PAY AT SPOT */}
               {paymentOption === 'pay_at_branch' && (
                 <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-3">
                   <div className="flex items-start gap-3">
@@ -972,6 +1185,14 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                 </div>
               )}
 
+              {/* Error Message Display if any */}
+              {paymentError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{paymentError}</span>
+                </div>
+              )}
+
               {/* Bottom Buttons: Back & Final Confirm */}
               <div className="flex gap-2 pt-2">
                 <button
@@ -988,22 +1209,31 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
                   disabled={isSubmitting}
                   onClick={handleConfirmBooking}
                   className={`flex-1 py-3 rounded-xl text-xs font-black transition shadow-sm flex items-center justify-center gap-2 cursor-pointer ${
-                    paymentOption === 'online_upi'
-                      ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                    paymentOption === 'online'
+                      ? activeOnlineMethod === 'phonepe'
+                        ? 'bg-purple-700 hover:bg-purple-800 text-white'
+                        : 'bg-emerald-700 hover:bg-emerald-800 text-white'
                       : 'bg-[#123B6D] hover:bg-[#0c284b] text-white'
                   }`}
                 >
                   {isSubmitting ? (
                     <span>Registering Booking...</span>
-                  ) : paymentOption === 'online_upi' ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 text-amber-300" />
-                      <span>Confirm Booking &amp; Generate Token (Paid ₹{totalAmount} via QR)</span>
-                    </>
+                  ) : paymentOption === 'online' ? (
+                    activeOnlineMethod === 'phonepe' ? (
+                      <>
+                        <CreditCard className="w-4 h-4 text-amber-300" />
+                        <span>Pay ₹{totalAmount} via PhonePe (Auto-Verify)</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                        <span>Confirm Booking & Generate Token (Paid ₹{totalAmount} via QR)</span>
+                      </>
+                    )
                   ) : (
                     <>
                       <Building2 className="w-4 h-4 text-amber-300" />
-                      <span>Confirm Booking &amp; Generate Token (Pay ₹{totalAmount} at Spot)</span>
+                      <span>Confirm Booking & Generate Token (Pay ₹{totalAmount} at Spot)</span>
                     </>
                   )}
                 </button>
@@ -1011,6 +1241,148 @@ export const OnlineTestBookingModal: React.FC<OnlineTestBookingModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* PHONEPE PAYMENT GATEWAY MODAL SIMULATION */}
+        {isPhonePeModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => !phonePeProcessing && setIsPhonePeModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-purple-200 text-slate-800 animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* PhonePe Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-purple-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-sm shadow-xs">
+                    पे
+                  </div>
+                  <div>
+                    <div className="font-black text-xs text-purple-950">PhonePe Payment Gateway</div>
+                    <div className="text-[10px] text-slate-400 font-mono">Verified Merchant</div>
+                  </div>
+                </div>
+                {!phonePeProcessing && (
+                  <button
+                    type="button"
+                    onClick={() => setIsPhonePeModalOpen(false)}
+                    className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Amount Box */}
+              <div className="bg-purple-50 p-3.5 rounded-2xl border border-purple-200 text-center">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-purple-700 block">
+                  Amount to Pay
+                </span>
+                <span className="text-2xl font-black text-purple-950 font-mono">
+                  ₹{totalAmount}
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  Order for: {patientName} ({selectedTests.length} Tests)
+                </span>
+              </div>
+
+              {/* Choose Payment Mode in PhonePe */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Select Payment Option:
+                </span>
+
+                {/* Option 1: PhonePe UPI */}
+                <button
+                  type="button"
+                  onClick={() => setPhonePeMethod('upi')}
+                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
+                    phonePeMethod === 'upi'
+                      ? 'border-purple-600 bg-purple-50/80 shadow-2xs font-bold'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-purple-700" />
+                    <div>
+                      <div className="text-xs text-slate-800">PhonePe UPI / App</div>
+                      <div className="text-[10px] text-slate-400">Instant approval from PhonePe App</div>
+                    </div>
+                  </div>
+                  {phonePeMethod === 'upi' && <Check className="w-4 h-4 text-purple-700" />}
+                </button>
+
+                {/* Option 2: Debit/Credit Card */}
+                <button
+                  type="button"
+                  onClick={() => setPhonePeMethod('card')}
+                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
+                    phonePeMethod === 'card'
+                      ? 'border-purple-600 bg-purple-50/80 shadow-2xs font-bold'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-purple-700" />
+                    <div>
+                      <div className="text-xs text-slate-800">Debit / Credit Card</div>
+                      <div className="text-[10px] text-slate-400">Visa, Mastercard, RuPay</div>
+                    </div>
+                  </div>
+                  {phonePeMethod === 'card' && <Check className="w-4 h-4 text-purple-700" />}
+                </button>
+
+                {/* Option 3: NetBanking */}
+                <button
+                  type="button"
+                  onClick={() => setPhonePeMethod('netbanking')}
+                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition cursor-pointer ${
+                    phonePeMethod === 'netbanking'
+                      ? 'border-purple-600 bg-purple-50/80 shadow-2xs font-bold'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-purple-700" />
+                    <div>
+                      <div className="text-xs text-slate-800">Net Banking</div>
+                      <div className="text-[10px] text-slate-400">All Indian Banks Supported</div>
+                    </div>
+                  </div>
+                  {phonePeMethod === 'netbanking' && <Check className="w-4 h-4 text-purple-700" />}
+                </button>
+              </div>
+
+              {/* Complete Payment Button */}
+              <button
+                type="button"
+                disabled={phonePeProcessing}
+                onClick={handlePhonePeSuccess}
+                className="w-full py-3 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white font-black text-xs transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {phonePeProcessing ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verifying with PhonePe...</span>
+                  </span>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Authorize & Pay ₹{totalAmount}</span>
+                  </>
+                )}
+              </button>
+
+              <div className="text-center text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                <Lock className="w-3 h-3 text-slate-400" />
+                <span>256-bit SSL Encrypted • PhonePe PG Direct</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
