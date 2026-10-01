@@ -40,6 +40,19 @@ export function getEffectiveTenantId(
 }
 
 /**
+ * Normalizes tenant identifiers and resolves known laboratory aliases.
+ * 'lab-apex' and 'apexdiagnostics' point to the same primary lab.
+ */
+export function normalizeTenantId(id: string | undefined | null): string {
+  if (!id) return DEFAULT_TENANT_ID;
+  const clean = String(id).trim().toLowerCase();
+  if (clean === 'lab-apex' || clean === 'apexdiagnostics' || clean === 'apex') {
+    return 'apexdiagnostics';
+  }
+  return clean;
+}
+
+/**
  * Verifies if an entity or lab ID belongs to the active tenant.
  * Accepts either a record object with labId or a raw string labId.
  */
@@ -56,13 +69,10 @@ export function isTenantMatch(
     rawLabId = (recordOrLabId as { labId?: string }).labId;
   }
 
-  const normalizedRecordId =
-    typeof rawLabId === 'string' && rawLabId.trim()
-      ? rawLabId.trim()
-      : DEFAULT_TENANT_ID;
-  const normalizedActiveId = String(activeTenantId).trim();
+  const normalizedRecord = normalizeTenantId(rawLabId);
+  const normalizedActive = normalizeTenantId(activeTenantId);
 
-  return normalizedRecordId.toLowerCase() === normalizedActiveId.toLowerCase();
+  return normalizedRecord === normalizedActive;
 }
 
 /**
@@ -75,14 +85,7 @@ export function filterTenantData<T extends { labId?: string }>(
   if (!activeTenantId || activeTenantId === 'all') {
     return items;
   }
-  const target = String(activeTenantId).trim().toLowerCase();
-  return items.filter((item) => {
-    const rawId = item && typeof item === 'object' ? item.labId : undefined;
-    const itemLabId = (
-      typeof rawId === 'string' && rawId.trim() ? rawId.trim() : DEFAULT_TENANT_ID
-    ).toLowerCase();
-    return itemLabId === target;
-  });
+  return items.filter((item) => isTenantMatch(item, activeTenantId));
 }
 
 /**
@@ -107,10 +110,8 @@ export function verifyTenantOwnership<T extends { labId?: string }>(
   }
 
   const rawId = typeof record === 'object' ? record.labId : undefined;
-  const recordLabId = (
-    typeof rawId === 'string' && rawId.trim() ? rawId.trim() : DEFAULT_TENANT_ID
-  ).toLowerCase();
-  const currentTenant = String(activeTenantId).trim().toLowerCase();
+  const recordLabId = normalizeTenantId(rawId);
+  const currentTenant = normalizeTenantId(activeTenantId);
 
   if (recordLabId !== currentTenant) {
     const errorMsg = `[SECURITY_VIOLATION] Cross-tenant modification rejected! Current Tenant: '${currentTenant}', Target Record Tenant: '${recordLabId}'.`;

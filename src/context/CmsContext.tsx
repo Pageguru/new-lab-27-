@@ -3144,6 +3144,41 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReports((prev) => [stamped, ...prev.filter((r) => r.reportId !== stamped.reportId)]);
     // Hostinger Server & Database Sync across computers
     syncLabReportToCloud(stamped);
+
+    // Automatically transition matching reception entry to Report Ready if report is complete / verified
+    if (!stamped.isDraft && stamped.verified !== false) {
+      setAllReceptionEntries((prev) => {
+        let entryToSync: ReceptionPatientEntry | null = null;
+        const updated = prev.map((e) => {
+          const isIdMatch = e.reportId && e.reportId.toLowerCase() === stamped.reportId.toLowerCase();
+          const isUhidMatch = e.uhid && stamped.uhid && e.uhid.toLowerCase() === stamped.uhid.toLowerCase();
+          const cleanStampedToken = String(stamped.tokenNumber || '').replace(/\D/g, '');
+          const cleanEntryToken = String(e.tokenNumber || e.tokenNo || '').replace(/\D/g, '');
+          const isTokenMatch = cleanStampedToken && cleanEntryToken && cleanStampedToken === cleanEntryToken;
+          const cleanStampedMobile = String(stamped.mobile || '').replace(/\D/g, '').slice(-10);
+          const cleanEntryMobile = String(e.mobile || '').replace(/\D/g, '').slice(-10);
+          const isMobileMatch = cleanStampedMobile && cleanEntryMobile && cleanStampedMobile === cleanEntryMobile && cleanStampedMobile.length >= 7;
+
+          if (isIdMatch || isUhidMatch || isTokenMatch || isMobileMatch) {
+            const nextEntry: ReceptionPatientEntry = {
+              ...e,
+              reportId: stamped.reportId,
+              status: 'Report Ready',
+              technicianStatus: 'Report Generated',
+              sentToReceptionDesk: true,
+              sentToReceptionAt: e.sentToReceptionAt || `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+            };
+            entryToSync = nextEntry;
+            return nextEntry;
+          }
+          return e;
+        });
+        if (entryToSync) {
+          syncReceptionEntryToCloud(entryToSync);
+        }
+        return updated;
+      });
+    }
   };
 
   const updateLabReport = (reportId: string, updated: Partial<LabReport>) => {
@@ -3164,6 +3199,42 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     if (syncedReport) {
       syncLabReportToCloud(syncedReport);
+
+      // If report is verified and not draft, sync reception entry to Report Ready
+      if (!syncedReport.isDraft && syncedReport.verified !== false) {
+        const completedRpt = syncedReport;
+        setAllReceptionEntries((prev) => {
+          let entryToSync: ReceptionPatientEntry | null = null;
+          const mapped = prev.map((e) => {
+            const isIdMatch = e.reportId && e.reportId.toLowerCase() === completedRpt.reportId.toLowerCase();
+            const isUhidMatch = e.uhid && completedRpt.uhid && e.uhid.toLowerCase() === completedRpt.uhid.toLowerCase();
+            const cleanRptToken = String(completedRpt.tokenNumber || '').replace(/\D/g, '');
+            const cleanEToken = String(e.tokenNumber || e.tokenNo || '').replace(/\D/g, '');
+            const isTokenMatch = cleanRptToken && cleanEToken && cleanRptToken === cleanEToken;
+            const cleanRptMobile = String(completedRpt.mobile || '').replace(/\D/g, '').slice(-10);
+            const cleanEMobile = String(e.mobile || '').replace(/\D/g, '').slice(-10);
+            const isMobileMatch = cleanRptMobile && cleanEMobile && cleanRptMobile === cleanEMobile && cleanRptMobile.length >= 7;
+
+            if (isIdMatch || isUhidMatch || isTokenMatch || isMobileMatch) {
+              const nextEntry: ReceptionPatientEntry = {
+                ...e,
+                reportId: completedRpt.reportId,
+                status: 'Report Ready',
+                technicianStatus: 'Report Generated',
+                sentToReceptionDesk: true,
+                sentToReceptionAt: e.sentToReceptionAt || `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+              };
+              entryToSync = nextEntry;
+              return nextEntry;
+            }
+            return e;
+          });
+          if (entryToSync) {
+            syncReceptionEntryToCloud(entryToSync);
+          }
+          return mapped;
+        });
+      }
     }
   };
 

@@ -166,11 +166,6 @@ export const VendorAiVoiceBot: React.FC<VendorAiVoiceBotProps> = ({
         sender: 'bot',
         text: initialGreeting,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actions: [
-          { type: 'scroll_tests', label: '🩸 टेस्ट रेट लिस्ट' },
-          { type: 'book_home_collection', label: '🏠 होम कलेक्शन' },
-          { type: 'check_report', label: '🔍 रिपोर्ट चेक करें' },
-        ],
       },
     ]);
   }, [vendorContext.vendorName]);

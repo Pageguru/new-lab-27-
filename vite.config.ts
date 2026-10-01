@@ -375,23 +375,37 @@ Available Health Packages: ${JSON.stringify(vendorContext?.packages || [])}
 Consultant Doctors: ${JSON.stringify(vendorContext?.doctors || [])}
 `;
 
-                  const response = await ai.models.generateContent({
-                    model: 'gemini-3.8-flash',
-                    contents: message,
-                    config: {
-                      systemInstruction,
-                      temperature: 0.3,
-                    },
-                  });
+                  let aiText = '';
+                  const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+                  for (const targetModel of modelsToTry) {
+                    try {
+                      const response = await ai.models.generateContent({
+                        model: targetModel,
+                        contents: message,
+                        config: {
+                          systemInstruction,
+                          temperature: 0.3,
+                        },
+                      });
+                      if (response && response.text) {
+                        aiText = response.text;
+                        break;
+                      }
+                    } catch (mErr) {
+                      console.warn(`[Gemini Dev API] Model ${targetModel} attempt failed:`, mErr);
+                    }
+                  }
 
-                  res.end(
-                    JSON.stringify({
-                      status: 'success',
-                      reply: response.text,
-                      speechText: response.text?.replace(/[*#_~]/g, ''),
-                    })
-                  );
-                  return;
+                  if (aiText) {
+                    res.end(
+                      JSON.stringify({
+                        status: 'success',
+                        reply: aiText,
+                        speechText: aiText.replace(/[*#_~]/g, ''),
+                      })
+                    );
+                    return;
+                  }
                 } catch (genAiErr) {
                   console.warn('[Gemini Dev API Warning]:', genAiErr);
                 }
