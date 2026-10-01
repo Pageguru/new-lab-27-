@@ -44,14 +44,9 @@ export const Hero: React.FC<HeroProps> = ({
   const t = (language && TRANSLATIONS[language]) || TRANSLATIONS['en'];
 
   // Dynamic CMS copy
-  const heroBadge = language === 'en' ? (companySettings.tagline || companySettings.heroBadge) : t.tagline;
+  const heroBadge = language === 'en' ? companySettings.heroBadge : t.tagline;
   const heroHeading = language === 'en' ? companySettings.heroTitle : t.heroHeading;
-  const heroSubheading = language === 'en' ? (companySettings.siteDescription || companySettings.heroSubtitle) : t.heroSubheading;
-
-  // Include custom Feature Image from Super Admin SEO Tab if provided
-  const carouselImages = companySettings.featureImageUrl
-    ? [{ id: 'feature-main', src: companySettings.featureImageUrl, alt: companySettings.siteName || 'Laboratory System' }, ...CAROUSEL_IMAGES]
-    : CAROUSEL_IMAGES;
+  const heroSubheading = language === 'en' ? companySettings.heroSubtitle : t.heroSubheading;
 
   // Simple image carousel state
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -66,7 +61,7 @@ export const Hero: React.FC<HeroProps> = ({
     }
 
     timerRef.current = setInterval(() => {
-      setCurrentSlideIndex((prev) => (prev + 1) % carouselImages.length);
+      setCurrentSlideIndex((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
     }, 4000);
 
     return () => {
@@ -156,7 +151,7 @@ export const Hero: React.FC<HeroProps> = ({
             >
               {/* Plain Image Canvas */}
               <div className="relative aspect-[4/3] sm:aspect-[16/11] w-full overflow-hidden bg-slate-100 select-none">
-                {carouselImages.map((img, index) => {
+                {CAROUSEL_IMAGES.map((img, index) => {
                   const isActive = index === currentSlideIndex;
                   return (
                     <div
@@ -195,7 +190,7 @@ export const Hero: React.FC<HeroProps> = ({
 
               {/* Clean Dot Indicators Below Image */}
               <div className="py-3 bg-white flex items-center justify-center gap-2 border-t border-slate-100">
-                {carouselImages.map((_, index) => (
+                {CAROUSEL_IMAGES.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentSlideIndex(index)}

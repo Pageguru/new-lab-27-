@@ -111,13 +111,6 @@ export interface CompanySettings {
   upiId?: string;
   upiMerchantName?: string;
   qrCodeUrl?: string;
-  // SEO & Branding Settings (Super Admin → SEO Tab)
-  siteName?: string;
-  siteDescription?: string;
-  faviconUrl?: string;
-  featureImageUrl?: string;
-  ogImageUrl?: string;
-  metaKeywords?: string;
 }
 
 export interface PricingPlan {
@@ -410,14 +403,14 @@ export type Language = 'en' | 'hi' | 'pa';
 export interface TestItem {
   id: string;
   name: string;
-  testName?: string; // Compatibility alias for name
+  testName?: string;
+  price?: number;
   code: string;
   category: string;
   sampleType: string;
   unit: string;
   normalRange: string;
   priceINR: number;
-  price?: number; // Compatibility alias for priceINR
   mrpINR?: number;
   turnaroundTime?: string;
   turnaroundHours?: number | string;
