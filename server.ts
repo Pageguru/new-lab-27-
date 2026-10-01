@@ -3,6 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -358,6 +359,73 @@ async function startServer() {
       message: saved ? 'Saved to central Hostinger storage' : 'Failed to write data',
       timestamp: new Date().toISOString()
     });
+  });
+
+  // 5. Vendor AI Voice Assistant endpoint
+  app.post(['/api/ai/voice-chat', '/api/ai/voice-chat.php'], async (req, res) => {
+    try {
+      const { vendorName, message, vendorContext } = req.body || {};
+      if (process.env.GEMINI_API_KEY && message) {
+        try {
+          const ai = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
+              },
+            },
+          });
+
+          const vLabName = vendorContext?.vendorName || vendorName || 'Diagnostic Lab';
+          const systemInstruction = `You are the official, helpful AI Voice Assistant for "${vLabName}".
+CRITICAL SECURITY & SCOPE CONSTRAINTS:
+1. You represent ONLY "${vLabName}".
+2. You must ONLY answer using the provided vendor data below. Do NOT mention, recommend, or access data of any other laboratory or vendor. If asked about other vendors or outside labs, politely state that you only assist with "${vLabName}".
+3. Keep responses conversational, clear, friendly, and concise (under 75 words), so they are easy to speak aloud.
+4. Support Hindi, English, and Hinglish. Reply in the same language or tone (Hindi/Hinglish/English) as the user asked.
+5. Highlight test prices in INR (₹), fasting requirements, turnaround time, home collection details, and lab timings.
+
+VENDOR DATA:
+Lab Name: ${vLabName}
+Address: ${vendorContext?.address || 'City Centre'}
+Phone / Contact: ${vendorContext?.phone || 'Available on website'}
+Timings: ${vendorContext?.timings || '07:00 AM - 09:00 PM'}
+Home Collection Fee: ${vendorContext?.homeCollectionFee !== undefined ? `₹${vendorContext.homeCollectionFee}` : 'Available'}
+Available Tests: ${JSON.stringify(vendorContext?.tests || [])}
+Available Health Packages: ${JSON.stringify(vendorContext?.packages || [])}
+Consultant Doctors: ${JSON.stringify(vendorContext?.doctors || [])}
+`;
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: message,
+            config: {
+              systemInstruction,
+              temperature: 0.3,
+            },
+          });
+
+          return res.json({
+            status: 'success',
+            reply: response.text,
+            speechText: response.text?.replace(/[*#_~]/g, ''),
+          });
+        } catch (genAiErr) {
+          console.warn('[Gemini Server API Warning]:', genAiErr);
+        }
+      }
+
+      return res.json({
+        status: 'success',
+        useFallback: true,
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        status: 'error',
+        message: err?.message || 'Voice chat processing error',
+        useFallback: true,
+      });
+    }
   });
 
   // Mount Vite development middlewares

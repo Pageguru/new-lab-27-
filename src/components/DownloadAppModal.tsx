@@ -438,18 +438,30 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-slate-50 border-t border-slate-200 p-4 flex items-center justify-between text-xs">
+        <div className="bg-slate-50 border-t border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 text-slate-500">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="text-[11px]">Secure &amp; encrypted medical records</span>
+            <span className="text-[11px]">100% Secure • Official NABL Diagnostic Portal</span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold transition cursor-pointer"
-          >
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            {websiteDirectUrl && (
+              <a
+                href={websiteDirectUrl}
+                onClick={onClose}
+                className="px-3.5 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold transition flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                <span>Visit Website</span>
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white font-bold transition cursor-pointer shadow-2xs"
+            >
+              Back to Website
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -73,6 +73,7 @@ import { LabWelcomeFirstScreen } from './vendor/LabWelcomeFirstScreen';
 import { TermsConditionsModal } from './TermsConditionsModal';
 import { VendorPolicyModal, PolicyTabType } from './vendor/VendorPolicyModal';
 import { DownloadAppModal } from './DownloadAppModal';
+import { VendorAiVoiceBot } from './vendor/VendorAiVoiceBot';
 import { getTenantWebsiteUrl, getTenantSubdomain, getTenantBrowserUrl, SUPER_ADMIN_DOMAIN } from '../constants/domains';
 import { isTenantMatch } from '../utils/tenantSecurity';
 import { optimizeImageFile } from '../utils/imageOptimizer';
@@ -438,10 +439,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const websiteDirectUrl = React.useMemo(() => {
     if (typeof window !== 'undefined') {
       const origin = window.location.origin;
-      const search = window.location.search;
-      if (search && search.includes('lab=')) {
-        return `${origin}${window.location.pathname}${search}`;
-      }
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('page');
+        if (url.searchParams.has('lab') || url.searchParams.has('subdomain')) {
+          return `${origin}${url.pathname}${url.search}`;
+        }
+      } catch {}
       const slug = currentLabItem?.domainPreview?.replace(`.${SUPER_ADMIN_DOMAIN}`, '') || currentLabItem?.id || 'apexdiagnostics';
       return `${origin}/?lab=${slug}`;
     }
@@ -5331,6 +5335,30 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           </button>
         </div>
       )}
+
+      {/* AI Voice Bot / Voice Command – Vendor Website */}
+      <VendorAiVoiceBot
+        currentLabItem={currentLabItem}
+        vendorLabSettings={vendorLabSettings}
+        vendorTests={vendorTests}
+        vendorPackages={vendorPackages}
+        vendorDoctors={effectiveTeamDoctors}
+        allReports={allReports}
+        allReceptionEntries={allReceptionEntries}
+        currentWebsiteLabId={currentWebsiteLabId}
+        onOpenReportPortal={(reportId, mobile) => handleCheckReport(reportId, mobile)}
+        onOpenBookingModal={(preselectedTestId) => {
+          if (preselectedTestId) {
+            const found = (vendorTests || []).find((t) => t.id === preselectedTestId);
+            if (found) {
+              setSelectedTestOrPackage(`${found.testName} (₹${found.price})`);
+            }
+          }
+          setIsBookingModalOpen(true);
+        }}
+        onOpenDownloadAppModal={() => setIsDownloadAppModalOpen(true)}
+        language={language}
+      />
 
       {/* Multi-Cart Drawer / List Modal */}
       {isCartDrawerOpen && (

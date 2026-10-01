@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import fs from 'fs';
 import { defineConfig, Plugin } from 'vite';
+import { GoogleGenAI } from '@google/genai';
 
 function hostingerApiDevPlugin(): Plugin {
   const dataDir = path.resolve(__dirname, 'public/api/data');
@@ -326,6 +327,94 @@ function hostingerApiDevPlugin(): Plugin {
             });
             return;
           }
+        }
+
+        // 4. API: /api/ai/voice-chat (Vendor AI Voice Assistant)
+        if (
+          (pathname === '/api/ai/voice-chat' || pathname === '/api/ai/voice-chat.php') &&
+          req.method === 'POST'
+        ) {
+          let body = '';
+          req.on('data', (chunk) => {
+            body += chunk;
+          });
+          req.on('end', async () => {
+            res.setHeader('Content-Type', 'application/json');
+            try {
+              const payload = JSON.parse(body || '{}');
+              const { vendorName, message, vendorContext } = payload;
+
+              if (process.env.GEMINI_API_KEY && message) {
+                try {
+                  const ai = new GoogleGenAI({
+                    apiKey: process.env.GEMINI_API_KEY,
+                    httpOptions: {
+                      headers: {
+                        'User-Agent': 'aistudio-build',
+                      },
+                    },
+                  });
+
+                  const vLabName = vendorContext?.vendorName || vendorName || 'Diagnostic Lab';
+                  const systemInstruction = `You are the official, helpful AI Voice Assistant for "${vLabName}".
+CRITICAL SECURITY & SCOPE CONSTRAINTS:
+1. You represent ONLY "${vLabName}".
+2. You must ONLY answer using the provided vendor data below. Do NOT mention, recommend, or access data of any other laboratory or vendor. If asked about other vendors or outside labs, politely state that you only assist with "${vLabName}".
+3. Keep responses conversational, clear, friendly, and concise (under 75 words), so they are easy to speak aloud.
+4. Support Hindi, English, and Hinglish. Reply in the same language or tone (Hindi/Hinglish/English) as the user asked.
+5. Highlight test prices in INR (₹), fasting requirements, turnaround time, home collection details, and lab timings.
+
+VENDOR DATA:
+Lab Name: ${vLabName}
+Address: ${vendorContext?.address || 'City Centre'}
+Phone / Contact: ${vendorContext?.phone || 'Available on website'}
+Timings: ${vendorContext?.timings || '07:00 AM - 09:00 PM'}
+Home Collection Fee: ${vendorContext?.homeCollectionFee !== undefined ? `₹${vendorContext.homeCollectionFee}` : 'Available'}
+Available Tests: ${JSON.stringify(vendorContext?.tests || [])}
+Available Health Packages: ${JSON.stringify(vendorContext?.packages || [])}
+Consultant Doctors: ${JSON.stringify(vendorContext?.doctors || [])}
+`;
+
+                  const response = await ai.models.generateContent({
+                    model: 'gemini-3.8-flash',
+                    contents: message,
+                    config: {
+                      systemInstruction,
+                      temperature: 0.3,
+                    },
+                  });
+
+                  res.end(
+                    JSON.stringify({
+                      status: 'success',
+                      reply: response.text,
+                      speechText: response.text?.replace(/[*#_~]/g, ''),
+                    })
+                  );
+                  return;
+                } catch (genAiErr) {
+                  console.warn('[Gemini Dev API Warning]:', genAiErr);
+                }
+              }
+
+              // Fallback to client response
+              res.end(
+                JSON.stringify({
+                  status: 'success',
+                  useFallback: true,
+                })
+              );
+            } catch (err: any) {
+              res.end(
+                JSON.stringify({
+                  status: 'error',
+                  message: err?.message || 'Voice chat processing error',
+                  useFallback: true,
+                })
+              );
+            }
+          });
+          return;
         }
 
         next();
