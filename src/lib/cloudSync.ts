@@ -411,6 +411,13 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
         } catch {}
       }
 
+      // Unpack socialMedia if provided as string
+      if (typeof cleanItem.socialMedia === 'string' && cleanItem.socialMedia.trim()) {
+        try {
+          cleanItem.socialMedia = JSON.parse(cleanItem.socialMedia);
+        } catch {}
+      }
+
       // Expand any relative /uploads/ URLs to absolute URLs so they never 404 in preview or cross-domains
       const ensureAbsoluteUrl = (url: any) => {
         if (typeof url === 'string' && url.startsWith('/uploads/')) {
@@ -1222,12 +1229,17 @@ export function subscribeToLabSettings(
 export async function fetchAllLabSettingsFromCloud(): Promise<Record<string, VendorLabSettings>> {
   try {
     const res = await callHostingerApi(`/api/sync.php?action=get_collection&collection=${COLLECTIONS.LAB_SETTINGS}`);
-    if (res && res.status === 'success' && Array.isArray(res.data)) {
-      const map: Record<string, VendorLabSettings> = {};
-      for (const item of res.data) {
-        if (item.labId) map[item.labId] = item;
+    if (res && res.status === 'success' && res.data) {
+      if (Array.isArray(res.data)) {
+        const map: Record<string, VendorLabSettings> = {};
+        for (const item of res.data) {
+          const id = item.labId || item.id;
+          if (id) map[id] = item;
+        }
+        return map;
+      } else if (typeof res.data === 'object' && res.data !== null) {
+        return res.data;
       }
-      return map;
     }
   } catch {}
   return getCachedCollection(COLLECTIONS.LAB_SETTINGS) || {};

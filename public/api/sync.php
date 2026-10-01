@@ -151,6 +151,13 @@ function persistDocToMySql($collection, $id, $data) {
         }
 
         if ($collection === 'lab_settings') {
+            try {
+                $checkCol = $pdo->query("SHOW COLUMNS FROM `lab_settings` LIKE 'settingsJson'");
+                if ($checkCol && $checkCol->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_settings` ADD COLUMN `settingsJson` LONGTEXT DEFAULT NULL AFTER `isWebsiteApproved`");
+                }
+            } catch (\Exception $e) {}
+
             $stmt = $pdo->prepare("REPLACE INTO `lab_settings` (
                 `labId`, `labName`, `tagline`, `logoUrl`, `phone`, `email`, `address`, `city`,
                 `state`, `pincode`, `brandColor`, `secondaryColor`, `upiId`, `upiMerchantName`,

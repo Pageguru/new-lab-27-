@@ -267,55 +267,87 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   }, [vendorLabSettings?.phone, vendorLabSettings?.helplinePhone, labPhone]);
 
   // Dynamic Social Media Links (Only show channels where a valid link/handle is entered)
+  const effectiveSocialMedia = React.useMemo(() => {
+    const raw = vendorLabSettings?.socialMedia;
+    if (raw && typeof raw === 'object') {
+      const hasAny = Object.entries(raw).some(
+        ([k, v]) => k !== 'enabled' && typeof v === 'string' && v.trim().length > 0 && v !== '#' && v !== '/'
+      );
+      if (hasAny) return raw;
+    }
+    try {
+      const backup =
+        localStorage.getItem(`cms_vendor_social_media_${currentWebsiteLabId}`) ||
+        localStorage.getItem('cms_vendor_social_media');
+      if (backup) {
+        const parsed = JSON.parse(backup);
+        if (parsed && typeof parsed === 'object') {
+          return { ...(raw || {}), ...parsed };
+        }
+      }
+    } catch {}
+    return raw;
+  }, [vendorLabSettings?.socialMedia, currentWebsiteLabId]);
+
+  const cleanSocialUrl = (val?: string, defaultDomains: string[] = []): string | null => {
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/') return null;
+    const lower = trimmed.toLowerCase();
+    if (defaultDomains.some((d) => lower === d || lower === `${d}/`)) return null;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
   const socialWhatsappUrl = React.useMemo(() => {
-    const val = vendorLabSettings?.socialMedia?.whatsapp;
+    const val = effectiveSocialMedia?.whatsapp;
     if (!val) return null;
     const trimmed = val.trim();
     if (!trimmed || trimmed === '#' || trimmed === '/') return null;
     if (/^https?:\/\//i.test(trimmed)) return trimmed;
     const digits = trimmed.replace(/\D/g, '');
     return digits ? `https://wa.me/${digits}` : null;
-  }, [vendorLabSettings?.socialMedia?.whatsapp]);
+  }, [effectiveSocialMedia?.whatsapp]);
 
   const socialFacebookUrl = React.useMemo(() => {
-    const val = vendorLabSettings?.socialMedia?.facebook;
-    if (!val) return null;
-    const trimmed = val.trim();
-    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://facebook.com' || trimmed === 'https://facebook.com/') return null;
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  }, [vendorLabSettings?.socialMedia?.facebook]);
+    return cleanSocialUrl(effectiveSocialMedia?.facebook, [
+      'https://facebook.com',
+      'https://www.facebook.com',
+      'http://facebook.com',
+      'http://www.facebook.com',
+    ]);
+  }, [effectiveSocialMedia?.facebook]);
 
   const socialInstagramUrl = React.useMemo(() => {
-    const val = vendorLabSettings?.socialMedia?.instagram;
-    if (!val) return null;
-    const trimmed = val.trim();
-    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://instagram.com' || trimmed === 'https://instagram.com/') return null;
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  }, [vendorLabSettings?.socialMedia?.instagram]);
+    return cleanSocialUrl(effectiveSocialMedia?.instagram, [
+      'https://instagram.com',
+      'https://www.instagram.com',
+      'http://instagram.com',
+      'http://www.instagram.com',
+    ]);
+  }, [effectiveSocialMedia?.instagram]);
 
   const socialTwitterUrl = React.useMemo(() => {
-    const val = vendorLabSettings?.socialMedia?.twitter;
-    if (!val) return null;
-    const trimmed = val.trim();
-    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://twitter.com' || trimmed === 'https://twitter.com/') return null;
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  }, [vendorLabSettings?.socialMedia?.twitter]);
+    return cleanSocialUrl(effectiveSocialMedia?.twitter, [
+      'https://twitter.com',
+      'https://www.twitter.com',
+      'https://x.com',
+      'https://www.x.com',
+    ]);
+  }, [effectiveSocialMedia?.twitter]);
 
   const socialYoutubeUrl = React.useMemo(() => {
-    const val = vendorLabSettings?.socialMedia?.youtube;
-    if (!val) return null;
-    const trimmed = val.trim();
-    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://youtube.com' || trimmed === 'https://youtube.com/') return null;
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  }, [vendorLabSettings?.socialMedia?.youtube]);
+    return cleanSocialUrl(effectiveSocialMedia?.youtube, [
+      'https://youtube.com',
+      'https://www.youtube.com',
+    ]);
+  }, [effectiveSocialMedia?.youtube]);
 
   const socialLinkedinUrl = React.useMemo(() => {
-    const val = vendorLabSettings?.socialMedia?.linkedin;
-    if (!val) return null;
-    const trimmed = val.trim();
-    if (!trimmed || trimmed === '#' || trimmed === '/' || trimmed === 'https://linkedin.com' || trimmed === 'https://linkedin.com/') return null;
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  }, [vendorLabSettings?.socialMedia?.linkedin]);
+    return cleanSocialUrl(effectiveSocialMedia?.linkedin, [
+      'https://linkedin.com',
+      'https://www.linkedin.com',
+    ]);
+  }, [effectiveSocialMedia?.linkedin]);
 
   const hasAnySocialLinks = Boolean(
     socialWhatsappUrl ||
@@ -2249,26 +2281,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </button>
           </nav>
 
-          {/* Action Items: Mobile (Report + Test + Menu) | Desktop (Language + QR + Report + Test + Login) */}
+          {/* Action Items: Mobile (Report + Test + Menu) | Desktop (QR + Report + Test + Login) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Desktop Language Selector */}
-            <div
-              className="hidden xl:flex items-center gap-1 bg-slate-100 hover:bg-slate-200/80 rounded-lg px-2 py-1.5 border border-slate-200 text-xs text-slate-700 font-semibold transition cursor-pointer shrink-0"
-              title="Change Language / भाषा बदलें"
-            >
-              <Globe className="w-3.5 h-3.5 text-[#123B6D] shrink-0" />
-              <select
-                id="vendor-header-language-select"
-                aria-label="Select website language"
-                value={language}
-                onChange={(e) => onSelectLanguage?.(e.target.value as Language)}
-                className="bg-transparent text-slate-800 text-xs font-bold focus:outline-none cursor-pointer pr-0.5"
-              >
-                <option value="en">English</option>
-                <option value="hi">हिंदी</option>
-                <option value="pa">ਪੰਜਾਬੀ</option>
-              </select>
-            </div>
 
             {/* Desktop Payment QR Button */}
             <button
@@ -4359,6 +4373,81 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
                   Advanced automated laboratory offering reliable diagnostic testing and comprehensive clinical pathology services, supported by modern technology, efficient processes, and quality-focused laboratory practices.
                 </p>
+
+                {/* Social Media Links in Footer */}
+                {vendorLabSettings?.socialMedia?.enabled !== false && hasAnySocialLinks && (
+                  <div className="pt-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Connect With Us</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {socialWhatsappUrl && (
+                        <a
+                          href={socialWhatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="WhatsApp"
+                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {socialFacebookUrl && (
+                        <a
+                          href={socialFacebookUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Facebook"
+                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-blue-50 text-[#1877F2] border border-slate-200 hover:border-blue-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                        >
+                          <Facebook className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {socialInstagramUrl && (
+                        <a
+                          href={socialInstagramUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Instagram"
+                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                        >
+                          <Instagram className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {socialTwitterUrl && (
+                        <a
+                          href={socialTwitterUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Twitter / X"
+                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 hover:border-slate-400 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                        >
+                          <Twitter className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {socialYoutubeUrl && (
+                        <a
+                          href={socialYoutubeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="YouTube"
+                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-red-50 text-red-600 border border-slate-200 hover:border-red-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                        >
+                          <Youtube className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {socialLinkedinUrl && (
+                        <a
+                          href={socialLinkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="LinkedIn"
+                          className="w-7 h-7 rounded-full bg-slate-100 hover:bg-sky-50 text-[#0A66C2] border border-slate-200 hover:border-sky-300 flex items-center justify-center transition shadow-2xs hover:scale-105"
+                        >
+                          <Linkedin className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

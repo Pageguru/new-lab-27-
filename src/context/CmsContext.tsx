@@ -244,6 +244,7 @@ const DEFAULT_COMPANY_STATS: CompanyStat[] = [
 
 // --- VENDOR (APEX DIAGNOSTICS) DEFAULTS ---
 const DEFAULT_VENDOR_LAB_SETTINGS: VendorLabSettings = {
+  labId: 'lab-apex',
   labShopId: 'LSP-7087',
   labName: 'Apex Diagnostic & Clinical Pathology Laboratory',
   name: 'Apex Diagnostic & Clinical Pathology Laboratory',
@@ -2714,10 +2715,18 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const labId = (cloudSettings as any)?.labId || (cloudSettings as any)?.id || rawKey;
               if (!labId || labId === '0') continue;
               const prevItem: Partial<VendorLabSettings> = prev[labId] || {};
-              // Smart merge: Never overwrite existing non-empty uploaded media with empty values from server polling
+              // Smart merge: Never overwrite existing non-empty uploaded media or social links with empty values from server polling
+              const cloudSocial = (cloudSettings as any)?.socialMedia;
+              const prevSocial = prevItem.socialMedia;
+              const hasCloudSocial = cloudSocial && typeof cloudSocial === 'object' && Object.values(cloudSocial).some(v => typeof v === 'string' && v.trim().length > 0);
+              const mergedSocial = hasCloudSocial
+                ? { ...(prevSocial || {}), ...cloudSocial }
+                : (prevSocial || cloudSocial);
+
               next[labId] = {
                 ...prevItem,
                 ...cloudSettings,
+                socialMedia: mergedSocial,
                 logoUrl: cloudSettings.logoUrl || prevItem.logoUrl || '',
                 featureImageUrl: cloudSettings.featureImageUrl || prevItem.featureImageUrl || '',
                 ogImageUrl: cloudSettings.ogImageUrl || prevItem.ogImageUrl || '',
@@ -4762,13 +4771,33 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Vendor Lab CMS Actions (Tenant-Isolated & Cloud Synchronized)
   const updateVendorLabSettings = (newSettings: Partial<VendorLabSettings>) => {
-    const targetLabId = effectiveSettingsLabId;
+    const targetLabId = newSettings.labId || effectiveSettingsLabId;
     let updatedPayload: VendorLabSettings | null = null;
     setVendorLabSettingsMap((prev) => {
       const current = prev[targetLabId] || vendorLabSettings;
+
+      // Safely filter undefined keys so partial saves do not wipe existing settings
+      const cleanNewSettings: Partial<VendorLabSettings> = {};
+      (Object.keys(newSettings) as (keyof VendorLabSettings)[]).forEach((key) => {
+        if (newSettings[key] !== undefined) {
+          (cleanNewSettings as any)[key] = newSettings[key];
+        }
+      });
+
+      // Special handling for socialMedia: deep-merge with current to prevent losing channels
+      let mergedSocialMedia = current.socialMedia;
+      if (cleanNewSettings.socialMedia !== undefined) {
+        mergedSocialMedia = {
+          enabled: true,
+          ...(current.socialMedia || {}),
+          ...cleanNewSettings.socialMedia,
+        };
+      }
+
       updatedPayload = {
         ...current,
-        ...newSettings,
+        ...cleanNewSettings,
+        ...(mergedSocialMedia ? { socialMedia: mergedSocialMedia } : {}),
         labId: targetLabId,
         _updatedAt: new Date().toISOString(),
       };
@@ -4778,6 +4807,10 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       try {
         localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(nextMap));
+        if (mergedSocialMedia) {
+          localStorage.setItem(`cms_vendor_social_media_${targetLabId}`, JSON.stringify(mergedSocialMedia));
+          localStorage.setItem('cms_vendor_social_media', JSON.stringify(mergedSocialMedia));
+        }
       } catch {}
       return nextMap;
     });

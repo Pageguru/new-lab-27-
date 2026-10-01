@@ -44,6 +44,7 @@ export type SiteSettingsSubSection =
   | 'payment_qr'
   | 'payment_settings'
   | 'plan'
+  | 'social'
   | 'all';
 
 export interface VendorSiteSettingsTabProps {
@@ -168,6 +169,15 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
     remainingVisibilityDays: vendorLabSettings.remainingVisibilityDays ?? 24,
     planPurchasedAt: vendorLabSettings.planPurchasedAt || '2026-02-15',
     planExpiresAt: vendorLabSettings.planExpiresAt || '2026-03-17',
+    socialMedia: vendorLabSettings.socialMedia || {
+      enabled: true,
+      facebook: '',
+      instagram: '',
+      twitter: '',
+      youtube: '',
+      linkedin: '',
+      whatsapp: '',
+    },
   });
 
   const [toastMessage, setToastMessage] = useState('Site settings saved successfully!');
@@ -223,6 +233,15 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
         remainingVisibilityDays: vendorLabSettings.remainingVisibilityDays ?? 24,
         planPurchasedAt: vendorLabSettings.planPurchasedAt || '2026-02-15',
         planExpiresAt: vendorLabSettings.planExpiresAt || '2026-03-17',
+        socialMedia: vendorLabSettings.socialMedia || {
+          enabled: true,
+          facebook: '',
+          instagram: '',
+          twitter: '',
+          youtube: '',
+          linkedin: '',
+          whatsapp: '',
+        },
       });
     }
   }, [vendorLabSettings.labId]);
@@ -352,8 +371,9 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
 
   // Save Settings
   const handleSave = (customMsg?: string) => {
+    const { socialMedia: _omitted, ...cleanFormData } = (formData || {}) as any;
     updateVendorLabSettings({
-      ...formData,
+      ...cleanFormData,
       name: formData.labName,
       description: formData.siteDescription || formData.description,
       ogImageUrl: formData.featureImageUrl || formData.ogImageUrl,

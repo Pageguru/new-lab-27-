@@ -603,37 +603,142 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
   };
 
   // ==========================================
-  // 6. SOCIAL MEDIA SECTION FORM (Edit, Disable)
+  // 6. SOCIAL MEDIA SECTION FORM (Edit, Disable & Smart Normalization)
   // ==========================================
+  const normalizeSocialUrl = (
+    platform: 'facebook' | 'instagram' | 'twitter' | 'youtube' | 'linkedin' | 'whatsapp',
+    input?: string
+  ): string => {
+    if (!input) return '';
+    const trimmed = input.trim();
+    if (!trimmed || trimmed === '#' || trimmed === '/') return '';
+
+    // If already full http(s) URL
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+
+    const clean = trimmed.startsWith('@') ? trimmed.slice(1).trim() : trimmed;
+
+    switch (platform) {
+      case 'facebook':
+        if (clean.startsWith('facebook.com/') || clean.startsWith('www.facebook.com/')) {
+          return `https://${clean}`;
+        }
+        return `https://facebook.com/${clean}`;
+
+      case 'instagram':
+        if (clean.startsWith('instagram.com/') || clean.startsWith('www.instagram.com/')) {
+          return `https://${clean}`;
+        }
+        return `https://instagram.com/${clean}`;
+
+      case 'twitter':
+        if (
+          clean.startsWith('twitter.com/') ||
+          clean.startsWith('x.com/') ||
+          clean.startsWith('www.twitter.com/') ||
+          clean.startsWith('www.x.com/')
+        ) {
+          return `https://${clean}`;
+        }
+        return `https://x.com/${clean}`;
+
+      case 'youtube':
+        if (clean.startsWith('youtube.com/') || clean.startsWith('www.youtube.com/')) {
+          return `https://${clean}`;
+        }
+        return clean.startsWith('@') ? `https://youtube.com/${clean}` : `https://youtube.com/@${clean}`;
+
+      case 'linkedin':
+        if (clean.startsWith('linkedin.com/') || clean.startsWith('www.linkedin.com/')) {
+          return `https://${clean}`;
+        }
+        return `https://linkedin.com/company/${clean}`;
+
+      case 'whatsapp': {
+        if (trimmed.includes('wa.me') || trimmed.includes('api.whatsapp.com')) {
+          return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+        }
+        const digits = trimmed.replace(/\D/g, '');
+        if (digits.length === 10) {
+          return `https://wa.me/91${digits}`;
+        } else if (digits.length > 10) {
+          return `https://wa.me/${digits}`;
+        }
+        return digits ? `https://wa.me/${digits}` : '';
+      }
+
+      default:
+        return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+    }
+  };
+
   const sanitizeInitialSocial = (val?: string) => {
     if (!val) return '';
     const trimmed = val.trim();
+    const lower = trimmed.toLowerCase();
     if (
-      trimmed === 'https://facebook.com' ||
-      trimmed === 'https://instagram.com' ||
-      trimmed === 'https://twitter.com' ||
-      trimmed === 'https://youtube.com' ||
-      trimmed === 'https://linkedin.com' ||
-      trimmed === '#' ||
-      trimmed === '/'
+      lower === 'https://facebook.com' ||
+      lower === 'https://facebook.com/' ||
+      lower === 'https://www.facebook.com' ||
+      lower === 'https://www.facebook.com/' ||
+      lower === 'http://facebook.com' ||
+      lower === 'http://facebook.com/' ||
+      lower === 'https://instagram.com' ||
+      lower === 'https://instagram.com/' ||
+      lower === 'https://www.instagram.com' ||
+      lower === 'https://www.instagram.com/' ||
+      lower === 'http://instagram.com' ||
+      lower === 'http://instagram.com/' ||
+      lower === 'https://twitter.com' ||
+      lower === 'https://twitter.com/' ||
+      lower === 'https://www.twitter.com' ||
+      lower === 'https://www.twitter.com/' ||
+      lower === 'https://x.com' ||
+      lower === 'https://x.com/' ||
+      lower === 'https://www.x.com' ||
+      lower === 'https://www.x.com/' ||
+      lower === 'https://youtube.com' ||
+      lower === 'https://youtube.com/' ||
+      lower === 'https://www.youtube.com' ||
+      lower === 'https://www.youtube.com/' ||
+      lower === 'https://linkedin.com' ||
+      lower === 'https://linkedin.com/' ||
+      lower === 'https://www.linkedin.com' ||
+      lower === 'https://www.linkedin.com/' ||
+      lower === '#' ||
+      lower === '/'
     ) {
       return '';
     }
     return trimmed;
   };
 
-  const [socialForm, setSocialForm] = useState<VendorSocialLinks>({
-    enabled: vendorLabSettings.socialMedia?.enabled !== false,
-    facebook: sanitizeInitialSocial(vendorLabSettings.socialMedia?.facebook),
-    instagram: sanitizeInitialSocial(vendorLabSettings.socialMedia?.instagram),
-    twitter: sanitizeInitialSocial(vendorLabSettings.socialMedia?.twitter),
-    youtube: sanitizeInitialSocial(vendorLabSettings.socialMedia?.youtube),
-    linkedin: sanitizeInitialSocial(vendorLabSettings.socialMedia?.linkedin),
-    whatsapp: vendorLabSettings.socialMedia?.whatsapp?.trim() || '',
-  });
+  const targetEffectiveLabId = vendorLabSettings.labId || selectedVendorLabId || 'lab-apex';
 
-  useEffect(() => {
-    setSocialForm({
+  const [socialForm, setSocialForm] = useState<VendorSocialLinks>(() => {
+    try {
+      const backup =
+        localStorage.getItem(`cms_vendor_social_media_${targetEffectiveLabId}`) ||
+        localStorage.getItem('cms_vendor_social_media');
+      if (backup) {
+        const parsed = JSON.parse(backup);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            enabled: parsed.enabled !== false,
+            facebook: parsed.facebook || '',
+            instagram: parsed.instagram || '',
+            twitter: parsed.twitter || '',
+            youtube: parsed.youtube || '',
+            linkedin: parsed.linkedin || '',
+            whatsapp: parsed.whatsapp || '',
+          };
+        }
+      }
+    } catch {}
+
+    return {
       enabled: vendorLabSettings.socialMedia?.enabled !== false,
       facebook: sanitizeInitialSocial(vendorLabSettings.socialMedia?.facebook),
       instagram: sanitizeInitialSocial(vendorLabSettings.socialMedia?.instagram),
@@ -641,30 +746,102 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
       youtube: sanitizeInitialSocial(vendorLabSettings.socialMedia?.youtube),
       linkedin: sanitizeInitialSocial(vendorLabSettings.socialMedia?.linkedin),
       whatsapp: vendorLabSettings.socialMedia?.whatsapp?.trim() || '',
-    });
-  }, [vendorLabSettings.socialMedia]);
+    };
+  });
 
-  const handleSaveSocial = (e: React.FormEvent) => {
-    e.preventDefault();
+  const isSocialDirtyRef = React.useRef(false);
+  const currentSocialLabIdRef = React.useRef(targetEffectiveLabId);
+  const [isSavingSocial, setIsSavingSocial] = useState(false);
+  const [socialSavedSuccess, setSocialSavedSuccess] = useState(false);
+
+  // Sync when labId changes or when vendorLabSettings updates, provided user is not actively typing
+  useEffect(() => {
+    const isLabSwitch = Boolean(vendorLabSettings.labId && vendorLabSettings.labId !== currentSocialLabIdRef.current);
+    if (isLabSwitch) {
+      currentSocialLabIdRef.current = vendorLabSettings.labId;
+      isSocialDirtyRef.current = false;
+    }
+
+    if (!isSocialDirtyRef.current || isLabSwitch) {
+      let initialData = vendorLabSettings.socialMedia;
+      const targetId = vendorLabSettings.labId || targetEffectiveLabId;
+      try {
+        const backup =
+          localStorage.getItem(`cms_vendor_social_media_${targetId}`) ||
+          localStorage.getItem('cms_vendor_social_media');
+        if (backup) {
+          const parsed = JSON.parse(backup);
+          if (parsed && typeof parsed === 'object') {
+            initialData = { ...(initialData || {}), ...parsed };
+          }
+        }
+      } catch {}
+
+      if (initialData) {
+        setSocialForm({
+          enabled: initialData.enabled !== false,
+          facebook: sanitizeInitialSocial(initialData.facebook),
+          instagram: sanitizeInitialSocial(initialData.instagram),
+          twitter: sanitizeInitialSocial(initialData.twitter),
+          youtube: sanitizeInitialSocial(initialData.youtube),
+          linkedin: sanitizeInitialSocial(initialData.linkedin),
+          whatsapp: initialData.whatsapp?.trim() || '',
+        });
+      }
+    }
+  }, [vendorLabSettings.labId, vendorLabSettings.socialMedia, targetEffectiveLabId]);
+
+  const handleSaveSocial = (e?: React.FormEvent) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setIsSavingSocial(true);
+    isSocialDirtyRef.current = false;
+
+    const targetLabId = vendorLabSettings.labId || selectedVendorLabId || 'lab-apex';
+
     const cleanedSocial: VendorSocialLinks = {
       enabled: true,
-      facebook: socialForm.facebook?.trim() || '',
-      instagram: socialForm.instagram?.trim() || '',
-      twitter: socialForm.twitter?.trim() || '',
-      youtube: socialForm.youtube?.trim() || '',
-      linkedin: socialForm.linkedin?.trim() || '',
-      whatsapp: socialForm.whatsapp?.trim() || '',
+      facebook: normalizeSocialUrl('facebook', socialForm.facebook),
+      instagram: normalizeSocialUrl('instagram', socialForm.instagram),
+      twitter: normalizeSocialUrl('twitter', socialForm.twitter),
+      youtube: normalizeSocialUrl('youtube', socialForm.youtube),
+      linkedin: normalizeSocialUrl('linkedin', socialForm.linkedin),
+      whatsapp: normalizeSocialUrl('whatsapp', socialForm.whatsapp),
     };
+
+    // 1. Immediately retain normalized links in form inputs
+    setSocialForm(cleanedSocial);
+
+    // 2. Persist to dedicated local backup so they never disappear
+    try {
+      localStorage.setItem(`cms_vendor_social_media_${targetLabId}`, JSON.stringify(cleanedSocial));
+      localStorage.setItem('cms_vendor_social_media', JSON.stringify(cleanedSocial));
+    } catch {}
+
+    // 3. Update CmsContext & send to cloud storage
     updateVendorLabSettings({
+      labId: targetLabId,
       socialMedia: cleanedSocial,
     });
-    setSocialForm(cleanedSocial);
-    triggerToast('Social Media settings saved! Only channels with links will be displayed.');
+
+    // 4. Keep parent formData in sync
+    setFormData((prev) => ({
+      ...prev,
+      socialMedia: cleanedSocial,
+    }));
+
+    setTimeout(() => {
+      setIsSavingSocial(false);
+      setSocialSavedSuccess(true);
+      setTimeout(() => setSocialSavedSuccess(false), 4000);
+      triggerToast('Social Media settings saved! Active links are now live on your website.');
+    }, 250);
   };
 
   const handleClearAllSocial = () => {
+    const targetLabId = vendorLabSettings.labId || selectedVendorLabId || 'lab-apex';
+    isSocialDirtyRef.current = false;
     const emptied: VendorSocialLinks = {
-      enabled: socialForm.enabled,
+      enabled: true,
       facebook: '',
       instagram: '',
       twitter: '',
@@ -673,9 +850,18 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
       whatsapp: '',
     };
     setSocialForm(emptied);
+    try {
+      localStorage.setItem(`cms_vendor_social_media_${targetLabId}`, JSON.stringify(emptied));
+      localStorage.setItem('cms_vendor_social_media', JSON.stringify(emptied));
+    } catch {}
     updateVendorLabSettings({
+      labId: targetLabId,
       socialMedia: emptied,
     });
+    setFormData((prev) => ({
+      ...prev,
+      socialMedia: emptied,
+    }));
     triggerToast('All social media links cleared. Icons hidden from website.');
   };
 
@@ -1931,15 +2117,41 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
               </p>
             </div>
             <button
-              onClick={handleSaveSocial}
-              className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+              type="button"
+              onClick={() => handleSaveSocial()}
+              disabled={isSavingSocial}
+              className="bg-[#123B6D] hover:bg-[#0e2c52] disabled:opacity-60 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
-              <Save className="w-3.5 h-3.5 text-amber-400" />
-              <span>Save Social Settings</span>
+              {isSavingSocial ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Saving Links...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Save Social Settings</span>
+                </>
+              )}
             </button>
           </div>
 
-          <form onSubmit={handleSaveSocial} className="p-6 space-y-5 text-xs">
+          <form onSubmit={handleSaveSocial} noValidate className="p-6 space-y-5 text-xs">
+            {/* Success Banner */}
+            {socialSavedSuccess && (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 flex items-center gap-3 text-emerald-900 animate-in fade-in">
+                <span className="text-base shrink-0">✅</span>
+                <div>
+                  <p className="font-bold text-xs text-emerald-950">
+                    सोशल मीडिया लिंक्स सफलतापूर्वक सेव और वेबसाइट पर लाइव हो गए हैं!
+                  </p>
+                  <p className="text-[11px] text-emerald-800">
+                    Social media links saved and synced with cloud database. Active links are now live on your website.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Real-time Display Rule Banner */}
             <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3 text-amber-900">
               <span className="text-base shrink-0">💡</span>
@@ -1948,13 +2160,14 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                   सोशल मीडिया वही शो होंगे जिसमें लिंक डाला जाएगा, नहीं तो शो नहीं होंगे।
                 </p>
                 <p className="text-[11px] text-amber-800 leading-relaxed">
-                  Only channels with an active link or number will appear on your website. Leave a field empty (or click the <span className="font-bold">✕</span> icon) to hide that channel completely.
+                  You can enter a full URL (e.g. <span className="font-mono font-bold">https://instagram.com/yourlab</span>), a handle (e.g. <span className="font-mono font-bold">@yourlab</span>), or username. It will automatically format and connect.
                 </p>
               </div>
             </div>
 
             {/* Social Links Inputs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 1. Facebook */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -1967,16 +2180,24 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 </label>
                 <div className="relative">
                   <input
-                    type="url"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={socialForm.facebook || ''}
-                    onChange={(e) => setSocialForm({ ...socialForm, facebook: e.target.value })}
-                    placeholder="https://facebook.com/yourlab"
+                    onChange={(e) => {
+                      setSocialForm((prev) => ({ ...prev, facebook: e.target.value }));
+                      isSocialDirtyRef.current = true;
+                    }}
+                    placeholder="e.g. yourlab or facebook.com/yourlab"
                     className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   />
                   {socialForm.facebook && (
                     <button
                       type="button"
-                      onClick={() => setSocialForm({ ...socialForm, facebook: '' })}
+                      onClick={() => {
+                        setSocialForm((prev) => ({ ...prev, facebook: '' }));
+                        isSocialDirtyRef.current = true;
+                      }}
                       title="Clear Facebook link"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
                     >
@@ -1984,8 +2205,22 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                     </button>
                   )}
                 </div>
+                {socialForm.facebook?.trim() && (
+                  <div className="flex items-center justify-between text-[10px] mt-1 text-slate-500 font-mono">
+                    <span className="truncate">Preview: {normalizeSocialUrl('facebook', socialForm.facebook)}</span>
+                    <a
+                      href={normalizeSocialUrl('facebook', socialForm.facebook)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-0.5 shrink-0 ml-2 font-sans font-bold"
+                    >
+                      Test Link ↗
+                    </a>
+                  </div>
+                )}
               </div>
 
+              {/* 2. Instagram */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -1998,16 +2233,24 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 </label>
                 <div className="relative">
                   <input
-                    type="url"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={socialForm.instagram || ''}
-                    onChange={(e) => setSocialForm({ ...socialForm, instagram: e.target.value })}
-                    placeholder="https://instagram.com/yourlab"
+                    onChange={(e) => {
+                      setSocialForm((prev) => ({ ...prev, instagram: e.target.value }));
+                      isSocialDirtyRef.current = true;
+                    }}
+                    placeholder="e.g. @yourlab or instagram.com/yourlab"
                     className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-rose-500 focus:outline-none"
                   />
                   {socialForm.instagram && (
                     <button
                       type="button"
-                      onClick={() => setSocialForm({ ...socialForm, instagram: '' })}
+                      onClick={() => {
+                        setSocialForm((prev) => ({ ...prev, instagram: '' }));
+                        isSocialDirtyRef.current = true;
+                      }}
                       title="Clear Instagram link"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
                     >
@@ -2015,8 +2258,22 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                     </button>
                   )}
                 </div>
+                {socialForm.instagram?.trim() && (
+                  <div className="flex items-center justify-between text-[10px] mt-1 text-slate-500 font-mono">
+                    <span className="truncate">Preview: {normalizeSocialUrl('instagram', socialForm.instagram)}</span>
+                    <a
+                      href={normalizeSocialUrl('instagram', socialForm.instagram)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-rose-600 hover:underline flex items-center gap-0.5 shrink-0 ml-2 font-sans font-bold"
+                    >
+                      Test Link ↗
+                    </a>
+                  </div>
+                )}
               </div>
 
+              {/* 3. Twitter / X */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -2029,16 +2286,24 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 </label>
                 <div className="relative">
                   <input
-                    type="url"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={socialForm.twitter || ''}
-                    onChange={(e) => setSocialForm({ ...socialForm, twitter: e.target.value })}
-                    placeholder="https://twitter.com/yourlab"
+                    onChange={(e) => {
+                      setSocialForm((prev) => ({ ...prev, twitter: e.target.value }));
+                      isSocialDirtyRef.current = true;
+                    }}
+                    placeholder="e.g. @yourlab or x.com/yourlab"
                     className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-slate-500 focus:outline-none"
                   />
                   {socialForm.twitter && (
                     <button
                       type="button"
-                      onClick={() => setSocialForm({ ...socialForm, twitter: '' })}
+                      onClick={() => {
+                        setSocialForm((prev) => ({ ...prev, twitter: '' }));
+                        isSocialDirtyRef.current = true;
+                      }}
                       title="Clear Twitter link"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
                     >
@@ -2046,8 +2311,22 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                     </button>
                   )}
                 </div>
+                {socialForm.twitter?.trim() && (
+                  <div className="flex items-center justify-between text-[10px] mt-1 text-slate-500 font-mono">
+                    <span className="truncate">Preview: {normalizeSocialUrl('twitter', socialForm.twitter)}</span>
+                    <a
+                      href={normalizeSocialUrl('twitter', socialForm.twitter)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-800 hover:underline flex items-center gap-0.5 shrink-0 ml-2 font-sans font-bold"
+                    >
+                      Test Link ↗
+                    </a>
+                  </div>
+                )}
               </div>
 
+              {/* 4. YouTube */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -2060,16 +2339,24 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 </label>
                 <div className="relative">
                   <input
-                    type="url"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={socialForm.youtube || ''}
-                    onChange={(e) => setSocialForm({ ...socialForm, youtube: e.target.value })}
-                    placeholder="https://youtube.com/@yourlab"
+                    onChange={(e) => {
+                      setSocialForm((prev) => ({ ...prev, youtube: e.target.value }));
+                      isSocialDirtyRef.current = true;
+                    }}
+                    placeholder="e.g. @yourlab or youtube.com/@yourlab"
                     className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-red-500 focus:outline-none"
                   />
                   {socialForm.youtube && (
                     <button
                       type="button"
-                      onClick={() => setSocialForm({ ...socialForm, youtube: '' })}
+                      onClick={() => {
+                        setSocialForm((prev) => ({ ...prev, youtube: '' }));
+                        isSocialDirtyRef.current = true;
+                      }}
                       title="Clear YouTube link"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
                     >
@@ -2077,8 +2364,22 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                     </button>
                   )}
                 </div>
+                {socialForm.youtube?.trim() && (
+                  <div className="flex items-center justify-between text-[10px] mt-1 text-slate-500 font-mono">
+                    <span className="truncate">Preview: {normalizeSocialUrl('youtube', socialForm.youtube)}</span>
+                    <a
+                      href={normalizeSocialUrl('youtube', socialForm.youtube)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-red-600 hover:underline flex items-center gap-0.5 shrink-0 ml-2 font-sans font-bold"
+                    >
+                      Test Link ↗
+                    </a>
+                  </div>
+                )}
               </div>
 
+              {/* 5. LinkedIn */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -2091,16 +2392,24 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 </label>
                 <div className="relative">
                   <input
-                    type="url"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={socialForm.linkedin || ''}
-                    onChange={(e) => setSocialForm({ ...socialForm, linkedin: e.target.value })}
-                    placeholder="https://linkedin.com/company/yourlab"
+                    onChange={(e) => {
+                      setSocialForm((prev) => ({ ...prev, linkedin: e.target.value }));
+                      isSocialDirtyRef.current = true;
+                    }}
+                    placeholder="e.g. linkedin.com/company/yourlab or yourlab"
                     className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none"
                   />
                   {socialForm.linkedin && (
                     <button
                       type="button"
-                      onClick={() => setSocialForm({ ...socialForm, linkedin: '' })}
+                      onClick={() => {
+                        setSocialForm((prev) => ({ ...prev, linkedin: '' }));
+                        isSocialDirtyRef.current = true;
+                      }}
                       title="Clear LinkedIn link"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
                     >
@@ -2108,8 +2417,22 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                     </button>
                   )}
                 </div>
+                {socialForm.linkedin?.trim() && (
+                  <div className="flex items-center justify-between text-[10px] mt-1 text-slate-500 font-mono">
+                    <span className="truncate">Preview: {normalizeSocialUrl('linkedin', socialForm.linkedin)}</span>
+                    <a
+                      href={normalizeSocialUrl('linkedin', socialForm.linkedin)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sky-600 hover:underline flex items-center gap-0.5 shrink-0 ml-2 font-sans font-bold"
+                    >
+                      Test Link ↗
+                    </a>
+                  </div>
+                )}
               </div>
 
+              {/* 6. WhatsApp */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -2123,15 +2446,23 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 <div className="relative">
                   <input
                     type="text"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={socialForm.whatsapp || ''}
-                    onChange={(e) => setSocialForm({ ...socialForm, whatsapp: e.target.value })}
+                    onChange={(e) => {
+                      setSocialForm((prev) => ({ ...prev, whatsapp: e.target.value }));
+                      isSocialDirtyRef.current = true;
+                    }}
                     placeholder="917087033009 or https://wa.me/917087033009"
                     className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-slate-800 font-mono text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                   />
                   {socialForm.whatsapp && (
                     <button
                       type="button"
-                      onClick={() => setSocialForm({ ...socialForm, whatsapp: '' })}
+                      onClick={() => {
+                        setSocialForm((prev) => ({ ...prev, whatsapp: '' }));
+                        isSocialDirtyRef.current = true;
+                      }}
                       title="Clear WhatsApp"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
                     >
@@ -2139,6 +2470,19 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                     </button>
                   )}
                 </div>
+                {socialForm.whatsapp?.trim() && (
+                  <div className="flex items-center justify-between text-[10px] mt-1 text-slate-500 font-mono">
+                    <span className="truncate">Preview: {normalizeSocialUrl('whatsapp', socialForm.whatsapp)}</span>
+                    <a
+                      href={normalizeSocialUrl('whatsapp', socialForm.whatsapp)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-600 hover:underline flex items-center gap-0.5 shrink-0 ml-2 font-sans font-bold"
+                    >
+                      Test Chat ↗
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -2154,10 +2498,20 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
 
               <button
                 type="submit"
-                className="bg-[#123B6D] hover:bg-[#0e2c52] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer w-full sm:w-auto justify-center"
+                disabled={isSavingSocial}
+                className="bg-[#123B6D] hover:bg-[#0e2c52] disabled:opacity-60 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer w-full sm:w-auto justify-center"
               >
-                <Save className="w-4 h-4 text-amber-400" />
-                <span>Save Social Media Settings</span>
+                {isSavingSocial ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Saving Settings...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 text-amber-400" />
+                    <span>Save Social Media Settings</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
