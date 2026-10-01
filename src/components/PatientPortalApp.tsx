@@ -572,21 +572,31 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
     }, 800);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!searchedReport) return;
+    if (isPaymentPending) {
+      setShowPayOnlineModal(true);
+      return;
+    }
     try {
-      generateReportPdf(searchedReport);
+      const ok = await generateReportPdf(searchedReport);
+      if (!ok) {
+        setShowPayOnlineModal(true);
+        return;
+      }
       setDownloadSuccessToast(`Report ${searchedReport.reportId} PDF downloaded successfully!`);
       setTimeout(() => setDownloadSuccessToast(null), 4000);
     } catch (err) {
       console.error('Download error:', err);
-      setDownloadSuccessToast('Download started.');
-      setTimeout(() => setDownloadSuccessToast(null), 3000);
     }
   };
 
   const handlePrint = () => {
     if (!searchedReport) return;
+    if (isPaymentPending) {
+      setShowPayOnlineModal(true);
+      return;
+    }
     const success = safePrint(() => {
       // In sandboxed iframes where window.print() is blocked by browser security
       setPrintIframeNotice(true);

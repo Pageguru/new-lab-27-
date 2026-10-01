@@ -123,184 +123,181 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
   }
 
   // ==========================================
-  // RENDER PAGE 1 (Header, Patient Info, Tests)
+  // CANONICAL HEADER RENDERING FUNCTION
+  // (Repeated on Every Page for Multi-page Reports)
   // ==========================================
+  const drawCanonicalReportHeader = (targetDoc: jsPDF): number => {
+    // --- 1. TOP HEADER (70% Left Area | 30% Right Area - Clean Letterhead - No Top Bar / No Header Logo) ---
+    const headerY = 8;
+    const leftAreaWidth = contentWidth * 0.70; // 130.2 mm
+    const rightAreaWidth = contentWidth * 0.30; // 55.8 mm
+    const rightRightEdge = pageWidth - marginX;
 
-  // --- Background Diagonal Watermark on Page 1 (Center of page, 45° rotation, light/faded opacity) ---
-  if (watermarkDataUrl) {
-    try {
-      const wmSize = 160; // mm
-      const wmX = (pageWidth - wmSize) / 2;
-      const wmY = (pageHeight - wmSize) / 2;
-      doc.addImage(watermarkDataUrl, 'PNG', wmX, wmY, wmSize, wmSize, undefined, 'FAST');
-    } catch (err) {
-      console.warn('Could not render background watermark:', err);
+    // Left 70% Area (Starts directly at marginX - logo removed from header):
+    let leftY = headerY;
+
+    // Lab Name Title (Bold, Multi-line wrapping if name is long)
+    targetDoc.setTextColor(18, 59, 109);
+    targetDoc.setFont('helvetica', 'bold');
+    targetDoc.setFontSize(12.5);
+    const labDisplayName = (report.labName || 'APEX DIAGNOSTIC & CLINICAL PATHOLOGY LABORATORY').toUpperCase();
+    const labTitleLines = targetDoc.splitTextToSize(labDisplayName, leftAreaWidth - 4);
+    targetDoc.text(labTitleLines, marginX, leftY);
+    leftY += labTitleLines.length * 4.8 + 1.2;
+
+    // Address (Wrapped cleanly within left 70% area)
+    targetDoc.setFont('helvetica', 'normal');
+    targetDoc.setFontSize(7.5);
+    targetDoc.setTextColor(51, 65, 85);
+    const addressText = report.labAddress || 'SCF 42-43, Sector 18-C, Central Healthcare Complex, Ludhiana';
+    const addressLines = targetDoc.splitTextToSize(addressText, leftAreaWidth - 4);
+    targetDoc.text(addressLines, marginX, leftY);
+    leftY += addressLines.length * 3.6 + 0.8;
+
+    // Phone & WhatsApp
+    targetDoc.text(`Phone: +91 ${report.labPhone || '7087033009'} | WhatsApp: +91 7087033009`, marginX, leftY);
+    leftY += 3.8;
+
+    // Email & Website
+    targetDoc.text('Email: care@apexdiagnostics.in | Website: www.apexdiagnostics.in', marginX, leftY);
+    leftY += 3.8;
+
+    // Registration / License details (NABL / ISO / Reg)
+    targetDoc.setTextColor(15, 118, 110); // Medical Teal
+    targetDoc.setFont('helvetica', 'bold');
+    targetDoc.setFontSize(7.2);
+
+    const rawNabl = (report.nablAccreditationNo || 'MC-4821').trim();
+    const cleanedNabl = rawNabl
+      .replace(/\s*\([^)]*iso[^)]*\)/gi, '')
+      .replace(/\s*\([^)]*nabl[^)]*\)/gi, '')
+      .replace(/\s*-\s*iso.*$/i, '')
+      .trim() || 'MC-4821';
+
+    const licenseText = `NABL Accredited: ${cleanedNabl} • ISO 15189:2022 Certified • Reg No: LAB-2026-PB84`;
+    const licenseLines = targetDoc.splitTextToSize(licenseText, leftAreaWidth - 4);
+    targetDoc.text(licenseLines, marginX, leftY);
+    leftY += licenseLines.length * 3.5;
+
+    // Right 30% Area:
+    // Official Booking Receipt Number + ONE QR CODE ONLY + Verification caption
+    let rightY = headerY;
+
+    // Official Booking Receipt Number (Prominent & bold)
+    targetDoc.setTextColor(18, 59, 109);
+    targetDoc.setFont('helvetica', 'bold');
+    targetDoc.setFontSize(7.5);
+    targetDoc.text(bookingReceiptText, rightRightEdge, rightY, { align: 'right' });
+    rightY += 4.2;
+
+    // Report ID & UHID
+    targetDoc.setFont('helvetica', 'normal');
+    targetDoc.setFontSize(6.8);
+    targetDoc.setTextColor(100, 116, 139);
+    targetDoc.text(`Report ID: ${report.reportId}`, rightRightEdge, rightY, { align: 'right' });
+    rightY += 3.6;
+    targetDoc.text(`UHID: ${report.uhid || 'UHID-824476'}`, rightRightEdge, rightY, { align: 'right' });
+    rightY += 3.6;
+
+    // ONE QR Code ONLY in entire report (Right side)
+    const qrSize = 20;
+    const qrX = rightRightEdge - qrSize;
+    const qrY = rightY + 1;
+
+    if (headerQrDataUrl) {
+      try {
+        targetDoc.setFillColor(255, 255, 255);
+        targetDoc.setDrawColor(203, 213, 225);
+        targetDoc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 5.5, 1.5, 1.5, 'FD');
+        targetDoc.addImage(headerQrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize, undefined, 'FAST');
+
+        // Caption below QR: Verification prompt
+        targetDoc.setFontSize(4.6);
+        targetDoc.setFont('helvetica', 'bold');
+        targetDoc.setTextColor(15, 118, 110);
+        targetDoc.text('SCAN TO VERIFY REPORT', qrX + qrSize / 2, qrY + qrSize + 3, { align: 'center' });
+      } catch (err) {
+        console.warn('Could not render header QR code:', err);
+      }
     }
-  }
 
-  // --- 1. TOP HEADER (70% Left Area | 30% Right Area - Clean Letterhead - No Top Bar / No Header Logo) ---
-  const headerY = 8;
+    const rightBottomY = qrY + qrSize + 6;
 
-  // Exact 70% Left / 30% Right Layout Split
-  const leftAreaWidth = contentWidth * 0.70; // 130.2 mm
-  const rightAreaWidth = contentWidth * 0.30; // 55.8 mm
-  const rightRightEdge = pageWidth - marginX;
+    // Dynamic header bottom dividing line that accommodates whatever height is required
+    const headerBottomY = Math.max(leftY, rightBottomY) + 2.5;
+    targetDoc.setDrawColor(203, 213, 225);
+    targetDoc.setLineWidth(0.4);
+    targetDoc.line(marginX, headerBottomY, pageWidth - marginX, headerBottomY);
 
-  // Left 70% Area (Starts directly at marginX - logo removed from header):
-  let leftY = headerY;
+    // --- 2. PATIENT INFORMATION BOX ---
+    // Clean bordered box with two columns (Patient Details | Report Details)
+    const pBoxY = headerBottomY + 3.8;
+    const pBoxH = 26;
+    const pBoxW = contentWidth;
 
-  // Lab Name Title (Bold, Multi-line wrapping if name is long)
-  doc.setTextColor(18, 59, 109);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12.5);
-  const labDisplayName = (report.labName || 'APEX DIAGNOSTIC & CLINICAL PATHOLOGY LABORATORY').toUpperCase();
-  const labTitleLines = doc.splitTextToSize(labDisplayName, leftAreaWidth - 4);
-  doc.text(labTitleLines, marginX, leftY);
-  leftY += labTitleLines.length * 4.8 + 1.2;
+    // Outer Box Frame
+    targetDoc.setFillColor(248, 250, 252); // Soft clinical slate-50
+    targetDoc.setDrawColor(203, 213, 225);
+    targetDoc.setLineWidth(0.3);
+    targetDoc.roundedRect(marginX, pBoxY, pBoxW, pBoxH, 1.5, 1.5, 'FD');
 
-  // Address (Wrapped cleanly within left 70% area)
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(51, 65, 85);
-  const addressText = report.labAddress || 'SCF 42-43, Sector 18-C, Central Healthcare Complex, Ludhiana';
-  const addressLines = doc.splitTextToSize(addressText, leftAreaWidth - 4);
-  doc.text(addressLines, marginX, leftY);
-  leftY += addressLines.length * 3.6 + 0.8;
+    // Vertical Center Column Divider
+    const colDividerX = marginX + pBoxW / 2;
+    targetDoc.setDrawColor(226, 232, 240);
+    targetDoc.line(colDividerX, pBoxY, colDividerX, pBoxY + pBoxH);
 
-  // Phone & WhatsApp
-  doc.text(`Phone: +91 ${report.labPhone || '7087033009'} | WhatsApp: +91 7087033009`, marginX, leftY);
-  leftY += 3.8;
+    // Column 1: Patient Details
+    const c1LabelX = marginX + 4;
+    const c1ValX = marginX + 34;
 
-  // Email & Website
-  doc.text('Email: care@apexdiagnostics.in | Website: www.apexdiagnostics.in', marginX, leftY);
-  leftY += 3.8;
+    targetDoc.setFontSize(7.2);
+    targetDoc.setFont('helvetica', 'normal');
+    targetDoc.setTextColor(100, 116, 139);
+    targetDoc.text('PATIENT NAME:', c1LabelX, pBoxY + 6);
+    targetDoc.text('AGE / GENDER:', c1LabelX, pBoxY + 12);
+    targetDoc.text('CONTACT NO:', c1LabelX, pBoxY + 18);
+    targetDoc.text('BARCODE / UHID:', c1LabelX, pBoxY + 23.5);
 
-  // Registration / License details (NABL / ISO / Reg)
-  doc.setTextColor(15, 118, 110); // Medical Teal
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
+    targetDoc.setFont('helvetica', 'bold');
+    targetDoc.setTextColor(15, 23, 42); // Slate-900
+    targetDoc.text(report.patientName.toUpperCase(), c1ValX, pBoxY + 6);
+    targetDoc.text(report.ageGender || '45 Y / Male', c1ValX, pBoxY + 12);
+    targetDoc.text(`+91 ${report.mobile}`, c1ValX, pBoxY + 18);
+    targetDoc.text(report.barcode || report.uhid || 'BC-789218', c1ValX, pBoxY + 23.5);
 
-  // Clean NABL accreditation number to eliminate any redundant ISO or duplicate accreditation suffixes
-  const rawNabl = (report.nablAccreditationNo || 'MC-4821').trim();
-  const cleanedNabl = rawNabl
-    .replace(/\s*\([^)]*iso[^)]*\)/gi, '')
-    .replace(/\s*\([^)]*nabl[^)]*\)/gi, '')
-    .replace(/\s*-\s*iso.*$/i, '')
-    .trim() || 'MC-4821';
+    // Column 2: Report Details
+    const c2LabelX = colDividerX + 4;
+    const c2ValX = colDividerX + 32;
 
-  const licenseText = `NABL Accredited: ${cleanedNabl} • ISO 15189:2022 Certified • Reg No: LAB-2026-PB84`;
-  const licenseLines = doc.splitTextToSize(licenseText, leftAreaWidth - 4);
-  doc.text(licenseLines, marginX, leftY);
-  leftY += licenseLines.length * 3.5;
+    targetDoc.setFont('helvetica', 'normal');
+    targetDoc.setTextColor(100, 116, 139);
+    targetDoc.text('REFERRED BY:', c2LabelX, pBoxY + 6);
+    targetDoc.text('SPECIMEN:', c2LabelX, pBoxY + 12);
+    targetDoc.text('COLLECTED ON:', c2LabelX, pBoxY + 18);
+    targetDoc.text('REPORTED ON:', c2LabelX, pBoxY + 23.5);
 
-  // Right 30% Area:
-  // Official Booking Receipt Number + ONE QR CODE ONLY + Verification caption
-  let rightY = headerY;
+    targetDoc.setFont('helvetica', 'bold');
+    targetDoc.setTextColor(15, 23, 42);
+    targetDoc.text(report.doctor || 'Self / Dr. O. P. Sharma (MD)', c2ValX, pBoxY + 6);
+    targetDoc.text('EDTA Whole Blood / Serum', c2ValX, pBoxY + 12);
+    targetDoc.text(report.sampleCollectedAt || report.reportedAt, c2ValX, pBoxY + 18);
+    targetDoc.text(report.reportedAt, c2ValX, pBoxY + 23.5);
 
-  // Official Booking Receipt Number (Prominent & bold)
-  doc.setTextColor(18, 59, 109);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text(bookingReceiptText, rightRightEdge, rightY, { align: 'right' });
-  rightY += 4.2;
+    return pBoxY + pBoxH + 4;
+  };
 
-  // Report ID & UHID
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Report ID: ${report.reportId}`, rightRightEdge, rightY, { align: 'right' });
-  rightY += 3.6;
-  doc.text(`UHID: ${report.uhid || 'UHID-824476'}`, rightRightEdge, rightY, { align: 'right' });
-  rightY += 3.6;
+  // Measure exact Header Height & draw onto Page 1
+  const headerTotalHeight = drawCanonicalReportHeader(doc);
+  let cursorY = headerTotalHeight;
 
-  // ONE QR Code ONLY in entire report (Right side)
-  const qrSize = 20;
-  const qrX = rightRightEdge - qrSize;
-  const qrY = rightY + 1;
-
-  if (headerQrDataUrl) {
-    try {
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(203, 213, 225);
-      doc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 5.5, 1.5, 1.5, 'FD');
-      doc.addImage(headerQrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize, undefined, 'FAST');
-
-      // Caption below QR: Verification prompt
-      doc.setFontSize(4.6);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(15, 118, 110);
-      doc.text('SCAN TO VERIFY REPORT', qrX + qrSize / 2, qrY + qrSize + 3, { align: 'center' });
-    } catch (err) {
-      console.warn('Could not render header QR code:', err);
-    }
-  }
-
-  const rightBottomY = qrY + qrSize + 6;
-
-  // Dynamic header bottom dividing line that accommodates whatever height is required
-  const headerBottomY = Math.max(leftY, rightBottomY) + 2.5;
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.4);
-  doc.line(marginX, headerBottomY, pageWidth - marginX, headerBottomY);
-
-  // --- 2. PATIENT INFORMATION BOX ---
-  // Clean bordered box with two columns (Patient Details | Report Details)
-  let cursorY = headerBottomY + 3.8;
-  const pBoxH = 26;
-  const pBoxW = contentWidth;
-
-  // Outer Box Frame
-  doc.setFillColor(248, 250, 252); // Soft clinical slate-50
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(marginX, cursorY, pBoxW, pBoxH, 1.5, 1.5, 'FD');
-
-  // Vertical Center Column Divider
-  const colDividerX = marginX + pBoxW / 2;
-  doc.setDrawColor(226, 232, 240);
-  doc.line(colDividerX, cursorY, colDividerX, cursorY + pBoxH);
-
-  // Column 1: Patient Details
-  const c1LabelX = marginX + 4;
-  const c1ValX = marginX + 34;
-
-  doc.setFontSize(7.2);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text('PATIENT NAME:', c1LabelX, cursorY + 6);
-  doc.text('AGE / GENDER:', c1LabelX, cursorY + 12);
-  doc.text('CONTACT NO:', c1LabelX, cursorY + 18);
-  doc.text('BARCODE / UHID:', c1LabelX, cursorY + 23.5);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42); // Slate-900
-  doc.text(report.patientName.toUpperCase(), c1ValX, cursorY + 6);
-  doc.text(report.ageGender || '45 Y / Male', c1ValX, cursorY + 12);
-  doc.text(`+91 ${report.mobile}`, c1ValX, cursorY + 18);
-  doc.text(report.barcode || report.uhid || 'BC-789218', c1ValX, cursorY + 23.5);
-
-  // Column 2: Report Details
-  const c2LabelX = colDividerX + 4;
-  const c2ValX = colDividerX + 32;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text('REFERRED BY:', c2LabelX, cursorY + 6);
-  doc.text('SPECIMEN:', c2LabelX, cursorY + 12);
-  doc.text('COLLECTED ON:', c2LabelX, cursorY + 18);
-  doc.text('REPORTED ON:', c2LabelX, cursorY + 23.5);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(report.doctor || 'Self / Dr. O. P. Sharma (MD)', c2ValX, cursorY + 6);
-  doc.text('EDTA Whole Blood / Serum', c2ValX, cursorY + 12);
-  doc.text(report.sampleCollectedAt || report.reportedAt, c2ValX, cursorY + 18);
-  doc.text(report.reportedAt, c2ValX, cursorY + 23.5);
-
-  cursorY += pBoxH + 4;
-
-  // --- 3 & 4. DEPARTMENT SECTIONS & MAIN TEST TABLES ---
+  // --- 3 & 4. DEPARTMENT SECTIONS & MAIN TEST TABLES (REPORT BODY) ---
   departmentGroups.forEach((group, gIdx) => {
+    // If remaining space on current page is not enough for section header + 2 rows, break to new page
+    if (cursorY > pageHeight - 50) {
+      doc.addPage();
+      cursorY = headerTotalHeight + 2;
+    }
+
     // Department Section Header Bar
     doc.setFillColor(241, 245, 249); // Slate-100
     doc.rect(marginX, cursorY, contentWidth, 6.5, 'F');
@@ -330,7 +327,12 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
 
     autoTable(doc, {
       startY: cursorY,
-      margin: { left: marginX, right: marginX },
+      margin: {
+        top: headerTotalHeight, // Ensures subsequent pages start below the repeated header
+        bottom: 24,            // Ensures table stops before the footer
+        left: marginX,
+        right: marginX,
+      },
       head: [['Investigation / Parameter', 'Observed Value', 'Unit', 'Bio Reference Interval', 'Status']],
       body: tableData,
       theme: 'grid',
@@ -398,12 +400,11 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
     cursorY = (doc.lastAutoTable?.finalY || cursorY + 20) + 4;
   });
 
-  // --- 5. CRITICAL / ABNORMAL ALERT BOX ---
+  // --- 5. CRITICAL / ABNORMAL ALERT BOX (REPORT BODY) ---
   if (criticalItems.length > 0) {
-    // Check if enough vertical space exists before bottom
     if (cursorY > pageHeight - 65) {
       doc.addPage();
-      cursorY = 20;
+      cursorY = headerTotalHeight + 2;
     }
 
     const alertH = 15;
@@ -418,7 +419,7 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
     doc.setFontSize(7.5);
     doc.text('CRITICAL / PANIC LAB VALUE ALERT:', marginX + 4, cursorY + 5);
 
-    // Standard clinical wording required by user specification:
+    // Standard clinical wording
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(136, 19, 55);
@@ -430,10 +431,10 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
     cursorY += alertH + 4;
   }
 
-  // --- 6. REPORT END SEPARATOR ---
+  // --- 6. REPORT END SEPARATOR (REPORT BODY) ---
   if (cursorY > pageHeight - 50) {
     doc.addPage();
-    cursorY = 20;
+    cursorY = headerTotalHeight + 2;
   }
 
   doc.setDrawColor(203, 213, 225);
@@ -448,9 +449,12 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
 
   cursorY += 8;
 
-  // --- 7. SIGNATURE SECTION (Lower Portion of Page) ---
-  // Ensure signature sits cleanly at bottom of page without overlapping
-  const requiredSignHeight = 30;
+  // --- 7. SIGNATURE SECTION (REPORT BODY - Lower Portion of Final Page) ---
+  const requiredSignHeight = 35;
+  if (cursorY > pageHeight - requiredSignHeight - 12) {
+    doc.addPage();
+    cursorY = headerTotalHeight + 2;
+  }
   const signatureY = Math.max(cursorY, pageHeight - 42);
 
   // Left Signature: Prepared / Verified By
@@ -510,14 +514,14 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
   doc.setTextColor(71, 85, 105);
   doc.text(report.pathologistDegrees || 'Consultant Pathologist & Lab Director (Reg No: MCI-PB-48192)', rightSignX, signatureY + 10, { align: 'right' });
 
-  // --- 8 & 9. MULTI-PAGE WATERMARK & FOOTER SYNCHRONIZATION ---
+  // --- 8 & 9. MULTI-PAGE SYNCHRONIZATION: REPEAT HEADER, WATERMARK & FOOTER ON EVERY PAGE ---
   const totalPages = doc.getNumberOfPages();
 
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     doc.setPage(pageNum);
 
-    // Apply Diagonal Watermark on pages 2+ as well
-    if (pageNum > 1 && watermarkDataUrl) {
+    // Apply Diagonal Watermark on every page
+    if (watermarkDataUrl) {
       try {
         const wmSize = 160;
         const wmX = (pageWidth - wmSize) / 2;
@@ -526,13 +530,18 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
       } catch {}
     }
 
-    // Thin Footer Line
+    // Repeat Exact Header on pages 2+ (On page 1 it was drawn at start)
+    if (pageNum > 1) {
+      drawCanonicalReportHeader(doc);
+    }
+
+    // Repeat Exact Footer on EVERY Page
     const footerLineY = pageHeight - 9;
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.3);
     doc.line(marginX, footerLineY, pageWidth - marginX, footerLineY);
 
-    // Footer Text: Electronic Generation Notice (Center-Aligned)
+    // Footer Text: Electronic Generation Notice (Center-Aligned with Page X of Y)
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(100, 116, 139);
@@ -569,16 +578,36 @@ export async function getCanonicalReportPdfBlob(report: LabReport): Promise<{
 }
 
 /**
- * Downloads the exact same canonical PDF file
+ * Downloads the exact same canonical PDF file (conditioned on complete payment)
  */
-export async function downloadReportPdf(report: LabReport, prebuiltDoc?: jsPDF): Promise<void> {
+export async function downloadReportPdf(report: LabReport, prebuiltDoc?: jsPDF): Promise<boolean> {
   try {
+    const statusLower = (report.paymentStatus || '').toLowerCase();
+    const isDuePending = Boolean(
+      (report.dueAmount !== undefined && report.dueAmount > 0) ||
+      statusLower === 'pending' ||
+      statusLower === 'partial' ||
+      statusLower === 'due' ||
+      (report.paymentStatus !== undefined &&
+        statusLower !== 'full payment' &&
+        statusLower !== 'paid' &&
+        statusLower !== 'completed' &&
+        (report.dueAmount ?? 0) > 0)
+    );
+
+    if (isDuePending) {
+      console.warn(`[SECURITY] Cannot download report ${report.reportId}: Full payment is pending (Due: ₹${report.dueAmount || 0}).`);
+      return false;
+    }
+
     const doc = prebuiltDoc || (await buildCanonicalReportPdf(report));
     const safePatientName = (report.patientName || 'Patient').replace(/[^a-zA-Z0-9]/g, '_');
     const filename = `${report.reportId}_${safePatientName}_Report.pdf`;
     doc.save(filename);
+    return true;
   } catch (error) {
     console.error('PDF download error:', error);
+    return false;
   }
 }
 
@@ -588,10 +617,28 @@ export async function downloadReportPdf(report: LabReport, prebuiltDoc?: jsPDF):
 export const generateReportPdf = downloadReportPdf;
 
 /**
- * Prints the exact canonical PDF document directly using browser iframe
+ * Prints the exact canonical PDF document directly using browser iframe (conditioned on complete payment)
  */
 export async function printCanonicalReportPdf(report: LabReport, existingBlobUrl?: string): Promise<boolean> {
   try {
+    const statusLower = (report.paymentStatus || '').toLowerCase();
+    const isDuePending = Boolean(
+      (report.dueAmount !== undefined && report.dueAmount > 0) ||
+      statusLower === 'pending' ||
+      statusLower === 'partial' ||
+      statusLower === 'due' ||
+      (report.paymentStatus !== undefined &&
+        statusLower !== 'full payment' &&
+        statusLower !== 'paid' &&
+        statusLower !== 'completed' &&
+        (report.dueAmount ?? 0) > 0)
+    );
+
+    if (isDuePending) {
+      console.warn(`[SECURITY] Cannot print report ${report.reportId}: Full payment is pending.`);
+      return false;
+    }
+
     let url = existingBlobUrl;
     let cleanup = false;
     if (!url) {

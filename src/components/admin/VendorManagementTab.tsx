@@ -1091,12 +1091,17 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
                     />
                     <span className="text-xs text-slate-500 font-mono font-bold shrink-0">.indianlalaji.com</span>
                   </div>
-                  <p className="text-[11px] text-indigo-800 mt-1.5 flex items-center gap-1">
-                    <span>Full Live URL:</span>
-                    <strong className="font-mono">
-                      https://{formState.domainPreview || `${formState.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15) || 'newlab'}.indianlalaji.com`}
-                    </strong>
-                  </p>
+                  <div className="text-[11px] text-indigo-900 mt-2 space-y-1">
+                    <p className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold">Vendor Shop URL:</span>
+                      <strong className="font-mono bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-950">
+                        indianlalaji.com/shop/{formState.domainPreview?.replace(/\.indianlalaji\.com$/, '') || formState.id || 'VENDOR_ID'}
+                      </strong>
+                    </p>
+                    <p className="text-[10px] text-indigo-700">
+                      Subdomain: <span className="font-mono">https://{formState.domainPreview || `${formState.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15) || 'newlab'}.indianlalaji.com`}</span>
+                    </p>
+                  </div>
                 </div>
 
                 {/* Owner / Incharge Name */}

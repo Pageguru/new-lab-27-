@@ -21,27 +21,66 @@ const VALID_VIEWS: AppView[] = [
 ];
 
 /**
- * Resolves the active application view and lab tenant based on domain, subdomains, and URL parameters.
+ * Resolves the active application view and lab tenant based on domain, subdomains, URL paths, and query parameters.
  * 
  * Rules:
- * 1. indianlalaji.com / www.indianlalaji.com -> Main Platform Website ('website')
- * 2. <vendor>.indianlalaji.com -> Vendor Lab Website ('vendor_website') for that vendor
- * 3. indianlalaji.com/?lab=<vendor> -> Vendor Lab Website ('vendor_website') for that vendor
- * 4. app.indianlalaji.com -> Lab Management Software ('lab_app')
- * 5. report.indianlalaji.com -> Patient Report Portal ('patient_portal')
- * 6. admin.indianlalaji.com -> Super Admin Dashboard ('admin_dashboard')
- * 7. Custom domains (e.g. citycarelabs.com) -> Vendor Lab Website ('vendor_website')
- * 8. Any explicit ?view= parameter takes priority for navigation
+ * 1. indianlalaji.com/shop/VENDOR_ID -> Vendor Lab Website ('vendor_website') for that vendor
+ * 2. indianlalaji.com / www.indianlalaji.com -> Main Platform Website ('website')
+ * 3. <vendor>.indianlalaji.com -> Vendor Lab Website ('vendor_website') for that vendor
+ * 4. indianlalaji.com/?lab=<vendor> or ?shop=<vendor> -> Vendor Lab Website ('vendor_website')
+ * 5. app.indianlalaji.com -> Lab Management Software ('lab_app')
+ * 6. report.indianlalaji.com -> Patient Report Portal ('patient_portal')
+ * 7. admin.indianlalaji.com -> Super Admin Dashboard ('admin_dashboard')
+ * 8. Custom domains (e.g. citycarelabs.com) -> Vendor Lab Website ('vendor_website')
+ * 9. Any explicit ?view= parameter takes priority for navigation
  */
 export function resolveAppRoute(
   hostname: string,
   search: string,
-  vendorLabsList?: Array<{ id: string; domainPreview?: string }>
+  vendorLabsList?: Array<{ id: string; domainPreview?: string; phone?: string; slug?: string }>,
+  pathname?: string
 ): DomainRouteResolution {
   const cleanHost = (hostname || '').toLowerCase().trim().replace(/^https?:\/\//, '').split(':')[0];
   const params = new URLSearchParams(search);
   const viewParam = params.get('view') as AppView | null;
   const labParam = params.get('lab') || params.get('subdomain');
+  const shopParam = params.get('shop');
+  const effectivePath = pathname !== undefined ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
+
+  // 0. Primary Vendor Shop URL Pattern: indianlalaji.com/shop/VENDOR_ID or /shop/VENDOR_ID
+  const shopMatch = effectivePath.match(/^\/shop\/([^/?#]+)/i);
+  if (shopMatch && shopMatch[1]) {
+    const rawTarget = decodeURIComponent(shopMatch[1]).trim();
+    // Resolve vendor from vendorLabsList if available
+    let resolvedVendorId = rawTarget;
+    if (vendorLabsList && vendorLabsList.length > 0) {
+      const match = vendorLabsList.find((l) => {
+        const idLower = l.id.toLowerCase();
+        const targetLower = rawTarget.toLowerCase();
+        if (idLower === targetLower) return true;
+        if (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) return true;
+        if (l.phone && l.phone.replace(/\D/g, '') === targetLower.replace(/\D/g, '')) return true;
+        if (l.slug && l.slug.toLowerCase() === targetLower) return true;
+        return false;
+      });
+      if (match) {
+        resolvedVendorId = match.id;
+      }
+    }
+
+    return {
+      view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
+      targetLab: resolvedVendorId,
+    };
+  }
+
+  // 0b. Direct shop query parameter: ?shop=VENDOR_ID
+  if (shopParam) {
+    return {
+      view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
+      targetLab: shopParam,
+    };
+  }
 
   // 1. Check for platform root domain (indianalala.com, indianlalaji.com, or www.*)
   const isMainRootDomain =

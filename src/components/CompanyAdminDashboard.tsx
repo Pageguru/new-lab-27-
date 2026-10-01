@@ -569,7 +569,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               )}
             </button>
 
-            {/* Website Backup Module */}
+            {/* Backup Module */}
             <button
               type="button"
               id="menu-btn-backup"
@@ -581,7 +581,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               }`}
             >
               <HardDriveDownload className="w-3.5 h-3.5" />
-              <span>Website Backup</span>
+              <span>Backup</span>
             </button>
 
             {/* Complete Laboratory Management Features Tab */}

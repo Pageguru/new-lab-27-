@@ -434,17 +434,12 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   };
 
   const websiteDirectUrl = React.useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const origin = window.location.origin;
-      const search = window.location.search;
-      if (search && search.includes('lab=')) {
-        return `${origin}${window.location.pathname}${search}`;
-      }
-      const slug = currentLabItem?.domainPreview?.replace(`.${SUPER_ADMIN_DOMAIN}`, '') || currentLabItem?.id || 'apexdiagnostics';
-      return `${origin}/?lab=${slug}`;
+    const vendorId = currentLabItem?.id || 'lab-apex';
+    if (typeof window !== 'undefined' && window.location.origin) {
+      return `${window.location.origin}/shop/${vendorId}`;
     }
-    return canonicalUrl;
-  }, [currentLabItem, canonicalUrl]);
+    return `https://${SUPER_ADMIN_DOMAIN}/shop/${vendorId}`;
+  }, [currentLabItem]);
 
   // Default Pathology & Diagnostic Banners
   const DEFAULT_HERO_BANNER_IMAGES = React.useMemo(() => [

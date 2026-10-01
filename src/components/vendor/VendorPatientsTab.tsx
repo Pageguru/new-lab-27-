@@ -153,9 +153,14 @@ export const VendorPatientsTab: React.FC<VendorPatientsTabProps> = ({ onOpenRepo
         };
       }
 
-      await downloadReportPdf(report);
-      setSuccessToast(`Downloaded report for ${entry.patientName}!`);
-      setTimeout(() => setSuccessToast(''), 3000);
+      const ok = await downloadReportPdf(report);
+      if (ok) {
+        setSuccessToast(`Downloaded report for ${entry.patientName}!`);
+        setTimeout(() => setSuccessToast(''), 3000);
+      } else {
+        setSuccessToast(`Report locked: Full payment is pending (Due: ₹${entry.dueAmount || 0}).`);
+        setTimeout(() => setSuccessToast(''), 4000);
+      }
     } catch (err) {
       console.error('Download error:', err);
     }

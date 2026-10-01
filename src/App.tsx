@@ -48,7 +48,9 @@ export default function App() {
     try {
       const resolution = resolveAppRoute(
         typeof window !== 'undefined' ? window.location.hostname : '',
-        typeof window !== 'undefined' ? window.location.search : ''
+        typeof window !== 'undefined' ? window.location.search : '',
+        undefined,
+        typeof window !== 'undefined' ? window.location.pathname : ''
       );
       return resolution.view;
     } catch {
@@ -82,13 +84,14 @@ export default function App() {
     } catch {}
   }, [currentView]);
 
-  // Sync view and lab tenant from URL parameters, subdomains, or custom domains on initial mount
+  // Sync view and lab tenant from URL parameters, subdomains, /shop/VENDOR_ID paths, or custom domains on initial mount
   useEffect(() => {
     try {
       const resolution = resolveAppRoute(
         window.location.hostname,
         window.location.search,
-        vendorLabsList
+        vendorLabsList,
+        window.location.pathname
       );
 
       if (resolution.targetLab) {
@@ -110,15 +113,39 @@ export default function App() {
     } catch {}
   }, [vendorLabsList]);
 
-  // Update URL search parameters when view or selected lab changes
+  // Support browser Back/Forward navigation across /shop/ paths and views
+  useEffect(() => {
+    const handlePopState = () => {
+      try {
+        const resolution = resolveAppRoute(
+          window.location.hostname,
+          window.location.search,
+          vendorLabsList,
+          window.location.pathname
+        );
+        if (resolution.targetLab) {
+          selectVendorLab(resolution.targetLab);
+        }
+        if (resolution.view) {
+          setCurrentView(resolution.view);
+        }
+      } catch {}
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [vendorLabsList, selectVendorLab]);
+
+  // Update URL search parameters and /shop/VENDOR_ID path when view or selected lab changes
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
       if (currentView === 'website') {
         url.searchParams.delete('view');
         url.searchParams.delete('lab');
+        url.searchParams.delete('shop');
         url.searchParams.delete('subdomain');
-        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        const cleanPath = url.pathname.startsWith('/shop/') ? '/' : url.pathname;
+        window.history.replaceState({}, '', cleanPath + (url.search ? url.search : ''));
       } else if (currentView === 'vendor_website') {
         const hostname = window.location.hostname.toLowerCase();
         const isSubdomainOfMain =
@@ -133,16 +160,19 @@ export default function App() {
           // Dedicated lab subdomain (e.g. apexdiagnostics.indianlalaji.com) - keep clean URL
           url.searchParams.delete('view');
           url.searchParams.delete('lab');
+          url.searchParams.delete('shop');
           url.searchParams.delete('subdomain');
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
         } else {
-          url.searchParams.set('view', 'vendor_website');
-          if (selectedVendorLabId) {
-            const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
-            const slug = getTenantSubdomain(currentLab?.domainPreview || selectedVendorLabId);
-            url.searchParams.set('lab', slug);
-          }
+          // Format as requested: indianlalaji.com/shop/VENDOR_ID
+          const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
+          const vendorId = currentLab?.id || selectedVendorLabId || 'lab-apex';
+          url.searchParams.delete('view');
+          url.searchParams.delete('lab');
+          url.searchParams.delete('shop');
+          url.searchParams.delete('subdomain');
+          window.history.replaceState({}, '', `/shop/${vendorId}` + (url.search ? url.search : ''));
         }
-        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
       } else if (currentView === 'patient_portal') {
         url.searchParams.set('view', 'patient_portal');
         if (selectedVendorLabId && selectedVendorLabId !== 'all') {

@@ -66,6 +66,10 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
     labName: string;
     customerPhone: string;
   } | null>(null);
+  const [justRestoredAllWebsites, setJustRestoredAllWebsites] = useState<{
+    count: number;
+    timestamp: string;
+  } | null>(null);
 
   const showFeedback = (msg: string) => {
     if (parentShowToast) {
@@ -184,7 +188,11 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
           if (!res.success) {
             throw new Error(res.message || 'Failed to restore master backup.');
           }
-          showFeedback(`✅ Master backup loaded! ${res.count || 'All'} website(s) saved to Website Draft. Pehle Draft me save ho gaya hai, ab yahan se manually Publish karein.`);
+          setJustRestoredAllWebsites({
+            count: res.count || parsed.websites?.length || vendorLabsList.length,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          });
+          showFeedback(`✅ Master backup uploaded! ${res.count || 'All'} website(s) saved to Website Draft.`);
         } else {
           // Single customer/lab backup or vendor export
           const phoneFromFile = (
@@ -201,19 +209,24 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
             throw new Error(res.message || 'Failed to restore website backup.');
           }
           const activeLabName = res.customerName || parsed.labName || parsed.labDetails?.name || 'Customer Lab';
-          showFeedback(`✅ Backup for "${activeLabName}" uploaded to Website Draft! Pehle Draft me save ho gaya hai, ab Website Draft tab se review karke manually Publish karein.`);
+          const activePhone = res.customerPhone || phoneFromFile || targetPhoneOrId;
+          const activeLabId = res.labId || parsed.labId || 'lab-apex';
+          setCustomerNumberInput(activePhone);
+          selectVendorLab(activeLabId);
+          setSelectedVendorLabId(activeLabId);
+          setJustRestoredLab({
+            labId: activeLabId,
+            labName: activeLabName,
+            customerPhone: activePhone,
+          });
+          showFeedback(`✅ Backup for "${activeLabName}" (${activePhone}) uploaded!`);
         }
 
         if (allWebsitesFileInputRef.current) {
           allWebsitesFileInputRef.current.value = '';
         }
 
-        // IMMEDIATELY navigate to Website Draft tab
-        if (onNavigateToDrafts) {
-          onNavigateToDrafts();
-        }
-
-        // Sync cloud in background without blocking UI navigation
+        // Sync cloud in background without blocking UI
         refreshCloudData().catch(() => {});
       } catch (err: any) {
         setAllWebsitesUploadError(err.message || 'Failed to parse backup file');
@@ -236,13 +249,14 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
     try {
       const res = importAllWebsitesBackup(allWebsitesBackupPreview.raw);
       if (res.success) {
-        showFeedback(res.message || '✅ All websites backup uploaded to Website Draft! Pehle Draft me save ho gaya hai, ab Website Draft tab se review karke manually Publish karein.');
+        setJustRestoredAllWebsites({
+          count: res.count || allWebsitesBackupPreview.totalWebsites || 1,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        });
+        showFeedback(res.message || '✅ All websites backup uploaded successfully!');
         setAllWebsitesBackupPreview(null);
         if (allWebsitesFileInputRef.current) {
           allWebsitesFileInputRef.current.value = '';
-        }
-        if (onNavigateToDrafts) {
-          onNavigateToDrafts();
         }
         refreshCloudData().catch(() => {});
       } else {
@@ -322,7 +336,9 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
   // Handle Download Single Website Backup
   const handleDownloadSingleCustomerBackup = () => {
     if (!matchedCustomer) {
-      setSingleUploadError('Please enter a valid customer number first.');
+      setSingleUploadError('Please enter a Customer number (search) above first to download their website backup.');
+      const el = document.getElementById('customer-number-input');
+      if (el) el.focus();
       return;
     }
     setSingleUploadError(null);
@@ -454,16 +470,11 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
             customerPhone: activePhone,
           });
 
-          showFeedback(`✅ Backup for "${activeLabName}" (${activePhone}) uploaded to Website Draft! Pehle Draft me save ho gaya hai, ab Website Draft tab se review karke manually Publish karein.`);
+          showFeedback(`✅ Backup for "${activeLabName}" (${activePhone}) uploaded!`);
         }
 
         if (singleCustomerFileInputRef.current) {
           singleCustomerFileInputRef.current.value = '';
-        }
-
-        // IMMEDIATELY navigate to Website Draft tab
-        if (onNavigateToDrafts) {
-          onNavigateToDrafts();
         }
 
         // Sync cloud in background without blocking UI
@@ -567,7 +578,7 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
                 "{justRestoredLab.labName}" Website is in Draft
               </h3>
               <p className="text-xs text-amber-100">
-                Backup upload pehle Draft me save ho chuka hai. Website Draft tab me jakar review karein aur manually Publish karein.
+                Backup upload Draft me save ho chuka hai. Website Draft tab me jakar review karein ya direct Publish karein.
               </p>
             </div>
           </div>
@@ -614,6 +625,54 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
             <button
               type="button"
               onClick={() => setJustRestoredLab(null)}
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Newly Uploaded Master All Websites Banner */}
+      {justRestoredAllWebsites && (
+        <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 border-2 border-emerald-400 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0">
+              <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider bg-emerald-400 text-slate-950 px-2 py-0.5 rounded-full">
+                  All Websites Restored
+                </span>
+                <span className="text-xs text-blue-200 font-mono">
+                  {justRestoredAllWebsites.timestamp}
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-white mt-0.5">
+                All Website Backup Loaded ({justRestoredAllWebsites.count} Websites Saved to Draft)
+              </h3>
+              <p className="text-xs text-blue-100">
+                All websites have been restored into the Website Draft queue. You can review and publish each website individually.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+            {onNavigateToDrafts && (
+              <button
+                type="button"
+                onClick={onNavigateToDrafts}
+                className="py-2.5 px-4 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-2xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <FileText className="w-4 h-4 text-slate-950" />
+                <span>Open Website Draft Queue</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setJustRestoredAllWebsites(null)}
               className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
               title="Dismiss"
             >
@@ -775,10 +834,10 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
                 onClick={handleTriggerAllWebsitesUpload}
                 disabled={isProcessingAllUpload}
                 className="flex-1 py-3 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm cursor-pointer group/btn disabled:opacity-50"
-                title="Upload backups of all websites (Saves to Website Draft queue)"
+                title="Upload backups of all websites"
               >
                 <Upload className="w-4 h-4 group-hover/btn:-translate-y-0.5 transition-transform" />
-                <span>{isProcessingAllUpload ? 'Loading to Draft...' : 'Upload (Load to Draft)'}</span>
+                <span>{isProcessingAllUpload ? 'Uploading...' : 'Upload'}</span>
               </button>
             </div>
             <div className="text-[11px] text-center text-slate-500 mt-2.5">
@@ -795,19 +854,22 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
             {/* Card Header & Title */}
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Customer Specific
+                    Single Lab website Backup
                   </span>
-                  <span className="text-[11px] font-bold text-slate-500">
-                    Targeted Lab Snapshot
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                    Single Lap website Backup
                   </span>
                 </div>
                 {/* Title as specified in user prompt */}
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  <Search className="w-5 h-5 text-amber-600" />
-                  <span>Search Customer by Number</span>
+                  <Search className="w-5.5 h-5.5 text-amber-600" />
+                  <span>Customer number (search)</span>
                 </h2>
+                <div className="text-[11px] font-medium text-amber-800 mt-0.5">
+                  Customer number (sraech) • Single Lap website Backup
+                </div>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800 group-hover:scale-105 transition-transform shrink-0">
                 <Phone className="w-6 h-6 text-amber-700" />
@@ -821,8 +883,9 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
 
             {/* Search Field: Enter Customer Number */}
             <div className="space-y-1.5">
-              <label htmlFor="customer-number-input" className="block text-xs font-black text-slate-700">
-                Search field: Enter Customer Number
+              <label htmlFor="customer-number-input" className="block text-xs font-black text-slate-700 flex items-center justify-between">
+                <span>Customer number (search)</span>
+                <span className="text-[10px] font-normal text-slate-400">Search customer number</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -836,7 +899,7 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
                     setCustomerNumberInput(e.target.value);
                     setSingleUploadError(null);
                   }}
-                  placeholder="Enter Customer Number (e.g. 7087033009, 9876543210)"
+                  placeholder="Customer number (search) e.g. 7087033009, 9876543210"
                   className="w-full pl-10 pr-9 py-2.5 rounded-2xl border border-slate-300 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#123B6D] focus:border-transparent transition bg-slate-50/50"
                 />
                 {customerNumberInput && (
@@ -1042,16 +1105,11 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
                 type="button"
                 id="btn-download-single-customer"
                 onClick={handleDownloadSingleCustomerBackup}
-                disabled={!matchedCustomer}
-                className={`flex-1 py-3 px-4 rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm cursor-pointer group/btn ${
-                  matchedCustomer
-                    ? 'bg-amber-500 hover:bg-amber-600 text-slate-950'
-                    : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                }`}
+                className="flex-1 py-3 px-4 rounded-2xl bg-[#123B6D] hover:bg-[#0e2f57] text-white font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm cursor-pointer group/btn"
                 title={
                   matchedCustomer
                     ? `Download backup for ${matchedCustomer.name} (${matchedCustomer.phone})`
-                    : 'Please enter a customer number to download backup'
+                    : 'Download Single Lab website Backup'
                 }
               >
                 <Download className="w-4 h-4 group-hover/btn:-translate-y-0.5 transition-transform" />
@@ -1064,10 +1122,10 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
                 onClick={handleTriggerSingleCustomerUpload}
                 disabled={isProcessingSingleUpload}
                 className="flex-1 py-3 px-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm cursor-pointer group/btn disabled:opacity-50"
-                title="Upload backup for customer's website only"
+                title="Upload Single Lab website Backup"
               >
                 <Upload className="w-4 h-4 group-hover/btn:-translate-y-0.5 transition-transform" />
-                <span>Upload</span>
+                <span>{isProcessingSingleUpload ? 'Uploading...' : 'Upload'}</span>
               </button>
             </div>
             <div className="text-[11px] text-center text-slate-500 mt-2.5">

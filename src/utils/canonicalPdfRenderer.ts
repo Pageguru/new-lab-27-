@@ -19,13 +19,22 @@ export interface RenderedPdfPage {
   height: number;
 }
 
+export interface RenderPdfOptions {
+  scale?: number;
+  blurBody?: boolean;
+}
+
 /**
  * Loads a PDF document from an ArrayBuffer and renders all its pages to data URLs or canvases.
+ * Supports blurBody option to completely blur the Report Body while keeping Header and Footer 100% sharp.
  */
 export async function renderPdfPages(
   arrayBuffer: ArrayBuffer,
-  scale: number = 1.5
+  optionsOrScale: number | RenderPdfOptions = 1.5
 ): Promise<RenderedPdfPage[]> {
+  const scale = typeof optionsOrScale === 'number' ? optionsOrScale : (optionsOrScale.scale ?? 1.5);
+  const blurBody = typeof optionsOrScale === 'object' ? Boolean(optionsOrScale.blurBody) : false;
+
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
   const pdfDoc = await loadingTask.promise;
   const numPages = pdfDoc.numPages;
@@ -46,6 +55,38 @@ export async function renderPdfPages(
 
     // @ts-expect-error: PDF.js render parameters
     await page.render({ canvasContext: ctx, viewport }).promise;
+
+    // If blurBody is requested (e.g. pending patient payment), blur the Report Body region
+    if (blurBody) {
+      const bodyY = Math.round(viewport.height * 0.27);
+      const bodyH = Math.round(viewport.height * 0.685);
+      const bodyW = viewport.width;
+
+      try {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = bodyW;
+        offscreen.height = bodyH;
+        const offCtx = offscreen.getContext('2d');
+        if (offCtx) {
+          offCtx.drawImage(canvas, 0, bodyY, bodyW, bodyH, 0, 0, bodyW, bodyH);
+
+          ctx.save();
+          try {
+            (ctx as any).filter = 'blur(16px)';
+            ctx.drawImage(offscreen, 0, 0, bodyW, bodyH, 0, bodyY, bodyW, bodyH);
+          } catch {
+            ctx.drawImage(offscreen, 0, 0, bodyW, bodyH, 0, bodyY, bodyW, bodyH);
+          }
+          ctx.restore();
+
+          // Frosted clinical overlay to make text completely illegible
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.fillRect(0, bodyY, bodyW, bodyH);
+        }
+      } catch (err) {
+        console.warn('Canvas blur error:', err);
+      }
+    }
 
     pages.push({
       pageNumber: i,

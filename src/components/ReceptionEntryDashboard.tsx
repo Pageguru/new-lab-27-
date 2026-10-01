@@ -884,6 +884,19 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
         verified: true,
         verificationHash: `SHA256: ${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
         status: 'Verified',
+        dueAmount: entry.dueAmount,
+        paidAmount: entry.paidAmount,
+        totalAmount: entry.totalAmount,
+        paymentStatus: entry.paymentStatus,
+      };
+    }
+    if (foundReport) {
+      return {
+        ...foundReport,
+        dueAmount: entry.dueAmount !== undefined ? entry.dueAmount : foundReport.dueAmount,
+        paidAmount: entry.paidAmount !== undefined ? entry.paidAmount : foundReport.paidAmount,
+        totalAmount: entry.totalAmount !== undefined ? entry.totalAmount : foundReport.totalAmount,
+        paymentStatus: entry.paymentStatus || foundReport.paymentStatus,
       };
     }
     return foundReport;
@@ -900,8 +913,12 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
         return;
       }
       const report = getOrBuildReportForEntry(entry);
-      await downloadReportPdf(report);
-      showToast(`📥 Report PDF downloaded for ${entry.patientName} (${entry.tokenNumber})`);
+      const ok = await downloadReportPdf(report);
+      if (ok) {
+        showToast(`📥 Report PDF downloaded for ${entry.patientName} (${entry.tokenNumber})`);
+      } else {
+        showToast(`🔒 Report locked: Full payment is pending (Due: ₹${entry.dueAmount || 0}).`);
+      }
     } catch (err) {
       console.error('Download error:', err);
       showToast('❌ Failed to download report PDF. Please try again.');
