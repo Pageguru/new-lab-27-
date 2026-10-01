@@ -43,6 +43,8 @@ export const TopBar: React.FC<TopBarProps> = ({
     }
   };
   const supportPhone = companySettings.supportPhone || '+91 7087033009';
+  const displaySiteName = companySettings.siteName || companySettings.companyName || 'INDIANLALAJI.COM';
+  const displayTagline = companySettings.tagline || 'Modern Pathology Laboratory & Diagnostic Operating System';
 
   const handleLaunchDepartment = (role: UserRole, view: AppView) => {
     if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'vendor' || currentUser.role === role)) {
@@ -88,6 +90,19 @@ export const TopBar: React.FC<TopBarProps> = ({
             <span className="hidden sm:inline text-slate-300 font-normal text-xs">Support:</span>
             <span className="font-semibold tracking-wide text-amber-300 group-hover:text-amber-200">{supportPhone}</span>
           </a>
+
+          {/* Dynamic Platform Identity */}
+          {currentView === 'website' && (
+            <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-white/15">
+              <span className="font-extrabold text-[11px] tracking-wide text-amber-300 uppercase">
+                {displaySiteName}
+              </span>
+              <span className="text-white/40">•</span>
+              <span className="text-[11px] text-slate-200 truncate max-w-sm">
+                {displayTagline}
+              </span>
+            </div>
+          )}
 
           {currentView === 'vendor_website' && (
             <div className="flex items-center gap-1.5">

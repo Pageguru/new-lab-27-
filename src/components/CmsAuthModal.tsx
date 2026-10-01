@@ -30,6 +30,7 @@ import {
 import { useCms } from '../context/CmsContext';
 import { AppView } from '../types';
 import { getPermissionsForRole } from '../utils/rbac';
+import { VENDOR_LABS_DIRECTORY } from '../data/mockData';
 
 interface CmsAuthModalProps {
   isOpen: boolean;
@@ -425,16 +426,18 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
       const cleanDigits = cleanInput.replace(/\D/g, '');
       const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
 
-      const matchedLab = vendorLabsList.find((l) => {
+      const allCandidateLabs = [...vendorLabsList, ...VENDOR_LABS_DIRECTORY];
+      const matchedLab = allCandidateLabs.find((l) => {
         const lDigits = (l.phone || '').replace(/\D/g, '');
-        const lLast10 = lDigits.length >= 10 ? lDigits.slice(-10) : lDigits;
-        if (cleanDigits.length >= 7 && (lLast10 === last10 || lDigits.endsWith(cleanDigits) || cleanDigits.endsWith(lDigits))) {
-          return true;
+        if (cleanDigits.length >= 7 && lDigits.length >= 7) {
+          const lLast10 = lDigits.slice(-10);
+          if (lLast10 === last10) return true;
+          if (lDigits.endsWith(cleanDigits) || cleanDigits.endsWith(lDigits)) return true;
         }
         if (l.email && l.email.toLowerCase().trim() === cleanInput) return true;
-        if (l.id.toLowerCase() === cleanInput || l.id.toLowerCase().replace('lab-', '') === cleanInput.replace('lab-', '')) return true;
-        if (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === cleanInput) return true;
-        if (l.name.toLowerCase().includes(cleanInput) || cleanInput.includes(l.name.toLowerCase())) return true;
+        if (cleanInput && (l.id.toLowerCase() === cleanInput || l.id.toLowerCase().replace('lab-', '') === cleanInput.replace('lab-', ''))) return true;
+        if (l.domainPreview && cleanInput && l.domainPreview.toLowerCase().split('.')[0] === cleanInput) return true;
+        if (cleanInput.length >= 3 && (l.name.toLowerCase().includes(cleanInput) || cleanInput.includes(l.name.toLowerCase()))) return true;
         return false;
       });
       const targetLab = matchedLab ? matchedLab.id : (selectedLabId || selectedVendorLabId || 'lab-apex');
@@ -487,31 +490,37 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
       const isSuperAdminEmail =
         cleanInput === 'rkmehra331996@gmail.com' ||
         cleanInput === 'admin@indianlalaji.com' ||
-        cleanInput === 'admin' ||
+        cleanInput === 'superadmin@indianlalaji.com' ||
         cleanInput === 'superadmin' ||
         cleanInput === 'super_admin' ||
         cleanInput === 'rkmehra331996' ||
         cleanInput === 'mehra';
 
-      // Auto-detect role: If Super Admin email entered, use 'admin'; otherwise if 10-digit phone or vendor credentials, use 'vendor'
-      let targetRole: 'admin' | 'vendor' = mainRole === 'super_admin' ? 'admin' : 'vendor';
+      // Auto-detect role:
+      // If Super Admin email entered: use 'admin'
+      // If user selected Admin (labowner) OR entered 10 digits OR lab credentials: use 'vendor'
+      let targetRole: 'admin' | 'vendor' = 'vendor';
       if (isSuperAdminEmail) {
         targetRole = 'admin';
-      } else if (cleanDigits.length >= 7 || !cleanInput.includes('@')) {
+      } else if (mainRole === 'super_admin' && !cleanDigits && cleanInput.includes('@')) {
+        targetRole = 'admin';
+      } else {
         targetRole = 'vendor';
       }
       
       // Auto-resolve laboratory based on owner credentials
-      const matchedLab = vendorLabsList.find((l) => {
+      const allCandidateLabs = [...vendorLabsList, ...VENDOR_LABS_DIRECTORY];
+      const matchedLab = allCandidateLabs.find((l) => {
         const lDigits = (l.phone || '').replace(/\D/g, '');
-        const lLast10 = lDigits.length >= 10 ? lDigits.slice(-10) : lDigits;
-        if (cleanDigits.length >= 7 && (lLast10 === last10 || lDigits.endsWith(cleanDigits) || cleanDigits.endsWith(lDigits))) {
-          return true;
+        if (cleanDigits.length >= 7 && lDigits.length >= 7) {
+          const lLast10 = lDigits.slice(-10);
+          if (lLast10 === last10) return true;
+          if (lDigits.endsWith(cleanDigits) || cleanDigits.endsWith(lDigits)) return true;
         }
         if (l.email && l.email.toLowerCase().trim() === cleanInput) return true;
-        if (l.id.toLowerCase() === cleanInput || l.id.toLowerCase().replace('lab-', '') === cleanInput.replace('lab-', '')) return true;
-        if (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === cleanInput) return true;
-        if (l.name.toLowerCase().includes(cleanInput) || cleanInput.includes(l.name.toLowerCase())) return true;
+        if (cleanInput && (l.id.toLowerCase() === cleanInput || l.id.toLowerCase().replace('lab-', '') === cleanInput.replace('lab-', ''))) return true;
+        if (l.domainPreview && cleanInput && l.domainPreview.toLowerCase().split('.')[0] === cleanInput) return true;
+        if (cleanInput.length >= 3 && (l.name.toLowerCase().includes(cleanInput) || cleanInput.includes(l.name.toLowerCase()))) return true;
         return false;
       });
 
@@ -1089,6 +1098,19 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                   </span>
                   <ArrowRight className="w-4 h-4 text-amber-400" />
                 </button>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-600 flex items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-700">
+                    {mainRole === 'super_admin' ? (
+                      <>Super Admin: <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-[#123B6D]">rkmehra331996@gmail.com</code></>
+                    ) : (
+                      <>Lab Owner: 10-Digit Mobile Number + Password (<code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-[#123B6D]">owner123</code>)</>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                    24x7 Active
+                  </span>
+                </div>
               </form>
             </div>
           )}

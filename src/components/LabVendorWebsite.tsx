@@ -5351,7 +5351,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           if (preselectedTestId) {
             const found = (vendorTests || []).find((t) => t.id === preselectedTestId);
             if (found) {
-              setSelectedTestOrPackage(`${found.testName} (₹${found.price})`);
+              const testTitle = found.name || found.testName || 'Lab Test';
+              const testCost = found.priceINR ?? found.price ?? 0;
+              setSelectedTestOrPackage(`${testTitle} (₹${testCost})`);
             }
           }
           setIsBookingModalOpen(true);

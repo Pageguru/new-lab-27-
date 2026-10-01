@@ -21,7 +21,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { currentUser, logout, openLoginModal, openRegisterLabModal, companySettings, selectVendorLab, selectedVendorLabId } = useCms();
-  const displayBrand = companySettings?.companyName || 'INDIANLALAJI.COM';
+  const displayBrand = companySettings?.siteName || companySettings?.companyName || 'INDIANLALAJI.COM';
+  const displayTagline = companySettings?.tagline || 'Laboratory Management Software for India';
+  const displayFavicon = companySettings?.faviconUrl || '/icon.svg';
 
   const handleGoToDashboard = () => {
     if (currentUser?.labId && currentUser.role !== 'admin' && currentUser.labId !== 'all') {
@@ -100,15 +102,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-2.5 text-left group"
               id="navbar-logo-btn"
             >
-              <div className="w-9 h-9 rounded-lg bg-[#123B6D] text-white flex items-center justify-center font-black text-base tracking-wider shadow-xs group-hover:bg-[#0e2c52] transition">
-                <span className="text-amber-400">I</span>L
+              <div className="w-9 h-9 rounded-lg bg-[#123B6D] text-white flex items-center justify-center font-black text-base tracking-wider shadow-xs group-hover:bg-[#0e2c52] transition overflow-hidden p-1 shrink-0">
+                {displayFavicon ? (
+                  <img src={displayFavicon} alt="" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = '/icon.svg'; }} />
+                ) : (
+                  <>
+                    <span className="text-amber-400">I</span>L
+                  </>
+                )}
               </div>
               <div className="flex flex-col">
                 <span className="font-black text-xl sm:text-2xl tracking-tighter text-[#123B6D] leading-none uppercase">
-                  {displayBrand.replace(/\.com$/i, '')}<span className="text-[#0F766E]">.COM</span>
+                  {displayBrand.replace(/\.com$/i, '')}
+                  {displayBrand.toLowerCase().endsWith('.com') && <span className="text-[#0F766E]">.COM</span>}
                 </span>
-                <span className="hidden sm:block text-[10px] text-[#64748B] font-medium tracking-wide mt-0.5">
-                  Laboratory Management Software for India
+                <span className="hidden sm:block text-[10px] text-[#64748B] font-medium tracking-wide mt-0.5 truncate max-w-xs">
+                  {displayTagline}
                 </span>
               </div>
             </button>

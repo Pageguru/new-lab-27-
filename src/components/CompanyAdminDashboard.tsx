@@ -48,6 +48,7 @@ import { VendorManagementTab } from './admin/VendorManagementTab';
 import { HostingerDatabaseCard } from './admin/HostingerDatabaseCard';
 import { WebsiteBackupTab } from './admin/WebsiteBackupTab';
 import { VendorPlanRenewTab } from './admin/VendorPlanRenewTab';
+import { SeoSettingsTab } from './admin/SeoSettingsTab';
 
 interface CompanyAdminDashboardProps {
   onNavigateView: (view: AppView) => void;
@@ -90,10 +91,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     allPlanRequests,
   } = useCms();
 
-  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests' | 'plans';
+  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests' | 'plans' | 'seo';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
-  type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features';
+  type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features' | 'seo';
   const [homeSubTab, setHomeSubTab] = useState<HomeSubTab>('pricing');
   const activeTab = homeSubTab;
 
@@ -673,6 +674,22 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               )}
             </button>
 
+            {/* SEO Tab (Favicon, Feature Image, Site Name, Tagline & Meta Description) */}
+            <button
+              type="button"
+              id="menu-btn-seo-tab"
+              onClick={() => setActiveMenu('seo')}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 relative ${
+                activeMenu === 'seo'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+              title="SEO Tab (Favicon, Feature Image, Site Name, Tagline & Site Description)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+              <span>SEO Tab</span>
+            </button>
+
             {/* Separator */}
             <div className="h-4 w-px bg-white/15 mx-0.5 hidden sm:block shrink-0"></div>
 
@@ -962,6 +979,18 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 >
                   <Building className="w-3.5 h-3.5" />
                   <span>Branding & Hero Content</span>
+                </button>
+
+                <button
+                  onClick={() => setHomeSubTab('seo')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                    homeSubTab === 'seo'
+                      ? 'bg-amber-400 text-slate-950 shadow-xs'
+                      : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>SEO Tab (Favicon &amp; Metadata)</span>
                 </button>
 
                 <button
@@ -2116,6 +2145,13 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
           </div>
         )}
 
+        {/* 3B. SEO, FAVICON & BRAND TAB */}
+        {activeTab === 'seo' && (
+          <div className="animate-in fade-in-50 duration-200">
+            <SeoSettingsTab />
+          </div>
+        )}
+
         {/* WEBSITE BACKUP MODULE (SUPER ADMIN) */}
         {activeTab === 'backup' && (
           <div className="animate-in fade-in-50 duration-200">
@@ -2536,6 +2572,13 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
             onNavigateView('website');
           }}
         />
+      </div>
+    )}
+
+    {/* VIEW 7: SEO TAB (FAVICON, FEATURE IMAGE, SITE NAME, TAGLINE & SITE DESCRIPTION) */}
+    {activeMenu === 'seo' && (
+      <div className="animate-in fade-in-50 duration-200">
+        <SeoSettingsTab />
       </div>
     )}
   </div>

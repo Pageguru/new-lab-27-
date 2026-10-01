@@ -1095,7 +1095,7 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
                     <p className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold">Vendor Shop URL:</span>
                       <strong className="font-mono bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-950">
-                        indianlalaji.com/shop/{formState.domainPreview?.replace(/\.indianlalaji\.com$/, '') || formState.id || 'VENDOR_ID'}
+                        indianlalaji.com/shop/{formState.domainPreview?.replace(/\.indianlalaji\.com$/, '') || editingVendor?.id || 'VENDOR_ID'}
                       </strong>
                     </p>
                     <p className="text-[10px] text-indigo-700">

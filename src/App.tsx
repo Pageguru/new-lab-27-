@@ -71,7 +71,96 @@ export default function App() {
     selectedVendorLabId,
     setSelectedVendorLabId,
     vendorLabsList,
+    companySettings,
   } = useCms();
+
+  // Dynamic SEO, Favicon & Brand synchronizer across public app interface
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    if (currentView === 'website') {
+      const activeBrand = companySettings.siteName || companySettings.companyName || 'INDIANLALAJI.COM';
+      const activeTagline = companySettings.tagline || 'Modern Pathology Laboratory & Diagnostic Operating System';
+      const activeDesc = companySettings.siteDescription || companySettings.heroSubtitle || 'Complete Diagnostic Lab OS';
+      const activeFavicon = companySettings.faviconUrl || '/icon.svg';
+      const activeFeatureImg = companySettings.featureImageUrl || companySettings.ogImageUrl || '';
+
+      document.title = `${activeBrand} - ${activeTagline}`;
+
+      // Favicon
+      let linkIcon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (!linkIcon) {
+        linkIcon = document.createElement('link');
+        linkIcon.rel = 'icon';
+        document.head.appendChild(linkIcon);
+      }
+      linkIcon.href = activeFavicon;
+
+      // Meta Description
+      let metaDesc = document.querySelector("meta[name='description']") as HTMLMetaElement;
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.name = 'description';
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.content = activeDesc;
+
+      // OpenGraph tags
+      const setMetaProperty = (prop: string, val: string) => {
+        if (!val) return;
+        let el = document.querySelector(`meta[property='${prop}']`) as HTMLMetaElement;
+        if (!el) {
+          el = document.createElement('meta');
+          el.setAttribute('property', prop);
+          document.head.appendChild(el);
+        }
+        el.content = val;
+      };
+      setMetaProperty('og:title', `${activeBrand} - ${activeTagline}`);
+      setMetaProperty('og:description', activeDesc);
+      if (activeFeatureImg) setMetaProperty('og:image', activeFeatureImg);
+      setMetaProperty('og:site_name', activeBrand);
+      setMetaProperty('og:type', 'website');
+
+      // Twitter card tags
+      const setMetaName = (name: string, val: string) => {
+        if (!val) return;
+        let el = document.querySelector(`meta[name='${name}']`) as HTMLMetaElement;
+        if (!el) {
+          el = document.createElement('meta');
+          el.name = name;
+          document.head.appendChild(el);
+        }
+        el.content = val;
+      };
+      setMetaName('twitter:card', 'summary_large_image');
+      setMetaName('twitter:title', `${activeBrand} - ${activeTagline}`);
+      setMetaName('twitter:description', activeDesc);
+      if (activeFeatureImg) setMetaName('twitter:image', activeFeatureImg);
+
+      // Schema.org JSON-LD structured data for Google Rich Results
+      let ldJsonScript = document.querySelector("script[type='application/ld+json']") as HTMLScriptElement;
+      if (!ldJsonScript) {
+        ldJsonScript = document.createElement('script');
+        ldJsonScript.type = 'application/ld+json';
+        document.head.appendChild(ldJsonScript);
+      }
+      ldJsonScript.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: activeBrand,
+        applicationCategory: 'MedicalApplication',
+        operatingSystem: 'All, Web, PWA, Desktop',
+        description: activeDesc,
+        image: activeFeatureImg || undefined,
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'INR',
+        },
+      });
+    }
+  }, [companySettings, currentView]);
 
   // Persist currentView to localStorage whenever it changes (only for authenticated or dashboard views, avoid trapping homepage)
   useEffect(() => {

@@ -12,7 +12,9 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ onSelectView, onOpenDemo }) => {
   const { companySettings } = useCms();
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
-  const displayBrand = companySettings?.companyName || 'INDIANLALAJI.COM';
+  const displayBrand = companySettings?.siteName || companySettings?.companyName || 'INDIANLALAJI.COM';
+  const displayTagline = companySettings?.tagline || 'Laboratory Management Software for India';
+  const displayFavicon = companySettings?.faviconUrl || '/icon.svg';
   const superAdminDomain = companySettings?.superAdminDomain || 'indianlalaji.com';
 
   const scrollTo = (id: string) => {
@@ -30,19 +32,26 @@ export const Footer: React.FC<FooterProps> = ({ onSelectView, onOpenDemo }) => {
           {/* Brand Column */}
           <div className="col-span-2 space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#123B6D] text-white flex items-center justify-center font-bold text-sm border border-white/20">
-                <span className="text-amber-400">I</span>L
+              <div className="w-8 h-8 rounded-lg bg-[#123B6D] text-white flex items-center justify-center font-bold text-sm border border-white/20 overflow-hidden p-1 shrink-0">
+                {displayFavicon ? (
+                  <img src={displayFavicon} alt="" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = '/icon.svg'; }} />
+                ) : (
+                  <>
+                    <span className="text-amber-400">I</span>L
+                  </>
+                )}
               </div>
               <span className="font-extrabold text-lg tracking-tight text-white uppercase">
-                {displayBrand.replace(/\.com$/i, '')}<span className="text-teal-400">.COM</span>
+                {displayBrand.replace(/\.com$/i, '')}
+                {displayBrand.toLowerCase().endsWith('.com') && <span className="text-teal-400">.COM</span>}
               </span>
             </div>
 
-            <p className="text-slate-400 max-w-sm text-xs leading-relaxed">
-              Laboratory Management Software for India.
+            <p className="text-slate-300 max-w-sm text-xs font-semibold leading-relaxed">
+              {displayTagline}
             </p>
-            <p className="text-slate-400 max-w-sm text-[11px] leading-relaxed">
-              Empowering standalone pathology labs and diagnostic healthcare centres with offline capabilities, ₹ INR billing, and instant WhatsApp report delivery.
+            <p className="text-slate-400 max-w-sm text-[11px] leading-relaxed line-clamp-3">
+              {companySettings?.siteDescription || 'Empowering standalone pathology labs and diagnostic healthcare centres with offline capabilities, ₹ INR billing, and instant WhatsApp report delivery.'}
             </p>
 
             <div className="pt-2 text-[11px] text-slate-400 space-y-1">
