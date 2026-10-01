@@ -346,6 +346,11 @@ async function startServer() {
           store[key].unshift(data);
         }
       }
+
+      if (collection === 'lab_staff' || collection === 'staff') {
+        store.lab_staff = store[key];
+        store.staff = store[key];
+      }
     }
 
     const saved = writeDevDb(store);

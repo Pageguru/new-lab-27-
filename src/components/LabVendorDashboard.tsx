@@ -126,6 +126,7 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
     deleteStaffAccount,
     vendorLabsList,
     updateVendorLabCredentials,
+    selectedVendorLabId,
     activeTenantId,
     contactSubmissions,
     domainRequests,
@@ -339,7 +340,10 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
       updateStaffAccount(editingStaff.id, staffForm);
       setToastMessage(`Staff member ${staffForm.name} updated successfully!`);
     } else {
-      addStaffAccount(staffForm);
+      addStaffAccount({
+        ...staffForm,
+        labId: selectedVendorLabId || vendorLabSettings.labId || 'lab-apex',
+      });
       setToastMessage(`New staff member ${staffForm.name} created!`);
     }
 

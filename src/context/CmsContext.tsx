@@ -2905,11 +2905,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 14. Subscribe to Staff Accounts
     const unsubscribeStaff = subscribeToStaffAccounts((cloudStaff) => {
-      if (cloudStaff) {
-        setAllStaffAccounts(cloudStaff);
-        try {
-          localStorage.setItem('cms_lab_staff_accounts', JSON.stringify(cloudStaff));
-        } catch {}
+      if (cloudStaff && Array.isArray(cloudStaff) && cloudStaff.length > 0) {
+        setAllStaffAccounts((prev) => {
+          const cloudIds = new Set(cloudStaff.map((s) => s.id));
+          const localOnly = prev.filter((s) => !cloudIds.has(s.id) && s.id.startsWith('staff-'));
+          const merged = [...cloudStaff, ...localOnly];
+          try {
+            localStorage.setItem('cms_lab_staff_accounts', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
     });
 
@@ -3783,15 +3788,22 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hour: '2-digit',
       minute: '2-digit',
     });
-    const effectiveTenant = activeTenantId === 'all' ? (staff.labId || 'lab-apex') : activeTenantId;
+    const resolvedTenant = staff.labId || (
+      currentUser && currentUser.labId && currentUser.labId !== 'all'
+        ? currentUser.labId
+        : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : (activeTenantId !== 'all' ? activeTenantId : 'lab-apex'))
+    );
     const newStaff: LabStaffAccount = {
       ...staff,
-      labId: effectiveTenant,
+      labId: resolvedTenant,
       id: `staff-${Date.now()}`,
       lastPasswordReset: now,
     };
     setAllStaffAccounts((prev) => {
-      const updated = [...prev, newStaff];
+      const filtered = prev.filter(
+        (s) => s.id !== newStaff.id && s.username.toLowerCase() !== newStaff.username.toLowerCase()
+      );
+      const updated = [newStaff, ...filtered];
       try {
         localStorage.setItem('cms_lab_staff_accounts', JSON.stringify(updated));
       } catch {}

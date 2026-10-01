@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   UserPlus,
@@ -46,10 +46,18 @@ export const VendorStaffManagementTab: React.FC<VendorStaffManagementTabProps> =
     receptionEntries,
     reports,
     vendorLabSettings,
+    selectedVendorLabId,
     currentUser,
   } = useCms();
 
   const [subTab, setSubTab] = useState<'list' | 'add'>(initialSubTab);
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
   const [roleFilter, setRoleFilter] = useState<'all' | 'reception' | 'technician'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -165,6 +173,10 @@ export const VendorStaffManagementTab: React.FC<VendorStaffManagementTabProps> =
       return;
     }
 
+    const targetLabId = (currentUser && currentUser.labId && currentUser.labId !== 'all')
+      ? currentUser.labId
+      : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : (vendorLabSettings.labId || 'lab-apex'));
+
     addStaffAccount({
       name: addForm.name.trim(),
       role: addForm.role,
@@ -174,7 +186,7 @@ export const VendorStaffManagementTab: React.FC<VendorStaffManagementTabProps> =
       shift: addForm.shift,
       status: addForm.status,
       notes: addForm.notes.trim() || undefined,
-      labId: vendorLabSettings.labShopId || 'lab-apex',
+      labId: targetLabId,
       labName: vendorLabSettings.labName,
     });
 

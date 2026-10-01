@@ -345,6 +345,34 @@ function persistDocToMySql($collection, $id, $data) {
             return true;
         }
 
+        if ($collection === 'lab_staff') {
+            $stmt = $pdo->prepare("REPLACE INTO `lab_staff` (
+                `id`, `labId`, `labName`, `branchId`, `branchName`, `name`, `role`,
+                `username`, `email`, `phone`, `password`, `status`, `shift`, `notes`, `lastPasswordReset`
+            ) VALUES (
+                :id, :labId, :labName, :branchId, :branchName, :name, :role,
+                :username, :email, :phone, :password, :status, :shift, :notes, :lastPasswordReset
+            )");
+            $stmt->execute([
+                ':id'               => $id,
+                ':labId'            => $data['labId'] ?? 'lab-apex',
+                ':labName'          => $data['labName'] ?? 'Apex Diagnostic & Clinical Pathology Laboratory',
+                ':branchId'         => $data['branchId'] ?? 'branch-1',
+                ':branchName'       => $data['branchName'] ?? 'Main Branch',
+                ':name'             => $data['name'] ?? 'Staff Member',
+                ':role'             => $data['role'] ?? 'reception',
+                ':username'         => $data['username'] ?? $id,
+                ':email'            => $data['email'] ?? null,
+                ':phone'            => $data['phone'] ?? null,
+                ':password'         => $data['password'] ?? '123456',
+                ':status'           => ($data['status'] === 'suspended') ? 'suspended' : 'active',
+                ':shift'            => $data['shift'] ?? 'General Shift',
+                ':notes'            => $data['notes'] ?? null,
+                ':lastPasswordReset'=> $data['lastPasswordReset'] ?? date('d M Y, h:i A')
+            ]);
+            return true;
+        }
+
         // Generic fallback insert for other MySQL tables using data column
         $jsonStr = json_encode($data, JSON_UNESCAPED_UNICODE);
         $checkCol = $pdo->query("SHOW COLUMNS FROM `{$tableName}` LIKE 'data'");

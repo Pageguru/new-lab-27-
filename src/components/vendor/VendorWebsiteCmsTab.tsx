@@ -66,6 +66,16 @@ interface VendorWebsiteCmsTabProps {
 
 export const PRESET_SPECIALIST_AVATARS = [
   {
+    label: 'Receptionist / Front Desk (Female)',
+    role: 'Receptionist',
+    url: '/src/assets/images/team_pathologist_woman_1790345423035.jpg',
+  },
+  {
+    label: 'Lab Technician / Technologist (Female)',
+    role: 'Technician',
+    url: '/src/assets/images/team_technologist_1790345481173.jpg',
+  },
+  {
     label: 'Consultant Pathologist (Female)',
     role: 'Pathologist',
     url: '/src/assets/images/team_pathologist_woman_1790345423035.jpg',
@@ -79,11 +89,6 @@ export const PRESET_SPECIALIST_AVATARS = [
     label: 'Clinical Biochemist (Male)',
     role: 'Biochemist',
     url: '/src/assets/images/team_biochemist_1790345449541.jpg',
-  },
-  {
-    label: 'Senior Technologist (Female)',
-    role: 'Technician',
-    url: '/src/assets/images/team_technologist_1790345481173.jpg',
   },
   {
     label: 'Phlebotomist Lead (Male)',
@@ -521,16 +526,127 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
     setIsTeamModalOpen(true);
   };
 
+  const handleRoleCategoryChange = (
+    newRole: 'Pathologist' | 'Biochemist' | 'Microbiologist' | 'Technician' | 'Receptionist' | 'Phlebotomist'
+  ) => {
+    setTeamForm((prev) => {
+      let degrees = prev.degrees;
+      let designation = prev.designation;
+      let specialization = prev.specialization;
+      let bio = prev.bio;
+      let imageUrl = prev.imageUrl;
+      let avatarEmoji = prev.avatarEmoji || '👨‍⚕️';
+
+      if (newRole === 'Receptionist') {
+        if (!degrees || degrees.includes('MBBS') || degrees.includes('MD') || degrees.includes('DMLT')) {
+          degrees = 'Graduate (B.A. / B.Com)';
+        }
+        if (!designation || designation.includes('Pathologist') || designation.includes('Specialist') || designation.includes('Technician')) {
+          designation = 'Receptionist / Front Desk Executive';
+        }
+        if (!specialization || specialization.includes('Pathology') || specialization.includes('Histopathology')) {
+          specialization = 'Front Desk & Patient Care';
+        }
+        if (!bio || bio.includes('specimen') || bio.includes('report validation')) {
+          bio = 'Welcomes patients at the front counter, coordinates test bookings, handles patient billing, and provides instant digital report assistance.';
+        }
+        avatarEmoji = '👩‍💼';
+        if (!imageUrl || imageUrl.includes('team_technologist') || imageUrl.includes('team_biochemist')) {
+          imageUrl = '/src/assets/images/team_pathologist_woman_1790345423035.jpg';
+        }
+      } else if (newRole === 'Technician') {
+        if (!degrees || degrees.includes('MBBS') || degrees.includes('MD') || degrees.includes('Graduate')) {
+          degrees = 'DMLT / B.Sc Medical Lab Technology';
+        }
+        if (!designation || designation.includes('Pathologist') || designation.includes('Receptionist')) {
+          designation = 'Senior Lab Technician';
+        }
+        if (!specialization || specialization.includes('Registration') || specialization.includes('Billing') || specialization.includes('Pathology')) {
+          specialization = 'Automated Biochemistry & Hematology';
+        }
+        if (!bio || bio.includes('counter') || bio.includes('booking') || bio.includes('specimen verifications')) {
+          bio = 'Performs precise laboratory diagnostic testing, operates automated clinical analyzers, and ensures rigorous quality control standards.';
+        }
+        avatarEmoji = '🔬';
+        if (!imageUrl || imageUrl.includes('team_pathologist') || imageUrl.includes('team_phlebotomist')) {
+          imageUrl = '/src/assets/images/team_technologist_1790345481173.jpg';
+        }
+      } else if (newRole === 'Phlebotomist') {
+        if (!degrees || degrees.includes('MBBS') || degrees.includes('MD') || degrees.includes('Graduate')) {
+          degrees = 'Diploma in Medical Laboratory Technology (DMLT)';
+        }
+        if (!designation || designation.includes('Pathologist') || designation.includes('Receptionist')) {
+          designation = 'Senior Phlebotomist';
+        }
+        if (!specialization || specialization.includes('Registration')) {
+          specialization = 'Home Sample Collection & Vacutainer Blood Draw';
+        }
+        avatarEmoji = '🩸';
+        if (!imageUrl) {
+          imageUrl = '/src/assets/images/team_phlebotomist_1790345465190.jpg';
+        }
+      } else if (newRole === 'Biochemist') {
+        if (!degrees || degrees.includes('DMLT') || degrees.includes('Graduate')) {
+          degrees = 'M.Sc (Medical Biochemistry)';
+        }
+        if (!designation || designation.includes('Receptionist') || designation.includes('Technician')) {
+          designation = 'Senior Clinical Biochemist';
+        }
+        if (!specialization || specialization.includes('Registration')) {
+          specialization = 'Clinical Biochemistry & Hormonal Immunoassays';
+        }
+        avatarEmoji = '🧪';
+        if (!imageUrl) {
+          imageUrl = '/src/assets/images/team_biochemist_1790345449541.jpg';
+        }
+      } else if (newRole === 'Pathologist') {
+        if (!degrees || degrees.includes('DMLT') || degrees.includes('Graduate')) {
+          degrees = 'MBBS, MD (Pathology)';
+        }
+        if (!designation || designation.includes('Receptionist') || designation.includes('Technician')) {
+          designation = 'Consultant Clinical Pathologist';
+        }
+        if (!specialization || specialization.includes('Registration')) {
+          specialization = 'Clinical Pathology & Histopathology';
+        }
+        avatarEmoji = '👨‍⚕️';
+        if (!imageUrl) {
+          imageUrl = '/src/assets/images/team_pathologist_woman_1790345423035.jpg';
+        }
+      }
+
+      return {
+        ...prev,
+        roleCategory: newRole,
+        degrees,
+        qualification: degrees,
+        designation,
+        specialization,
+        bio,
+        imageUrl,
+        avatarEmoji,
+      };
+    });
+  };
+
   const handleSaveTeam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!teamForm.name.trim()) return;
+    const effectiveLabId = selectedVendorLabId || vendorLabSettings.labId || 'lab-apex';
+    const payload = {
+      ...teamForm,
+      labId: effectiveLabId,
+      degrees: teamForm.degrees?.trim() || (teamForm.roleCategory === 'Receptionist' ? 'Front Desk Executive' : teamForm.roleCategory === 'Technician' ? 'DMLT' : 'Clinical Specialist'),
+      qualification: teamForm.qualification || teamForm.degrees,
+      specialization: teamForm.specialization?.trim() || (teamForm.roleCategory === 'Receptionist' ? 'Front Desk & Patient Care' : teamForm.roleCategory === 'Technician' ? 'Diagnostic Testing' : 'Pathology'),
+    };
 
     if (editingTeamMember) {
-      updateVendorDoctor(editingTeamMember.id, teamForm);
+      updateVendorDoctor(editingTeamMember.id, payload);
       triggerToast(`Team member "${teamForm.name}" updated successfully!`);
     } else {
-      addVendorDoctor(teamForm);
-      triggerToast(`New team expert "${teamForm.name}" added successfully!`);
+      addVendorDoctor(payload);
+      triggerToast(`New team member "${teamForm.name}" added successfully!`);
     }
     setIsTeamModalOpen(false);
   };
@@ -1569,7 +1685,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                     <Users className="w-4 h-4 text-[#123B6D]" />
-                    <span>Qualified Clinical Team &amp; Specialists (Add / Edit / Delete)</span>
+                    <span>Laboratory &amp; Clinical Team (Add / Edit / Delete)</span>
                   </h3>
                   <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
                     vendorDoctors.length > 0
@@ -1578,12 +1694,12 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${vendorDoctors.length > 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     {vendorDoctors.length > 0
-                      ? `Live on Website (${vendorDoctors.length} ${vendorDoctors.length === 1 ? 'Expert' : 'Experts'})`
+                      ? `Live on Website (${vendorDoctors.length} ${vendorDoctors.length === 1 ? 'Member' : 'Members'})`
                       : 'Section Hidden (0 Members)'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Manage Pathologists, Biochemists, Microbiologists, and Senior Technologists. If no members are added, this section is automatically hidden on your website.
+                  Manage Receptionists, Lab Technicians, Pathologists, Biochemists, and Phlebotomists. If no members are added, this section is automatically hidden on your website.
                 </p>
               </div>
 
@@ -1593,7 +1709,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Team Expert</span>
+                <span>Add Team Member</span>
               </button>
             </div>
 
@@ -1731,7 +1847,7 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-[#123B6D] text-white">
                   <h3 className="font-extrabold text-sm sm:text-base flex items-center gap-2">
                     <Users className="w-4 h-4 text-amber-400" />
-                    <span>{editingTeamMember ? 'Edit Team Expert' : 'Add New Medical Team Member'}</span>
+                    <span>{editingTeamMember ? 'Edit Team Member' : 'Add New Team Member'}</span>
                   </h3>
                   <button
                     type="button"
@@ -1745,14 +1861,14 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                 <form onSubmit={handleSaveTeam} className="p-6 space-y-4 overflow-y-auto text-xs">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Doctor / Expert Full Name <span className="text-rose-500">*</span>
+                      Full Name (Receptionist / Technician / Doctor) <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       required
                       value={teamForm.name}
                       onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
-                      placeholder="e.g. Dr. Kavita Deshmukh"
+                      placeholder="e.g. Pooja Sharma / Dr. Kavita Deshmukh"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-bold focus:ring-2 focus:ring-[#123B6D]"
                     />
                   </div>
@@ -1760,18 +1876,19 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Role Category
+                        Role Category <span className="text-rose-500">*</span>
                       </label>
                       <select
-                        value={teamForm.roleCategory || 'Pathologist'}
-                        onChange={(e) => setTeamForm({ ...teamForm, roleCategory: e.target.value as any })}
+                        value={teamForm.roleCategory || 'Receptionist'}
+                        onChange={(e) => handleRoleCategoryChange(e.target.value as any)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-800 font-semibold bg-white"
                       >
-                        <option value="Pathologist">Pathologist</option>
-                        <option value="Biochemist">Biochemist</option>
-                        <option value="Microbiologist">Microbiologist</option>
-                        <option value="Technician">Senior Lab Technologist</option>
-                        <option value="Phlebotomist">Senior Phlebotomist</option>
+                        <option value="Receptionist">🖥️ Receptionist (Front Desk &amp; Billing)</option>
+                        <option value="Technician">🔬 Lab Technician / Technologist</option>
+                        <option value="Pathologist">🩺 Pathologist (MD / MBBS)</option>
+                        <option value="Biochemist">🧪 Clinical Biochemist</option>
+                        <option value="Microbiologist">🧫 Microbiologist</option>
+                        <option value="Phlebotomist">🩸 Senior Phlebotomist</option>
                       </select>
                     </div>
 

@@ -3831,6 +3831,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 fallbackImg = '/src/assets/images/team_phlebotomist_1790345465190.jpg';
               } else if (doc.roleCategory === 'Technician' || docSpeciality.toLowerCase().includes('technic')) {
                 fallbackImg = '/src/assets/images/team_technologist_1790345481173.jpg';
+              } else if (doc.roleCategory === 'Receptionist' || docSpeciality.toLowerCase().includes('reception') || docSpeciality.toLowerCase().includes('front desk')) {
+                fallbackImg = '/src/assets/images/team_pathologist_woman_1790345423035.jpg';
               } else if (idx === 0) {
                 fallbackImg = '/src/assets/images/founder_pathologist_1790345211989.jpg';
               }

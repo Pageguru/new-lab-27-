@@ -1735,31 +1735,6 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                       </label>
                     </div>
 
-                    {/* Secondary QR (Optional) */}
-                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                      <span className="text-xs font-bold text-slate-800 block mb-1">
-                        Optional: Secondary QR (For Phlebotomist Home Visits)
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                        <input
-                          type="text"
-                          value={formData.upiId2 || ''}
-                          onChange={(e) => setFormData({ ...formData, upiId2: e.target.value })}
-                          placeholder="Secondary UPI ID (e.g. apexvisit@oksbi)"
-                          className="p-2 rounded-xl border border-slate-300 text-xs font-mono bg-white"
-                        />
-                        <label className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer">
-                          <Upload className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Upload 2nd QR</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleQrUpload(e, 2)}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>

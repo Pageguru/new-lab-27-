@@ -343,7 +343,7 @@ export interface VendorDoctor {
   degrees: string;
   qualification?: string;
   designation?: string;
-  roleCategory?: 'Pathologist' | 'Biochemist' | 'Microbiologist' | 'Technician' | 'Phlebotomist';
+  roleCategory?: 'Pathologist' | 'Biochemist' | 'Microbiologist' | 'Technician' | 'Phlebotomist' | 'Receptionist';
   specialization: string;
   specialty?: string;
   specialExpertise?: string;

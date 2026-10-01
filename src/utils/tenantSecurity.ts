@@ -46,7 +46,7 @@ export function getEffectiveTenantId(
 export function normalizeTenantId(id: string | undefined | null): string {
   if (!id) return DEFAULT_TENANT_ID;
   const clean = String(id).trim().toLowerCase();
-  if (clean === 'lab-apex' || clean === 'apexdiagnostics' || clean === 'apex') {
+  if (clean === 'lab-apex' || clean === 'apexdiagnostics' || clean === 'apex' || clean === 'lsp-7087' || clean === 'lsp_7087') {
     return 'apexdiagnostics';
   }
   return clean;
