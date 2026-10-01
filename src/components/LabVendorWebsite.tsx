@@ -733,14 +733,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       }, 120);
     };
 
-    const currentLabId = currentLabItem?.id || selectedVendorLabId;
+    const currentLabId = currentWebsiteLabId || currentLabItem?.id || selectedVendorLabId;
 
-    // Filter reports and reception entries for current lab, fallback to allReports if none scoped
-    const labReports = (allReports || []).filter((r) => isTenantMatch(r, currentLabId));
-    const availableReports = labReports.length > 0 ? labReports : (allReports || []);
-
-    const labEntries = (allReceptionEntries || []).filter((e) => isTenantMatch(e, currentLabId));
-    const availableEntries = labEntries.length > 0 ? labEntries : (allReceptionEntries || []);
+    // Filter reports and reception entries strictly for current lab - NO cross-lab data leakage
+    const availableReports = (allReports || []).filter((r) => isTenantMatch(r, currentLabId));
+    const availableEntries = (allReceptionEntries || []).filter((e) => isTenantMatch(e, currentLabId));
 
     if (activeTab === 'mobile') {
       const cleanDigits = val.replace(/\D/g, '');
@@ -748,17 +745,18 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         setQuickReportError('Please enter a valid 10-digit mobile number (e.g. 9876543210).');
         return;
       }
+      const search10 = cleanDigits.slice(-10);
 
-      // 1. Find matched verified/published reports
+      // 1. Find matched verified/published reports strictly by exact 10-digit mobile
       const matchedReports = availableReports.filter((r) => {
-        const rMob = (r.mobile || '').replace(/\D/g, '');
-        return rMob === cleanDigits || rMob.endsWith(cleanDigits) || cleanDigits.endsWith(rMob);
+        const rDigits = (r.mobile || '').replace(/\D/g, '');
+        return rDigits.length >= 10 && rDigits.slice(-10) === search10;
       });
 
-      // 2. Find matched reception entries (in case sample is in process)
+      // 2. Find matched reception entries strictly by exact 10-digit mobile
       const matchedEntries = availableEntries.filter((e) => {
-        const eMob = (e.mobile || '').replace(/\D/g, '');
-        return eMob === cleanDigits || eMob.endsWith(cleanDigits) || cleanDigits.endsWith(eMob);
+        const eDigits = (e.mobile || '').replace(/\D/g, '');
+        return eDigits.length >= 10 && eDigits.slice(-10) === search10;
       });
 
       if (matchedReports.length > 0) {
@@ -794,37 +792,26 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         setInlineSearchNotFound(true);
       }
     } else {
-      // Search by Token Number or Report ID
-      const cleanVal = val.toLowerCase();
+      // Search by Token Number or Report ID - STRICT EXACT MATCH ONLY
+      const cleanVal = val.trim().toLowerCase();
       const cleanDigits = val.replace(/\D/g, '');
 
-      // Special sample alias mapping:
-      // RPT-2026-001 -> maps to availableReports[0]
-      // RPT-2026-002 -> maps to availableReports[1] || availableReports[0]
-      if (cleanVal === 'rpt-2026-001' && availableReports.length > 0) {
-        setInlineSearchedReport(availableReports[0]);
-        scrollReportIntoView();
-        return;
-      }
-      if (cleanVal === 'rpt-2026-002' && availableReports.length > 1) {
-        setInlineSearchedReport(availableReports[1]);
-        scrollReportIntoView();
-        return;
-      }
+      // 1. Direct exact match in reports by reportId, tokenNumber, or UHID
+      const foundReport = availableReports.find((r) => {
+        const rId = r.reportId.trim().toLowerCase();
+        const rUhid = (r.uhid || '').trim().toLowerCase();
+        const rToken = (r.tokenNumber || '').trim().toLowerCase();
+        const rTokenDigits = rToken.replace(/\D/g, '');
 
-      // 1. Direct match in reports by reportId, tokenNumber, or UHID
-      const foundReport = availableReports.find(
-        (r) =>
-          r.reportId.toLowerCase() === cleanVal ||
-          (r.tokenNumber && (
-            r.tokenNumber.toLowerCase() === cleanVal ||
-            r.tokenNumber.toLowerCase() === `tk-${cleanVal}` ||
-            `tk-${r.tokenNumber.toLowerCase()}` === cleanVal ||
-            (cleanDigits && r.tokenNumber.replace(/\D/g, '') === cleanDigits)
-          )) ||
-          (r.uhid && r.uhid.toLowerCase() === cleanVal) ||
-          r.reportId.toLowerCase().includes(cleanVal)
-      );
+        return (
+          rId === cleanVal ||
+          rUhid === cleanVal ||
+          rToken === cleanVal ||
+          rToken === `tk-${cleanVal}` ||
+          `tk-${rToken}` === cleanVal ||
+          (cleanDigits.length > 0 && rTokenDigits === cleanDigits)
+        );
+      });
 
       if (foundReport) {
         setInlineSearchedReport(foundReport);
@@ -832,21 +819,22 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         return;
       }
 
-      // 2. Check if it matches an entry by token number or reportId
-      const foundEntry = availableEntries.find(
-        (e) => {
-          const entryToken = (e.tokenNumber || '').toLowerCase().trim();
-          const entryTokenDigits = entryToken.replace(/\D/g, '');
-          return (
-            entryToken === cleanVal ||
-            entryToken === `tk-${cleanVal}` ||
-            `tk-${entryToken}` === cleanVal ||
-            (cleanDigits && entryTokenDigits === cleanDigits) ||
-            (e.reportId && e.reportId.toLowerCase() === cleanVal) ||
-            (e.uhid && e.uhid.toLowerCase() === cleanVal)
-          );
-        }
-      );
+      // 2. Check if it matches an entry by exact token number, uhid, or reportId
+      const foundEntry = availableEntries.find((e) => {
+        const entryToken = (e.tokenNumber || '').trim().toLowerCase();
+        const entryTokenDigits = entryToken.replace(/\D/g, '');
+        const uhidLower = (e.uhid || '').trim().toLowerCase();
+        const reportIdLower = (e.reportId || '').trim().toLowerCase();
+
+        return (
+          entryToken === cleanVal ||
+          entryToken === `tk-${cleanVal}` ||
+          `tk-${entryToken}` === cleanVal ||
+          (cleanDigits.length > 0 && entryTokenDigits === cleanDigits) ||
+          reportIdLower === cleanVal ||
+          uhidLower === cleanVal
+        );
+      });
 
       if (foundEntry) {
         if (foundEntry.reportId) {

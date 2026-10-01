@@ -163,7 +163,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         ? (/^TK[-_\s]?/i.test(rawTokenVal) ? `TK-${rawTokenVal.replace(/^TK[-_\s]?/i, '')}` : `TK-${rawTokenVal}`)
         : r.id?.startsWith('rcp-') && r.id.replace('rcp-', '').length > 6
         ? `TK-${r.id.replace('rcp-', '').slice(-3)}`
-        : `TK-${r.id || '101'}`;
+        : (r.id ? `TK-${r.id}` : '');
       const isReturned = Boolean(r.returnedByTechnician);
 
       const cleanRptId = String(r.reportId || '').trim().toLowerCase();
@@ -601,7 +601,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     const entryForReceipt: ReceptionPatientEntry = rec || {
       id: p.id,
       uhid: p.uhid,
-      tokenNumber: p.tokenNumber || p.tokenNo || 'TK-101',
+      tokenNumber: p.tokenNumber || p.tokenNo || p.uhid || '',
       patientName: p.name,
       age: p.age,
       gender: p.gender,
@@ -1245,7 +1245,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                           {/* Token & Status Header */}
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="inline-flex items-center gap-1.5 bg-[#123B6D]/10 text-[#123B6D] font-mono font-black text-xs px-2.5 py-1 rounded-lg border border-[#123B6D]/20">
-                              <span>{p.tokenNumber || p.tokenNo || 'TK-101'}</span>
+                              <span>{p.tokenNumber || p.tokenNo || p.uhid}</span>
                               <span className="text-slate-400 font-normal">|</span>
                               <span className="text-[11px] text-slate-600 font-mono font-bold">{p.uhid}</span>
                             </div>
@@ -1498,7 +1498,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                               {/* Token & UHID */}
                               <td className="py-3 px-4">
                                 <div className="inline-block bg-[#123B6D]/10 text-[#123B6D] font-mono font-black text-xs px-2 py-0.5 rounded-md border border-[#123B6D]/20">
-                                  {p.tokenNumber || p.tokenNo || 'TK-101'}
+                                  {p.tokenNumber || p.tokenNo || p.uhid}
                                 </div>
                                 <div className="font-mono text-[11px] text-slate-600 mt-1">{p.uhid}</div>
                                 <div className="text-[10px] text-slate-400">{p.registeredAt}</div>
@@ -1791,7 +1791,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                       </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
 
               <div className="text-xs text-slate-500 text-center py-1">
@@ -2894,7 +2895,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                 <div>
                   <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block">Token Number</span>
                   <span className="font-mono text-sm font-black text-[#123B6D]">
-                    {selectedReceipt.tokenNumber || 'TK-101'}
+                    {selectedReceipt.tokenNumber || selectedReceipt.uhid || '-'}
                   </span>
                 </div>
                 <div>
@@ -3044,7 +3045,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
             <div className="my-4 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div>
                 <span className="font-mono text-[11px] font-bold bg-[#123B6D]/10 text-[#123B6D] px-2 py-0.5 rounded border border-[#123B6D]/20 mr-2">
-                  {cancellingPatient.tokenNumber || cancellingPatient.tokenNo || 'TK-101'}
+                  {cancellingPatient.tokenNumber || cancellingPatient.tokenNo || cancellingPatient.uhid || '-'}
                 </span>
                 <strong className="text-slate-900 text-sm">{cancellingPatient.name}</strong>
                 <span className="text-slate-500 text-[11px] ml-1.5">

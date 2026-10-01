@@ -2463,7 +2463,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const missingEntries = INITIAL_RECEPTION_ENTRIES.filter((e) => !existingIds.has(e.id) && !existingLabIds.has(e.labId));
       list = [...list, ...missingEntries];
       return list.filter(Boolean).map((e: any, idx: number) => {
-        const token = String(e?.tokenNumber || e?.tokenNo || `TK-${101 + idx}`);
+        const token = String(e?.tokenNumber || e?.tokenNo || (e?.id ? `TK-${e.id}` : ''));
         return {
           ...e,
           tokenNumber: token,

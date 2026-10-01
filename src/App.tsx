@@ -61,6 +61,7 @@ export default function App() {
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState('');
   const [selectedPatientMobile, setSelectedPatientMobile] = useState('');
+  const [selectedPatientName, setSelectedPatientName] = useState('');
 
   const {
     currentUser,
@@ -252,13 +253,14 @@ export default function App() {
 
   const handleOpenDemo = () => setIsDemoModalOpen(true);
 
-  const handleViewPatientPortal = (reportId?: string, mobile?: string, labId?: string) => {
+  const handleViewPatientPortal = (reportId?: string, mobile?: string, labId?: string, patientName?: string) => {
     if (labId) {
       setSelectedVendorLabId(labId);
       selectVendorLab(labId);
     }
     setSelectedReportId(reportId?.trim() || '');
     setSelectedPatientMobile(mobile?.trim() || '');
+    setSelectedPatientName(patientName?.trim() || '');
     setCurrentView('patient_portal');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -271,6 +273,7 @@ export default function App() {
   const handleBackToWebsite = () => {
     setSelectedReportId('');
     setSelectedPatientMobile('');
+    setSelectedPatientName('');
     const resolution = resolveAppRoute(
       typeof window !== 'undefined' ? window.location.hostname : '',
       typeof window !== 'undefined' ? window.location.search : ''
@@ -607,6 +610,7 @@ export default function App() {
           onBackToWebsite={handleBackToWebsite}
           initialReportId={selectedReportId}
           initialMobile={selectedPatientMobile}
+          initialPatientName={selectedPatientName}
           vendorLabId={selectedVendorLabId}
           onSelectVendorLab={(labId) => {
             setSelectedVendorLabId(labId);

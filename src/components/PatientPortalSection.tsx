@@ -4,7 +4,7 @@ import { SAMPLE_REPORT } from '../data/mockData';
 import { generateReportPdf } from '../utils/pdfGenerator';
 
 interface PatientPortalSectionProps {
-  onViewReport?: (reportId?: string, mobile?: string) => void;
+  onViewReport?: (reportId?: string, mobile?: string, labId?: string, patientName?: string) => void;
   onOpenVerifyModal?: (reportId: string) => void;
   onOpenPortal?: () => void;
 }
@@ -22,10 +22,11 @@ export const PatientPortalSection: React.FC<PatientPortalSectionProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!onViewReport) return;
     if (searchMethod === 'name_mobile') {
-      onViewReport(undefined, mobileNumber);
+      onViewReport(undefined, mobileNumber.trim(), undefined, patientName.trim());
     } else {
-      onViewReport(reportId, undefined);
+      onViewReport(reportId.trim(), undefined, undefined, undefined);
     }
   };
 

@@ -56,7 +56,7 @@ import { safePrint } from '../utils/printHelper';
 
 // Format token number to standard format (e.g. "TK-626")
 export const getDisplayTokenNumber = (tokenRaw?: string, fallbackId?: string): string => {
-  if (!tokenRaw && !fallbackId) return 'TK-101';
+  if (!tokenRaw && !fallbackId) return '';
   let raw = String(tokenRaw || fallbackId || '').trim();
   if (raw.startsWith('rcp-')) {
     raw = raw.replace('rcp-', '');
@@ -1317,7 +1317,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-[11px] font-black bg-rose-100 text-rose-900 px-2 py-0.5 rounded-md border border-rose-200">
-                            {retEntry.tokenNumber || 'TK-101'}
+                            {retEntry.tokenNumber || '-'}
                           </span>
                           <strong className="text-slate-900 font-bold">{retEntry.patientName}</strong>
                           <span className="text-[11px] text-slate-500 font-mono">+91 {retEntry.mobile}</span>
@@ -1978,7 +1978,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
                     type="text"
                     value={searchToken}
                     onChange={(e) => setSearchToken(e.target.value)}
-                    placeholder="Search Token (e.g. 101, 232)..."
+                    placeholder="Search Token Number..."
                     className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-900 bg-white focus:ring-1 focus:ring-teal-600 focus:border-teal-600 outline-none placeholder:text-slate-400 font-mono shadow-2xs"
                   />
                   {searchToken && (

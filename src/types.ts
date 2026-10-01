@@ -497,6 +497,7 @@ export interface LabReport {
   pathologistDegrees: string;
   barcode: string;
   tokenNumber?: string;
+  sampleType?: string;
   items: ReportItem[];
   verified: boolean;
   verificationHash: string;

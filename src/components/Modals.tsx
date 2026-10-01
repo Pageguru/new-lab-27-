@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, ShieldCheck, QrCode, ArrowRight, Laptop, Calendar, MessageSquare } from 'lucide-react';
+import { useCms } from '../context/CmsContext';
 
 interface ModalProps {
   isOpen: boolean;
@@ -130,7 +131,22 @@ export const QRVerifyModal: React.FC<{ isOpen: boolean; onClose: () => void; rep
   onClose,
   reportId = 'RPT-2026-8812',
 }) => {
+  const { allReports } = useCms();
   if (!isOpen) return null;
+
+  const cleanId = (reportId || '').trim().toLowerCase();
+  const matched = (allReports || []).find(
+    (r) =>
+      r.reportId.toLowerCase() === cleanId ||
+      (r.uhid && r.uhid.toLowerCase() === cleanId)
+  );
+
+  const displayReportId = matched?.reportId || reportId;
+  const patName = matched ? `${matched.patientName} (${matched.ageGender || ''})` : 'Verified Diagnostic Patient';
+  const issuing = matched ? `${matched.labName} (NABL ${matched.nablAccreditationNo || 'Verified'})` : 'Apex Diagnostics (NABL MC-2849)';
+  const pathologist = matched ? `${matched.pathologist} (${matched.pathologistDegrees || 'Consultant Pathologist'})` : 'Dr. Rohit Sharma, MD (Reg: PMC-48192)';
+  const timestamp = matched ? matched.reportedAt : '03-Sep-2026 11:30:14 AM IST';
+  const hash = matched?.verificationHash || 'SHA256: 9b2d8e41a94f6c8d37e1b52c009a24ec410f9b62';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -159,28 +175,28 @@ export const QRVerifyModal: React.FC<{ isOpen: boolean; onClose: () => void; rep
           <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs space-y-2">
             <div className="flex justify-between">
               <span className="text-slate-500">Report ID:</span>
-              <span className="font-mono font-bold text-slate-800">{reportId}</span>
+              <span className="font-mono font-bold text-slate-800">{displayReportId}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Patient Name:</span>
-              <span className="font-bold text-slate-800">Ramesh Kumar Verma (48/M)</span>
+              <span className="font-bold text-slate-800">{patName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Issuing Center:</span>
-              <span className="font-semibold text-slate-800">Apex Diagnostics (NABL MC-2849)</span>
+              <span className="font-semibold text-slate-800">{issuing}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Verifying Pathologist:</span>
-              <span className="font-semibold text-emerald-700">Dr. Rohit Sharma, MD (Reg: PMC-48192)</span>
+              <span className="font-semibold text-emerald-700">{pathologist}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Timestamp:</span>
-              <span className="text-slate-700">03-Sep-2026 11:30:14 AM IST</span>
+              <span className="text-slate-700">{timestamp}</span>
             </div>
             <div className="pt-2 border-t border-slate-200">
               <span className="text-[10px] text-slate-400 block font-mono">Immutable Hash:</span>
               <span className="text-[10px] font-mono text-slate-600 break-all bg-white p-1 rounded border border-slate-200 block mt-0.5">
-                SHA256: 9b2d8e41a94f6c8d37e1b52c009a24ec410f9b62
+                {hash}
               </span>
             </div>
           </div>

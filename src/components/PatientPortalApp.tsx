@@ -45,6 +45,7 @@ interface PatientPortalAppProps {
   onBackToWebsite: () => void;
   initialReportId?: string;
   initialMobile?: string;
+  initialPatientName?: string;
   vendorLabId?: string;
   onSelectVendorLab?: (labId: string) => void;
 }
@@ -53,6 +54,7 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
   onBackToWebsite,
   initialReportId = '',
   initialMobile = '',
+  initialPatientName = '',
   vendorLabId = '',
   onSelectVendorLab,
 }) => {
@@ -234,7 +236,7 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
     }
   }, [scopedReceptionEntries, scopedReports, matchedEntry]);
 
-  // Initialize from props only if explicitly passed (e.g. from lab queue direct link)
+  // Initialize from props only if explicitly passed (e.g. from lab queue direct link or portal search)
   useEffect(() => {
     if (initialReportId && initialReportId.trim()) {
       const cleanId = initialReportId.trim().toLowerCase();
@@ -242,6 +244,16 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
         (r) => r.reportId.toLowerCase() === cleanId || (r.uhid && r.uhid.toLowerCase() === cleanId)
       );
       if (found) {
+        // If initialMobile was also passed, verify mobile ownership
+        if (initialMobile && initialMobile.trim()) {
+          const reqDigits = initialMobile.replace(/\D/g, '').slice(-10);
+          const rDigits = (found.mobile || '').replace(/\D/g, '').slice(-10);
+          if (reqDigits.length === 10 && rDigits.length === 10 && rDigits !== reqDigits) {
+            setErrorMessage('Mobile Verification Mismatch');
+            setErrorDetails('The registered mobile number does not match this report ID.');
+            return;
+          }
+        }
         setSearchedReport(found);
         setReportIdInput(found.reportId);
         setSearchMethod('report_id');
@@ -254,25 +266,82 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
             (e.uhid && found.uhid && e.uhid.toLowerCase() === found.uhid.toLowerCase())
         );
         setMatchedEntry(match || null);
+      } else {
+        // Check if matching reception entry exists
+        const entryMatch = (scopedReceptionEntries || []).find(
+          (e) =>
+            e.tokenNumber.toLowerCase() === cleanId ||
+            (e.reportId && e.reportId.toLowerCase() === cleanId) ||
+            (e.uhid && e.uhid.toLowerCase() === cleanId)
+        );
+        if (entryMatch) {
+          handleSelectRecord({ type: 'entry', entry: entryMatch });
+        }
       }
     } else if (initialMobile && initialMobile.trim()) {
-      const cleanMob = initialMobile.replace(/\D/g, '');
-      const found = scopedReports.find((r) => (r.mobile || '').replace(/\D/g, '') === cleanMob);
-      if (found) {
-        setSearchedReport(found);
-        setPatientName(found.patientName);
-        setMobileNumber(found.mobile);
-        setSearchMethod('name_mobile');
-        setErrorMessage(null);
-        setErrorDetails(null);
+      const cleanMob = initialMobile.replace(/\D/g, '').slice(-10);
+      if (cleanMob.length === 10) {
+        const inputName = initialPatientName.trim().toLowerCase();
 
-        const match = (scopedReceptionEntries || []).find(
-          (e) => (e.mobile || '').replace(/\D/g, '') === cleanMob
-        );
-        setMatchedEntry(match || null);
+        // 1. Matched reports for this exact 10-digit mobile
+        const matchedReports = scopedReports.filter((r) => {
+          const rDigits = (r.mobile || '').replace(/\D/g, '');
+          return rDigits.length >= 10 && rDigits.slice(-10) === cleanMob;
+        });
+
+        // 2. Matched reception entries for this exact 10-digit mobile
+        const matchedEntries = (scopedReceptionEntries || []).filter((e) => {
+          const eDigits = (e.mobile || '').replace(/\D/g, '');
+          return eDigits.length >= 10 && eDigits.slice(-10) === cleanMob;
+        });
+
+        // Combine into distinct matches
+        const allMatches: Array<{ type: 'report' | 'entry'; report?: LabReport; entry?: ReceptionPatientEntry }> = [];
+        matchedReports.forEach((r) => {
+          const assoc = matchedEntries.find(
+            (e) =>
+              (e.reportId && e.reportId.toLowerCase() === r.reportId.toLowerCase()) ||
+              (e.uhid && r.uhid && e.uhid.toLowerCase() === r.uhid.toLowerCase())
+          );
+          allMatches.push({ type: 'report', report: r, entry: assoc });
+        });
+        matchedEntries.forEach((e) => {
+          const exists = allMatches.some(
+            (m) =>
+              (m.report && e.reportId && m.report.reportId.toLowerCase() === e.reportId.toLowerCase()) ||
+              (m.entry && m.entry.id === e.id)
+          );
+          if (!exists) {
+            allMatches.push({ type: 'entry', entry: e });
+          }
+        });
+
+        // If patient name was provided, filter strictly by name
+        let targetList = allMatches;
+        if (inputName) {
+          const byName = allMatches.filter((m) => {
+            const pName = (m.report?.patientName || m.entry?.patientName || '').toLowerCase().trim();
+            return pName.includes(inputName) || inputName.includes(pName);
+          });
+          if (byName.length > 0) {
+            targetList = byName;
+          }
+        }
+
+        if (targetList.length === 1) {
+          handleSelectRecord(targetList[0]);
+          setMobileNumber(initialMobile);
+          setPatientName(targetList[0].report?.patientName || targetList[0].entry?.patientName || initialPatientName);
+          setSearchMethod('name_mobile');
+        } else if (targetList.length > 1) {
+          setMobileNumber(initialMobile);
+          if (initialPatientName) setPatientName(initialPatientName);
+          setSearchMethod('name_mobile');
+          setMatchedList(targetList);
+        }
       }
     }
-  }, [initialReportId, initialMobile, scopedReports, scopedReceptionEntries]);
+  }, [initialReportId, initialMobile, initialPatientName, scopedReports, scopedReceptionEntries]);
 
   const handleSelectRecord = (match: { type: 'report' | 'entry'; report?: LabReport; entry?: ReceptionPatientEntry }) => {
     setErrorMessage(null);
@@ -316,22 +385,24 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
     const inputMobile = mobileNumber.replace(/\D/g, '');
     const inputName = patientName.trim().toLowerCase();
 
-    if (!inputMobile || inputMobile.length < 10) {
+    const cleanInput10 = inputMobile.slice(-10);
+
+    if (cleanInput10.length < 10) {
       setErrorMessage('Please enter mobile number');
       setErrorDetails('Please enter your 10-digit registered mobile number (e.g. 9876543210).');
       return;
     }
 
-    // 1. Find all matching reports
+    // 1. Find all matching reports strictly by exact 10-digit mobile
     const matchedReports = scopedReports.filter((r) => {
-      const rMob = (r.mobile || '').replace(/\D/g, '');
-      return rMob === inputMobile || rMob.endsWith(inputMobile) || inputMobile.endsWith(rMob);
+      const rDigits = (r.mobile || '').replace(/\D/g, '');
+      return rDigits.length >= 10 && rDigits.slice(-10) === cleanInput10;
     });
 
-    // 2. Find all matching reception entries
+    // 2. Find all matching reception entries strictly by exact 10-digit mobile
     const matchedReception = (scopedReceptionEntries || []).filter((entry) => {
-      const eMob = (entry.mobile || '').replace(/\D/g, '');
-      return eMob === inputMobile || eMob.endsWith(inputMobile) || inputMobile.endsWith(eMob);
+      const eDigits = (entry.mobile || '').replace(/\D/g, '');
+      return eDigits.length >= 10 && eDigits.slice(-10) === cleanInput10;
     });
 
     // Combine matches
@@ -368,18 +439,24 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
     let results = allMatches;
     if (inputName) {
       const byName = allMatches.filter((m) => {
-        const pName = (m.report?.patientName || m.entry?.patientName || '').toLowerCase();
+        const pName = (m.report?.patientName || m.entry?.patientName || '').toLowerCase().trim();
         return pName.includes(inputName) || inputName.includes(pName);
       });
       if (byName.length > 0) {
         results = byName;
+      } else {
+        setErrorMessage('Name Does Not Match');
+        setErrorDetails(
+          `Record exists for mobile +91 ${cleanInput10}, but the patient name "${patientName.trim()}" does not match. Please verify spelling or leave Name blank.`
+        );
+        return;
       }
     }
 
     if (results.length === 0) {
       setErrorMessage('No Record Found');
       setErrorDetails(
-        `No active diagnostic record found for mobile number +91 ${inputMobile} ${inputName ? `(Name: ${patientName})` : ''} at ${labName}. Please check the registered phone number or search with Token Number.`
+        `No active diagnostic record found for mobile number +91 ${cleanInput10} ${inputName ? `(Name: ${patientName})` : ''} at ${labName}. Please check the registered phone number or search with Token Number.`
       );
       return;
     }
@@ -407,31 +484,26 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
     const raw = reportIdInput.trim().toLowerCase();
     if (!raw) {
       setErrorMessage('Please enter details');
-      setErrorDetails(
-        demoReport
-          ? `Please enter Token Number (e.g. ${demoEntry?.tokenNumber || '101'}) or Report ID.`
-          : 'Please enter Token Number.'
-      );
+      setErrorDetails('Please enter Token Number or Report ID.');
       return;
     }
 
     const cleanDigits = raw.replace(/\D/g, '');
 
-    // 1. Direct match in reports
+    // 1. Direct match in reports - STRICT EXACT MATCH ONLY, NO FUZZY SUBSTRINGS
     const reportMatch = scopedReports.find((r) => {
       const rId = r.reportId.trim().toLowerCase();
       const rUhid = (r.uhid || '').trim().toLowerCase();
       const rToken = (r.tokenNumber || '').trim().toLowerCase();
       const rTokenDigits = rToken.replace(/\D/g, '');
+
       return (
         rId === raw ||
-        rId.endsWith(raw) ||
         rUhid === raw ||
         rToken === raw ||
         rToken === `tk-${raw}` ||
         `tk-${rToken}` === raw ||
-        (cleanDigits && rTokenDigits === cleanDigits) ||
-        (cleanDigits.length >= 3 && (rId.includes(cleanDigits) || rUhid.includes(cleanDigits)))
+        (cleanDigits.length > 0 && rTokenDigits === cleanDigits)
       );
     });
 
@@ -447,18 +519,18 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
       return;
     }
 
-    // 2. Check in receptionEntries by Token or UHID
+    // 2. Check in receptionEntries by Token or UHID - STRICT EXACT MATCH ONLY
     const receptionMatch = (scopedReceptionEntries || []).find((entry) => {
-      const tokenLower = (entry.tokenNumber || '').toLowerCase();
+      const tokenLower = (entry.tokenNumber || '').trim().toLowerCase();
       const tokenDigits = tokenLower.replace(/\D/g, '');
-      const uhidLower = (entry.uhid || '').toLowerCase();
-      const reportIdLower = (entry.reportId || '').toLowerCase();
+      const uhidLower = (entry.uhid || '').trim().toLowerCase();
+      const reportIdLower = (entry.reportId || '').trim().toLowerCase();
 
       return (
         tokenLower === raw ||
         tokenLower === `tk-${raw}` ||
         `tk-${tokenLower}` === raw ||
-        (cleanDigits && tokenDigits === cleanDigits) ||
+        (cleanDigits.length > 0 && tokenDigits === cleanDigits) ||
         uhidLower === raw ||
         reportIdLower === raw
       );
