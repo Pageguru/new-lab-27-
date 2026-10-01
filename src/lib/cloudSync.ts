@@ -376,6 +376,8 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
   if (collection === COLLECTIONS.LAB_SETTINGS) {
     const map: Record<string, VendorLabSettings> = {};
     const items = Array.isArray(rawData) ? rawData : (typeof rawData === 'object' && rawData !== null ? Object.values(rawData) : []);
+    const apiBase = getPrimaryApiBase();
+
     for (const rawItem of items) {
       if (!rawItem || typeof rawItem !== 'object') continue;
       let cleanItem: any = { ...rawItem };
@@ -385,7 +387,19 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
         try {
           const extra = JSON.parse(cleanItem.settingsJson);
           if (extra && typeof extra === 'object') {
-            cleanItem = { ...extra, ...cleanItem };
+            // CRITICAL: extra contains rich arrays, heroBanners, photos - preserve non-empty over empty SQL defaults
+            cleanItem = { ...cleanItem, ...extra };
+            // Ensure non-empty images from either source are preserved
+            if (!cleanItem.logoUrl && extra.logoUrl) cleanItem.logoUrl = extra.logoUrl;
+            if (!cleanItem.featureImageUrl && extra.featureImageUrl) cleanItem.featureImageUrl = extra.featureImageUrl;
+            if (!cleanItem.ogImageUrl && extra.ogImageUrl) cleanItem.ogImageUrl = extra.ogImageUrl;
+            if (!cleanItem.founderPhotoUrl && extra.founderPhotoUrl) cleanItem.founderPhotoUrl = extra.founderPhotoUrl;
+            if (!cleanItem.teamGroupPhotoUrl && extra.teamGroupPhotoUrl) cleanItem.teamGroupPhotoUrl = extra.teamGroupPhotoUrl;
+            if (!cleanItem.qrCode1Url && extra.qrCode1Url) cleanItem.qrCode1Url = extra.qrCode1Url;
+            if (!cleanItem.qrCode2Url && extra.qrCode2Url) cleanItem.qrCode2Url = extra.qrCode2Url;
+            if ((!cleanItem.heroBanners || cleanItem.heroBanners.length === 0) && Array.isArray(extra.heroBanners)) {
+              cleanItem.heroBanners = extra.heroBanners;
+            }
           }
         } catch {}
       }
@@ -395,6 +409,31 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
         try {
           cleanItem.sections = JSON.parse(cleanItem.sections);
         } catch {}
+      }
+
+      // Expand any relative /uploads/ URLs to absolute URLs so they never 404 in preview or cross-domains
+      const ensureAbsoluteUrl = (url: any) => {
+        if (typeof url === 'string' && url.startsWith('/uploads/')) {
+          return `${apiBase}${url}`;
+        }
+        return url;
+      };
+
+      if (cleanItem.logoUrl) cleanItem.logoUrl = ensureAbsoluteUrl(cleanItem.logoUrl);
+      if (cleanItem.featureImageUrl) cleanItem.featureImageUrl = ensureAbsoluteUrl(cleanItem.featureImageUrl);
+      if (cleanItem.ogImageUrl) cleanItem.ogImageUrl = ensureAbsoluteUrl(cleanItem.ogImageUrl);
+      if (cleanItem.founderPhotoUrl) cleanItem.founderPhotoUrl = ensureAbsoluteUrl(cleanItem.founderPhotoUrl);
+      if (cleanItem.teamGroupPhotoUrl) cleanItem.teamGroupPhotoUrl = ensureAbsoluteUrl(cleanItem.teamGroupPhotoUrl);
+      if (cleanItem.qrCode1Url) cleanItem.qrCode1Url = ensureAbsoluteUrl(cleanItem.qrCode1Url);
+      if (cleanItem.qrCode2Url) cleanItem.qrCode2Url = ensureAbsoluteUrl(cleanItem.qrCode2Url);
+      if (Array.isArray(cleanItem.heroBanners)) {
+        cleanItem.heroBanners = cleanItem.heroBanners.map(ensureAbsoluteUrl);
+      }
+      if (Array.isArray(cleanItem.banners)) {
+        cleanItem.banners = cleanItem.banners.map((b: any) => ({
+          ...b,
+          imageUrl: ensureAbsoluteUrl(b?.imageUrl)
+        }));
       }
 
       const id = cleanItem.labId || cleanItem.id;
@@ -513,7 +552,22 @@ export function normalizeCollectionData(collection: string, rawData: any): any {
     });
   }
 
-  // 7. All other collections
+  // 7. DOCTORS: Map signatureUrl to imageUrl if needed and expand relative uploads
+  if (collection === COLLECTIONS.DOCTORS && Array.isArray(rawData)) {
+    const apiBase = getPrimaryApiBase();
+    return rawData.map((raw: any) => {
+      let item = { ...raw };
+      if (!item.imageUrl && item.signatureUrl) {
+        item.imageUrl = item.signatureUrl;
+      }
+      if (item.imageUrl && item.imageUrl.startsWith('/uploads/')) {
+        item.imageUrl = `${apiBase}${item.imageUrl}`;
+      }
+      return item;
+    });
+  }
+
+  // 8. All other collections
   if (Array.isArray(rawData)) {
     return rawData;
   }
@@ -876,8 +930,13 @@ export async function uploadImageToHostinger(
       }),
     });
 
-    if (result && result.status === 'success' && result.url) {
-      return result.url;
+    if (result && result.status === 'success' && (result.fullUrl || result.url)) {
+      const apiBase = getPrimaryApiBase();
+      let bestUrl = result.fullUrl;
+      if (!bestUrl && result.url) {
+        bestUrl = result.url.startsWith('http') ? result.url : `${apiBase}${result.url.startsWith('/') ? '' : '/'}${result.url}`;
+      }
+      return bestUrl || finalDataUrl;
     }
     return finalDataUrl;
   } catch (err) {
@@ -957,6 +1016,9 @@ async function saveDocumentToHostinger(collection: string, id: string, itemData:
       sanitized._syncStatus = 'synced';
       sanitized._syncedAt = new Date().toISOString();
       removeFromOfflineSyncQueue(collection, id);
+      if (res.serverTime) {
+        lastServerTimestamp = res.serverTime;
+      }
     }
   }
 
@@ -1095,6 +1157,14 @@ export async function syncLabSettingsToCloud(
       );
     }
 
+    // 8. Feature Image & OG Image Management
+    let cleanFeatureImage = settings.featureImageUrl;
+    if (cleanFeatureImage && cleanFeatureImage.startsWith('data:image')) {
+      cleanFeatureImage = await uploadImageToHostinger(cleanFeatureImage, `feature_${labId}`, prev.featureImageUrl, labId, 'banner');
+    } else if (cleanFeatureImage === '' && prev.featureImageUrl) {
+      await deleteImageFromHostinger(prev.featureImageUrl);
+    }
+
     const payload = {
       ...settings,
       labId,
@@ -1105,6 +1175,7 @@ export async function syncLabSettingsToCloud(
       ...(cleanQr2 !== undefined ? { qrCode2Url: cleanQr2 } : {}),
       ...(cleanHeroBanners !== undefined ? { heroBanners: cleanHeroBanners } : {}),
       ...(cleanBanners !== undefined ? { banners: cleanBanners } : {}),
+      ...(cleanFeatureImage !== undefined ? { featureImageUrl: cleanFeatureImage, ogImageUrl: cleanFeatureImage } : {}),
       _updatedAt: new Date().toISOString(),
     };
 
@@ -1112,7 +1183,7 @@ export async function syncLabSettingsToCloud(
     setCachedCollection(COLLECTIONS.LAB_SETTINGS, settingsMap);
     notifySubscribers(COLLECTIONS.LAB_SETTINGS, settingsMap);
 
-    await callHostingerApi('/api/sync.php', {
+    const saveRes = await callHostingerApi('/api/sync.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'save',
@@ -1121,6 +1192,11 @@ export async function syncLabSettingsToCloud(
         data: payload,
       }),
     });
+    if (saveRes && saveRes.serverTime) {
+      lastServerTimestamp = saveRes.serverTime;
+    } else {
+      lastServerTimestamp = Date.now();
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.LAB_SETTINGS}/${labId}`);
   }

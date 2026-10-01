@@ -227,6 +227,20 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
     }
   }, [vendorLabSettings.labId]);
 
+  // Also keep formData images synced if cloud resolves them
+  useEffect(() => {
+    if (vendorLabSettings.logoUrl && !formData.logoUrl) {
+      setFormData((prev) => ({ ...prev, logoUrl: vendorLabSettings.logoUrl || '' }));
+    }
+    if (vendorLabSettings.featureImageUrl && !formData.featureImageUrl) {
+      setFormData((prev) => ({
+        ...prev,
+        featureImageUrl: vendorLabSettings.featureImageUrl || '',
+        ogImageUrl: vendorLabSettings.ogImageUrl || vendorLabSettings.featureImageUrl || '',
+      }));
+    }
+  }, [vendorLabSettings.logoUrl, vendorLabSettings.featureImageUrl]);
+
   // Handle Local Logo Upload with instant optimization & auto-save
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

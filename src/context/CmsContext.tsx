@@ -2713,7 +2713,22 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             for (const [rawKey, cloudSettings] of entries) {
               const labId = (cloudSettings as any)?.labId || (cloudSettings as any)?.id || rawKey;
               if (!labId || labId === '0') continue;
-              next[labId] = { ...(prev[labId] || {}), ...cloudSettings };
+              const prevItem: Partial<VendorLabSettings> = prev[labId] || {};
+              // Smart merge: Never overwrite existing non-empty uploaded media with empty values from server polling
+              next[labId] = {
+                ...prevItem,
+                ...cloudSettings,
+                logoUrl: cloudSettings.logoUrl || prevItem.logoUrl || '',
+                featureImageUrl: cloudSettings.featureImageUrl || prevItem.featureImageUrl || '',
+                ogImageUrl: cloudSettings.ogImageUrl || prevItem.ogImageUrl || '',
+                qrCode1Url: cloudSettings.qrCode1Url || prevItem.qrCode1Url || '',
+                qrCode2Url: cloudSettings.qrCode2Url || prevItem.qrCode2Url || '',
+                founderPhotoUrl: cloudSettings.founderPhotoUrl || prevItem.founderPhotoUrl || '',
+                teamGroupPhotoUrl: cloudSettings.teamGroupPhotoUrl || prevItem.teamGroupPhotoUrl || '',
+                heroBanners: (Array.isArray(cloudSettings.heroBanners) && cloudSettings.heroBanners.length > 0)
+                  ? cloudSettings.heroBanners
+                  : (prevItem.heroBanners || []),
+              } as VendorLabSettings;
             }
             try {
               localStorage.setItem('cms_vendor_lab_settings_map', JSON.stringify(next));
@@ -2755,14 +2770,24 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
-    // 5. Subscribe to Doctors & Pathologists
+    // 5. Subscribe to Doctors & Pathologists (Preserve uploaded profile photos)
     const unsubscribeDoctors = subscribeToDoctors(
       (cloudDoctors) => {
         if (Array.isArray(cloudDoctors) && cloudDoctors.length > 0) {
-          setAllVendorDoctors(cloudDoctors);
-          try {
-            localStorage.setItem('cms_vendor_doctors', JSON.stringify(cloudDoctors));
-          } catch {}
+          setAllVendorDoctors((prev) => {
+            const prevMap = new Map(prev.map((d) => [d.id, d]));
+            const merged = cloudDoctors.map((cd) => {
+              const localDoc = prevMap.get(cd.id);
+              return {
+                ...cd,
+                imageUrl: cd.imageUrl || (cd as any).signatureUrl || localDoc?.imageUrl || (localDoc as any)?.signatureUrl || '',
+              };
+            });
+            try {
+              localStorage.setItem('cms_vendor_doctors', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
         }
       }
     );

@@ -323,7 +323,8 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
     try {
       const optimized = await optimizeImageFile(file, { maxWidth: 1400, maxHeight: 700, quality: 0.82 });
       if (optimized) {
-        const updated = [...heroBanners, optimized];
+        const isDefaultStockOnly = heroBanners.every((b) => b.includes('unsplash.com'));
+        const updated = isDefaultStockOnly ? [optimized] : [optimized, ...heroBanners];
         setHeroBanners(updated);
         updateVendorLabSettings({ heroBanners: updated });
         triggerToast('Hero banner photo uploaded & published to website!');
@@ -337,7 +338,8 @@ export const VendorWebsiteCmsTab: React.FC<VendorWebsiteCmsTabProps> = ({
   const handleAddHeroBannerUrl = () => {
     const trimmed = heroBannerUrlInput.trim();
     if (!trimmed) return;
-    const updated = [...heroBanners, trimmed];
+    const isDefaultStockOnly = heroBanners.every((b) => b.includes('unsplash.com'));
+    const updated = isDefaultStockOnly ? [trimmed] : [trimmed, ...heroBanners];
     setHeroBanners(updated);
     updateVendorLabSettings({ heroBanners: updated });
     setHeroBannerUrlInput('');

@@ -750,9 +750,13 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       }, 700);
     } else {
       setIsDraftMode(false);
-      setSaveSuccessMessage('Report completed! Moved to Report Done tab.');
+      setSaveSuccessMessage('Report completed! Moved to Report Ready tab.');
       setSaveSuccess(true);
-      onReportCreated(reportObj, selectedPatientId !== 'new_walkin' ? selectedPatientId : undefined, false);
+      const effectivePatientId =
+        selectedPatientId && selectedPatientId !== 'new_walkin'
+          ? selectedPatientId
+          : preSelectedPatient?.id || preselectedPatient?.id || undefined;
+      onReportCreated(reportObj, effectivePatientId, false);
       setTimeout(() => {
         setSaveSuccess(false);
         onClose();
@@ -795,7 +799,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
               </div>
               <p className="text-xs text-slate-300">
                 {isDraftMode
-                  ? 'Saved as draft. Enter observed test results and save draft anytime, or complete to move to Report Done.'
+                  ? 'Saved as draft. Enter observed test results and save draft anytime, or complete to move to Report Ready.'
                   : isEditMode
                   ? 'Modify observed test results according to patient receipt, and save draft or complete.'
                   : 'Enter observed laboratory values according to patient receipt, verify abnormal flags, and complete the report.'}
@@ -1328,12 +1332,12 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
               <span>Save & Draft</span>
             </button>
 
-            {/* Complete: Save and complete the report. The report moves to the Report Done tab. */}
+            {/* Complete: Save and complete the report. The report moves to the Report Ready tab. */}
             <button
               type="button"
               onClick={() => handleSaveReport('complete')}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
-              title="Save and complete report. Moves to Report Done tab."
+              title="Save and complete report. Moves to Report Ready tab."
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-200" />
               <span>Complete</span>
@@ -1354,13 +1358,13 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
                   Are you sure you want to complete this report?
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  The report will be marked as verified and moved to <strong className="text-emerald-700">Report Done / Report Ready</strong>.
+                  The report will be marked as verified and moved to <strong className="text-emerald-700">Report Ready</strong>.
                 </p>
               </div>
 
               {/* Buttons: Yes on Left, No on Right */}
               <div className="flex items-center justify-center gap-3 pt-2">
-                {/* Yes -> Complete the report and move it to Report Done / Report Ready */}
+                {/* Yes -> Complete the report and move it to Report Ready */}
                 <button
                   type="button"
                   id="confirm-complete-yes"

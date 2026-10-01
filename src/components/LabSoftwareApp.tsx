@@ -71,6 +71,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     getReportById,
     reports,
     receptionEntries,
+    addReceptionEntry,
     sendEntryToTechnician,
     acceptEntryByTechnician,
     completeTechnicianReport,
@@ -87,8 +88,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
   const [selectedBranch, setSelectedBranch] = useState('br-a');
   const [currentUser, setCurrentUser] = useState('Dr. Rohit Sharma (MD Pathologist)');
 
-  // 3. Patient Tabs: 'all' | 'waiting' | 'in_testing' | 'report_done'
-  type PatientTab = 'all' | 'waiting' | 'in_testing' | 'report_done';
+  // 3. Patient Tabs: 'all' | 'waiting' | 'in_testing' | 'report_done' | 'report_ready'
+  type PatientTab = 'all' | 'waiting' | 'in_testing' | 'report_done' | 'report_ready';
   const [patientTab, setPatientTab] = useState<PatientTab>('all');
 
   // 4. Search & Filters (Independent)
@@ -149,7 +150,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
 
   // Tenant-isolated patients derived directly from active vendor's transferred reception queue
   const patients = useMemo<Patient[]>(() => {
-    return transferredReceptionEntries.map((r) => {
+    const baseList: Patient[] = transferredReceptionEntries.map((r) => {
       const rawTests = r.tests;
       const testList: string[] = Array.isArray(rawTests)
         ? rawTests
@@ -164,12 +165,28 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         ? `TK-${r.id.replace('rcp-', '').slice(-3)}`
         : `TK-${r.id || '101'}`;
       const isReturned = Boolean(r.returnedByTechnician);
-      const existingReport = r.reportId ? reports.find((rp) => rp.reportId === r.reportId) : null;
+
+      const cleanRptId = String(r.reportId || '').trim().toLowerCase();
+      const cleanUhid = String(r.uhid || '').trim().toLowerCase();
+      const cleanMobile = String(r.mobile || '').replace(/\D/g, '').slice(-10);
+
+      const existingReport = reports.find((rp) => {
+        if (cleanRptId && rp.reportId && String(rp.reportId).trim().toLowerCase() === cleanRptId) return true;
+        if (cleanUhid && rp.uhid && String(rp.uhid).trim().toLowerCase() === cleanUhid) return true;
+        if (cleanMobile && cleanMobile.length >= 10 && rp.mobile && String(rp.mobile).replace(/\D/g, '').slice(-10) === cleanMobile) return true;
+        return false;
+      }) || null;
+
       const isDraft = Boolean(existingReport?.isDraft);
-      const isReportDone = !isDraft && (r.status === 'Report Ready' || r.technicianStatus === 'Report Generated' || (Boolean(r.reportId) && Boolean(existingReport?.verified)));
+      const isReportDone =
+        !isDraft &&
+        (r.status === 'Report Ready' ||
+          r.technicianStatus === 'Report Generated' ||
+          Boolean(existingReport && !existingReport.isDraft) ||
+          (Boolean(r.reportId) && Boolean(existingReport?.verified)));
       const isInTesting = !isReportDone && !isReturned && (r.technicianStatus === 'Accepted' || r.status === 'In Lab' || isDraft);
       const isWaiting = !isReportDone && !isInTesting && !isReturned;
-      const workflowStatus = isReturned ? 'Returned' : isReportDone ? 'Report Done' : isInTesting ? 'In Testing' : 'Waiting';
+      const workflowStatus = isReturned ? 'Returned' : isReportDone ? 'Report Ready' : isInTesting ? 'In Testing' : 'Waiting';
 
       return {
         id: r.id,
@@ -184,7 +201,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         referringDoctor: r.referringDoctor || 'Self / Walk-in',
         registeredAt: r.registeredAt || 'Today',
         entryDate: r.entryDate || (r.registeredAt && r.registeredAt.includes('-') ? r.registeredAt : undefined),
-        reportId: r.reportId || '',
+        reportId: r.reportId || existingReport?.reportId || '',
         status: workflowStatus as any,
         isDraft,
         tests: testList,
@@ -204,13 +221,54 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         notes: r.notes,
       };
     });
+
+    // Also include any standalone completed reports in reports not already in reception queue
+    const mappedReportIds = new Set(baseList.map((e) => String(e.reportId || '').toLowerCase()).filter(Boolean));
+    const mappedUhids = new Set(baseList.map((e) => String(e.uhid || '').toLowerCase()).filter(Boolean));
+
+    const standaloneReportPatients: Patient[] = reports
+      .filter(
+        (rp) =>
+          !rp.isDraft &&
+          !mappedReportIds.has(String(rp.reportId || '').toLowerCase()) &&
+          (!rp.uhid || !mappedUhids.has(String(rp.uhid).toLowerCase()))
+      )
+      .map((rp) => ({
+        id: `rpt-pat-${rp.reportId}`,
+        uhid: rp.uhid || `UHID-${rp.reportId}`,
+        tokenNumber: rp.tokenNumber || 'TK-RPT',
+        tokenNo: rp.tokenNumber || 'TK-RPT',
+        name: rp.patientName || 'Report Patient',
+        age: Number(rp.ageGender?.match(/\d+/)?.[1] || 35),
+        gender: (rp.ageGender?.toLowerCase().includes('female') ? 'Female' : 'Male') as any,
+        mobile: rp.mobile || '',
+        city: vendorLabSettings?.address ? vendorLabSettings.address.split(',').pop()?.trim() || 'City' : 'City',
+        referringDoctor: rp.doctor || 'Dr. Self / Direct Consultation',
+        registeredAt: rp.reportedAt || 'Today',
+        reportId: rp.reportId,
+        status: 'Report Ready' as any,
+        isDraft: false,
+        tests: rp.items?.map((it) => it.testName).filter((v, i, a) => a.indexOf(v) === i) || ['Diagnostic Test'],
+        totalBill: 350,
+        paidAmount: 350,
+        dueAmount: 0,
+        paymentMode: 'Cash',
+        sentToReceptionDesk: true,
+        sentToReceptionAt: rp.reportedAt,
+        technicianStatus: 'Report Generated',
+      }));
+
+    return [...baseList, ...standaloneReportPatients];
   }, [transferredReceptionEntries, vendorLabSettings?.address, reports]);
 
   // Tab counts
   const countAll = patients.length;
   const countWaiting = patients.filter((p) => p.status === 'Waiting').length;
   const countInTesting = patients.filter((p) => p.status === 'In Testing').length;
-  const countReportDone = patients.filter((p) => p.status === 'Report Done').length;
+  const countReportReady = patients.filter(
+    (p) => p.status === 'Report Ready' || p.status === 'Report Done' || Boolean(p.reportId && !p.isDraft)
+  ).length;
+  const countReportDone = countReportReady;
 
   // Reception Queue Computed metrics for Technician (Transferred entries only)
   const pendingReceptionEntries = transferredReceptionEntries.filter((r) => r.sentToTechnician);
@@ -675,7 +733,9 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
       sentToReceptionAt: `Today, ${timeStr}`,
     };
 
-    const existing = getReportById(stampedReport.reportId) || reports.find((r) => r.reportId === stampedReport.reportId);
+    const existing =
+      getReportById(stampedReport.reportId) ||
+      reports.find((r) => r.reportId && r.reportId.toLowerCase() === stampedReport.reportId.toLowerCase());
     if (existing) {
       updateLabReport(stampedReport.reportId, stampedReport);
     } else {
@@ -683,13 +743,18 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     }
 
     // Sync with reception entry if applicable and complete report
+    const cleanRptId = String(report.reportId || '').trim().toLowerCase();
+    const cleanRptUhid = String(report.uhid || '').trim().toLowerCase();
+    const cleanRptMobile = String(report.mobile || '').replace(/\D/g, '').slice(-10);
+
     const rec = receptionEntries.find(
       (r) =>
-        r.id === patientId ||
-        r.uhid === report.uhid ||
-        r.reportId === report.reportId ||
-        (r.mobile && report.mobile && r.mobile.replace(/\D/g, '').slice(-10) === report.mobile.replace(/\D/g, '').slice(-10))
+        (patientId && r.id === patientId) ||
+        (cleanRptId && r.reportId && String(r.reportId).trim().toLowerCase() === cleanRptId) ||
+        (cleanRptUhid && r.uhid && String(r.uhid).trim().toLowerCase() === cleanRptUhid) ||
+        (cleanRptMobile && cleanRptMobile.length >= 10 && r.mobile && String(r.mobile).replace(/\D/g, '').slice(-10) === cleanRptMobile)
     );
+
     if (rec) {
       completeTechnicianReport(rec.id, report.reportId);
       updateReceptionEntry(rec.id, {
@@ -699,12 +764,44 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         sentToReceptionDesk: true,
         sentToReceptionAt: `Today, ${timeStr}`,
       });
+    } else {
+      // Direct report generated by technician without prior reception entry: register in queue
+      try {
+        addReceptionEntry({
+          uhid: report.uhid || `LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+          patientName: report.patientName,
+          age: Number(report.ageGender?.match(/\d+/)?.[1] || 30),
+          gender: (report.ageGender?.toLowerCase().includes('female') ? 'Female' : 'Male') as any,
+          mobile: report.mobile || '',
+          referringDoctor: report.doctor || 'Dr. Self / Direct Consultation',
+          tests: report.items?.map((it) => it.testName).filter((v, i, a) => a.indexOf(v) === i) || ['Diagnostic Test'],
+          sampleType: report.sampleType || 'EDTA Blood',
+          totalAmount: 350,
+          discountINR: 0,
+          paidAmount: 350,
+          dueAmount: 0,
+          paymentMode: 'Cash',
+          paymentStatus: 'Full Payment',
+          status: 'Report Ready',
+          technicianStatus: 'Report Generated',
+          sentToTechnician: true,
+          reportId: report.reportId,
+          sentToReceptionDesk: true,
+          sentToReceptionAt: `Today, ${timeStr}`,
+          isReportPublished: false,
+          registeredAt: `Today, ${timeStr}`,
+        });
+      } catch (err) {
+        console.warn('[Sync Notice] Could not create fallback reception entry:', err);
+      }
     }
 
-    // Move to Report Done tab!
-    setPatientTab('report_done');
+    // Move to Report Ready tab and clear search so patient is immediately visible
+    setPatientTab('report_ready');
+    setSearchTokenOrPhone('');
+    setDateFilter('All Dates');
 
-    setToastNotice(`Report completed and moved to Report Done tab for ${report.patientName}!`);
+    setToastNotice(`Report completed and moved to Report Ready tab for ${report.patientName}!`);
     setTimeout(() => setToastNotice(null), 4500);
 
     setPreviewReport(stampedReport);
@@ -785,17 +882,24 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     };
 
     addLabReport(rpt);
-    handleReportCreated(rpt, pat.id);
+    handleReportCreated(rpt, pat.id, false);
+    setActiveTab('dashboard');
+    setPatientTab('report_ready');
     setWorkstationSuccessNotice(true);
     setTimeout(() => setWorkstationSuccessNotice(false), 3000);
   };
 
   const filteredPatients = useMemo(() => {
     return patients.filter((p) => {
-      // 1. Patient Tabs: 'all' | 'waiting' | 'in_testing' | 'report_done'
+      // 1. Patient Tabs: 'all' | 'waiting' | 'in_testing' | 'report_done' | 'report_ready'
       if (patientTab === 'waiting' && p.status !== 'Waiting') return false;
       if (patientTab === 'in_testing' && p.status !== 'In Testing') return false;
-      if (patientTab === 'report_done' && p.status !== 'Report Done') return false;
+      if (
+        (patientTab === 'report_done' || patientTab === 'report_ready') &&
+        !(p.status === 'Report Ready' || p.status === 'Report Done' || Boolean(p.reportId && !p.isDraft))
+      ) {
+        return false;
+      }
 
       // 2. Search by Token Number or Phone Number (Independent)
       if (searchTokenOrPhone.trim()) {
@@ -998,22 +1102,25 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
 
               <button
                 type="button"
-                id="tech-tab-report-done"
-                onClick={() => setPatientTab('report_done')}
+                id="tech-tab-report-ready"
+                data-testid="tech-tab-report-done"
+                onClick={() => setPatientTab('report_ready')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap active:scale-95 ${
-                  patientTab === 'report_done'
+                  patientTab === 'report_ready' || patientTab === 'report_done'
                     ? 'bg-emerald-600 text-white shadow-sm font-black'
                     : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
                 }`}
               >
                 <CheckCheck className="w-4 h-4" />
-                <span>Report Done</span>
+                <span>Report Ready</span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                    patientTab === 'report_done' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-900'
+                    patientTab === 'report_ready' || patientTab === 'report_done'
+                      ? 'bg-white/25 text-white'
+                      : 'bg-emerald-100 text-emerald-900'
                   }`}
                 >
-                  {countReportDone}
+                  {countReportReady}
                 </span>
               </button>
             </div>
@@ -1118,7 +1225,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4.5">
                   {filteredPatients.map((p) => {
-                    const isReportDone = p.status === 'Report Done' || Boolean(p.reportId);
+                    const isReportDone =
+                      p.status === 'Report Ready' || p.status === 'Report Done' || Boolean(p.reportId && !p.isDraft);
                     const isInTesting = p.status === 'In Testing';
                     const isWaiting = p.status === 'Waiting';
 
@@ -1146,7 +1254,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                               {isReportDone ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
                                   <CheckCheck className="w-3 h-3 text-emerald-700" />
-                                  <span>Report Done</span>
+                                  <span>Report Ready</span>
                                 </span>
                               ) : isInTesting ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-[#123B6D] border border-blue-300">
@@ -1380,7 +1488,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                         </tr>
                       ) : (
                         filteredPatients.map((p) => {
-                          const isReportDone = p.status === 'Report Done' || Boolean(p.reportId);
+                          const isReportDone =
+                            p.status === 'Report Ready' || p.status === 'Report Done' || Boolean(p.reportId && !p.isDraft);
                           const isInTesting = p.status === 'In Testing';
                           const isWaiting = p.status === 'Waiting';
 
@@ -1453,7 +1562,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                                   <div className="space-y-1">
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
                                       <CheckCheck className="w-3 h-3 text-emerald-700" />
-                                      <span>Report Done</span>
+                                      <span>Report Ready</span>
                                     </span>
                                     {p.sentToReceptionDesk ? (
                                       <div className="text-[10px] font-bold text-teal-700 flex items-center gap-1 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
@@ -1550,8 +1659,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
                                     </>
                                   )}
 
-                                  {/* 4. Report Done Tab: View Receipt, View Report */}
-                                  {patientTab === 'report_done' && (
+                                  {/* 4. Report Ready / Done Tab: View Receipt, View Report */}
+                                  {(patientTab === 'report_ready' || patientTab === 'report_done') && (
                                     <>
                                       <button
                                         type="button"
@@ -1616,44 +1725,48 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
             {/* Patient Cards with Make Report CTA */}
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs p-4 space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {patients.map((p) => (
-                  <div key={p.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/60 transition flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <span className="font-mono text-xs font-bold text-[#123B6D]">{p.uhid}</span>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                            p.status === 'Report Ready'
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                              : 'bg-amber-50 text-amber-800 border-amber-200'
-                          }`}
-                        >
-                          {p.status}
-                        </span>
-                      </div>
-                      <div className="font-bold text-sm text-slate-900 mt-1">{p.name}</div>
-                      <div className="text-xs text-slate-500">+91 {p.mobile} • {p.age} Y / {p.gender}</div>
-                      <div className="text-[11px] text-slate-600 mt-1 truncate">
-                        <strong>Doctor:</strong> {p.referringDoctor}
-                      </div>
-                      <div className="text-[11px] text-slate-600 truncate">
-                        <strong>Tests:</strong> {p.tests.join(', ')}
-                      </div>
-                    </div>
+                {patients.map((p) => {
+                  const isReady =
+                    p.status === 'Report Ready' || p.status === 'Report Done' || Boolean(p.reportId && !p.isDraft);
 
-                    <div className="pt-3 mt-3 border-t border-slate-200/80 flex items-center justify-between gap-1.5">
-                      <div className="text-xs font-bold text-slate-800">
-                        ₹{p.totalBill} <span className="text-[10px] font-normal text-slate-500">({p.paymentMode})</span>
+                  return (
+                    <div key={p.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/60 transition flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <span className="font-mono text-xs font-bold text-[#123B6D]">{p.uhid}</span>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                              isReady
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}
+                          >
+                            {isReady ? 'Report Ready' : p.status}
+                          </span>
+                        </div>
+                        <div className="font-bold text-sm text-slate-900 mt-1">{p.name}</div>
+                        <div className="text-xs text-slate-500">+91 {p.mobile} • {p.age} Y / {p.gender}</div>
+                        <div className="text-[11px] text-slate-600 mt-1 truncate">
+                          <strong>Doctor:</strong> {p.referringDoctor}
+                        </div>
+                        <div className="text-[11px] text-slate-600 truncate">
+                          <strong>Tests:</strong> {p.tests.join(', ')}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleOpenCreateReportModal(p)}
-                          className="px-2.5 py-1 rounded bg-[#123B6D] hover:bg-[#0e2c52] text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
-                          title="Generate or edit report for this patient"
-                        >
-                          <FlaskConical className="w-3 h-3 text-amber-300 fill-amber-300" />
-                          <span>{p.status === 'Report Ready' ? 'Edit Report' : 'Make Report'}</span>
-                        </button>
+
+                      <div className="pt-3 mt-3 border-t border-slate-200/80 flex items-center justify-between gap-1.5">
+                        <div className="text-xs font-bold text-slate-800">
+                          ₹{p.totalBill} <span className="text-[10px] font-normal text-slate-500">({p.paymentMode})</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenCreateReportModal(p)}
+                            className="px-2.5 py-1 rounded bg-[#123B6D] hover:bg-[#0e2c52] text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                            title="Generate or edit report for this patient"
+                          >
+                            <FlaskConical className="w-3 h-3 text-amber-300 fill-amber-300" />
+                            <span>{isReady ? 'Edit Report' : 'Make Report'}</span>
+                          </button>
                         <button
                           onClick={() => handleOpenReportPreview(p.reportId, p.mobile)}
                           className="p-1 text-slate-600 hover:text-[#123B6D] rounded border border-slate-200 bg-white"

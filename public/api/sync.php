@@ -53,8 +53,18 @@ function fetchCollectionData($collection) {
                     if (isset($row['settingsJson']) && $row['settingsJson']) {
                         $extra = json_decode($row['settingsJson'], true);
                         if (is_array($extra)) {
-                            $row = array_merge($row, $extra);
+                            // Non-empty values from settingsJson take absolute priority over empty database defaults
+                            foreach ($extra as $ek => $ev) {
+                                if ($ev !== null && $ev !== '' && (!is_array($ev) || count($ev) > 0)) {
+                                    $row[$ek] = $ev;
+                                } else if (!isset($row[$ek])) {
+                                    $row[$ek] = $ev;
+                                }
+                            }
                         }
+                    }
+                    if ($collection === 'lab_doctors' && isset($row['signatureUrl']) && empty($row['imageUrl'])) {
+                        $row['imageUrl'] = $row['signatureUrl'];
                     }
                     if (isset($row['data']) && $row['data']) {
                         $extra = json_decode($row['data'], true);
@@ -284,6 +294,46 @@ function persistDocToMySql($collection, $id, $data) {
                 ':status'               => $data['status'] ?? 'Pending',
                 ':resolvedAt'           => $data['resolvedAt'] ?? null,
                 ':resolvedBy'           => $data['resolvedBy'] ?? null,
+            ]);
+            return true;
+        }
+
+        if ($collection === 'lab_doctors') {
+            $stmt = $pdo->prepare("REPLACE INTO `lab_doctors` (
+                `id`, `labId`, `name`, `degree`, `specialty`, `regNo`, `phone`, `signatureUrl`
+            ) VALUES (
+                :id, :labId, :name, :degree, :specialty, :regNo, :phone, :signatureUrl
+            )");
+            $stmt->execute([
+                ':id' => $id,
+                ':labId' => $data['labId'] ?? 'lab-apex',
+                ':name' => $data['name'] ?? 'Doctor',
+                ':degree' => $data['degrees'] ?? ($data['qualification'] ?? ($data['degree'] ?? null)),
+                ':specialty' => $data['specialization'] ?? ($data['specialty'] ?? ($data['roleCategory'] ?? null)),
+                ':regNo' => $data['regNo'] ?? null,
+                ':phone' => $data['phone'] ?? null,
+                ':signatureUrl' => $data['imageUrl'] ?? ($data['signatureUrl'] ?? null)
+            ]);
+            return true;
+        }
+
+        if ($collection === 'lab_packages') {
+            $stmt = $pdo->prepare("REPLACE INTO `lab_packages` (
+                `id`, `labId`, `title`, `price`, `originalPrice`, `testCount`, `tag`, `description`, `testsIncluded`, `isPopular`
+            ) VALUES (
+                :id, :labId, :title, :price, :originalPrice, :testCount, :tag, :description, :testsIncluded, :isPopular
+            )");
+            $stmt->execute([
+                ':id' => $id,
+                ':labId' => $data['labId'] ?? 'lab-apex',
+                ':title' => $data['title'] ?? 'Health Package',
+                ':price' => (float)($data['price'] ?? 0),
+                ':originalPrice' => isset($data['originalPrice']) ? (float)$data['originalPrice'] : null,
+                ':testCount' => (int)($data['testCount'] ?? 0),
+                ':tag' => $data['tag'] ?? 'Popular',
+                ':description' => $data['description'] ?? null,
+                ':testsIncluded' => json_encode($data['testsIncluded'] ?? [], JSON_UNESCAPED_UNICODE),
+                ':isPopular' => !empty($data['isPopular']) ? 1 : 0
             ]);
             return true;
         }
