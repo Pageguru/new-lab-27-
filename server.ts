@@ -212,6 +212,63 @@ Sitemap: https://indianlalaji.com/sitemap.xml`;
     });
   });
 
+  // Dedicated endpoint to fetch specific lab's website data directly by ID, slug, phone, or domain
+  app.get(['/api/lab/:identifier', '/api/labs/:identifier', '/api/vendor/:identifier'], (req, res) => {
+    const rawId = (req.params.identifier || '').toLowerCase().trim();
+    const store = readDevDb();
+    const vendorLabs: any[] = store.vendor_labs || store.vendorLabs || [];
+    const settingsMap = store.lab_settings || store.labSettingsMap || {};
+    const tests: any[] = store.lab_tests || store.tests || [];
+    const packages: any[] = store.lab_packages || store.packages || [];
+    const doctors: any[] = store.lab_doctors || store.doctors || [];
+    const branches: any[] = store.vendor_branches || store.branches || [];
+
+    const matchedLab = vendorLabs.find((l: any) => {
+      const id = (l.id || '').toLowerCase();
+      const slug = (l.slug || '').toLowerCase();
+      const dp = (l.domainPreview || '').toLowerCase();
+      const phone = (l.phone || '').replace(/\D/g, '');
+      const name = (l.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      return (
+        id === rawId ||
+        id === `lab-${rawId}` ||
+        id.replace(/^lab-/, '') === rawId.replace(/^lab-/, '') ||
+        slug === rawId ||
+        dp.includes(rawId) ||
+        dp.split('.')[0] === rawId ||
+        (phone.length >= 10 && phone.slice(-10) === rawId.replace(/\D/g, '').slice(-10)) ||
+        name.includes(rawId.replace(/[^a-z0-9]/g, ''))
+      );
+    });
+
+    if (matchedLab) {
+      const labId = matchedLab.id;
+      const labSettings = settingsMap[labId] || null;
+      const labTests = tests.filter((t: any) => !t.labId || t.labId === labId || t.labId === 'all');
+      const labPackages = packages.filter((p: any) => !p.labId || p.labId === labId || p.labId === 'all');
+      const labDoctors = doctors.filter((d: any) => !d.labId || d.labId === labId || d.labId === 'all');
+      const labBranches = branches.filter((b: any) => !b.labId || b.labId === labId || b.labId === 'all');
+
+      return res.json({
+        status: 'success',
+        found: true,
+        lab: matchedLab,
+        settings: labSettings,
+        tests: labTests,
+        packages: labPackages,
+        doctors: labDoctors,
+        branches: labBranches,
+      });
+    }
+
+    return res.status(404).json({
+      status: 'not_found',
+      found: false,
+      message: `Laboratory '${rawId}' was not found in directory.`,
+    });
+  });
+
   // 2. Fetch all sync data or collection
   app.get(['/api/sync', '/api/sync.php'], (req, res) => {
     const action = req.query.action;

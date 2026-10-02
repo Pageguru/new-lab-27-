@@ -17,12 +17,68 @@ function hostingerApiDevPlugin(): Plugin {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
+  const DEFAULT_VENDOR_LABS = [
+    {
+      id: 'lab-apex',
+      name: 'Apex Diagnostic & Clinical Pathology Laboratory',
+      tagline: 'Advanced Pathology, Biochemistry & Digital Testing Centre',
+      city: 'Ludhiana',
+      state: 'Punjab',
+      address: 'SCF 42-43, Sector 18-C, Central Healthcare Complex, Ludhiana',
+      phone: '+91 7087033009',
+      nablCode: 'MC-4821',
+      badge: 'Central Reference Lab',
+      status: 'Active',
+      isWebsiteApproved: true,
+      domainPreview: 'apexdiagnostics.indianlalaji.com',
+      slug: 'apex',
+    },
+    {
+      id: 'lab-citycare',
+      name: 'CityCare Advanced Diagnostics & Scan Centre',
+      tagline: 'Automated Immunoassay, Biochemistry & Preventive Profiles',
+      city: 'Mohali',
+      state: 'Punjab',
+      address: 'SCO 14, Phase 7, Near Fortis Chowk, Mohali',
+      phone: '+91 9815012345',
+      nablCode: 'MC-3912 (QCI Certified)',
+      badge: 'Enterprise Diagnostic Network',
+      status: 'Active',
+      isWebsiteApproved: true,
+      domainPreview: 'citycare.indianlalaji.com',
+      slug: 'citycare',
+    },
+    {
+      id: 'lab-metropath',
+      name: 'MetroPath Scans & Molecular Pathology Hub',
+      tagline: 'Hormone Assays, Vitamin Profiling & Cancer Tumor Markers',
+      city: 'Chandigarh',
+      state: 'Chandigarh (UT)',
+      address: 'SCO 128-129, Sector 34-A, Healthcare District, Chandigarh',
+      phone: '+91 9417098765',
+      nablCode: 'MC-5104 (NABL Accredited)',
+      badge: 'Super Specialty Lab',
+      status: 'Active',
+      isWebsiteApproved: true,
+      domainPreview: 'metropath.indianlalaji.com',
+      slug: 'metropath',
+    },
+  ];
+
   const readCol = (col: string): any[] => {
     const p = path.join(dataDir, `${col}.json`);
-    if (!fs.existsSync(p)) return [];
+    if (!fs.existsSync(p)) {
+      if (col === 'vendor_labs') return DEFAULT_VENDOR_LABS;
+      return [];
+    }
     try {
-      return JSON.parse(fs.readFileSync(p, 'utf-8'));
+      const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      if (col === 'vendor_labs' && (!Array.isArray(data) || data.length === 0)) {
+        return DEFAULT_VENDOR_LABS;
+      }
+      return data;
     } catch {
+      if (col === 'vendor_labs') return DEFAULT_VENDOR_LABS;
       return [];
     }
   };
@@ -105,6 +161,69 @@ function hostingerApiDevPlugin(): Plugin {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ status: 'error', message: 'Upload parse error' }));
           });
+          return;
+        }
+
+        // 2b. API: /api/lab/:identifier or /api/labs/:identifier or /api/vendor/:identifier
+        const labMatch = pathname.match(/^\/api\/(?:lab|labs|vendor)\/([^/?#]+)/i);
+        if (labMatch && req.method === 'GET') {
+          const rawId = decodeURIComponent(labMatch[1]).toLowerCase().trim();
+          const vendorLabs = readCol('vendor_labs');
+          const settingsMap = readCol('lab_settings');
+          const tests = readCol('lab_tests');
+          const packages = readCol('lab_packages');
+          const doctors = readCol('lab_doctors');
+          const branches = readCol('vendor_branches');
+
+          const matchedLab = vendorLabs.find((l: any) => {
+            const id = (l.id || '').toLowerCase();
+            const slug = (l.slug || '').toLowerCase();
+            const dp = (l.domainPreview || '').toLowerCase();
+            const phone = (l.phone || '').replace(/\D/g, '');
+            const name = (l.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            return (
+              id === rawId ||
+              id === `lab-${rawId}` ||
+              id.replace(/^lab-/, '') === rawId.replace(/^lab-/, '') ||
+              slug === rawId ||
+              dp.includes(rawId) ||
+              dp.split('.')[0] === rawId ||
+              (phone.length >= 10 && phone.slice(-10) === rawId.replace(/\D/g, '').slice(-10)) ||
+              name.includes(rawId.replace(/[^a-z0-9]/g, ''))
+            );
+          });
+
+          res.setHeader('Content-Type', 'application/json');
+          if (matchedLab) {
+            const labId = matchedLab.id;
+            const labSettings = Array.isArray(settingsMap)
+              ? settingsMap.find((s: any) => s.labId === labId) || null
+              : (settingsMap && typeof settingsMap === 'object' ? (settingsMap as any)[labId] : null);
+
+            res.end(
+              JSON.stringify({
+                status: 'success',
+                found: true,
+                lab: matchedLab,
+                settings: labSettings,
+                tests: tests.filter((t: any) => !t.labId || t.labId === labId || t.labId === 'all'),
+                packages: packages.filter((p: any) => !p.labId || p.labId === labId || p.labId === 'all'),
+                doctors: doctors.filter((d: any) => !d.labId || d.labId === labId || d.labId === 'all'),
+                branches: branches.filter((b: any) => !b.labId || b.labId === labId || b.labId === 'all'),
+              })
+            );
+            return;
+          }
+
+          res.statusCode = 404;
+          res.end(
+            JSON.stringify({
+              status: 'not_found',
+              found: false,
+              message: `Laboratory '${rawId}' was not found in directory.`,
+            })
+          );
           return;
         }
 

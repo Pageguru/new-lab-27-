@@ -2430,18 +2430,23 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return currentUser.labId;
     }
     if (selectedVendorLabId && selectedVendorLabId !== 'all') {
-      const exists = vendorLabsList.some((l) => l.id === selectedVendorLabId);
+      const exists =
+        vendorLabsList.some((l) => l.id === selectedVendorLabId) ||
+        VENDOR_LABS_DIRECTORY.some((l) => l.id === selectedVendorLabId) ||
+        Boolean(vendorLabSettingsMap[selectedVendorLabId]);
       if (exists) return selectedVendorLabId;
     }
     const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
     return defaultActiveLab || selectedVendorLabId || 'lab-1';
-  }, [currentUser, selectedVendorLabId, vendorLabsList]);
+  }, [currentUser, selectedVendorLabId, vendorLabsList, vendorLabSettingsMap]);
 
   const vendorLabSettings = useMemo<VendorLabSettings>(() => {
     if (vendorLabSettingsMap[effectiveSettingsLabId]) {
       return vendorLabSettingsMap[effectiveSettingsLabId];
     }
-    const dirMatch = vendorLabsList.find((l) => l.id === effectiveSettingsLabId);
+    const dirMatch =
+      vendorLabsList.find((l) => l.id === effectiveSettingsLabId) ||
+      VENDOR_LABS_DIRECTORY.find((l) => l.id === effectiveSettingsLabId);
     if (dirMatch) {
       return buildDefaultSettingsForLab(dirMatch);
     }

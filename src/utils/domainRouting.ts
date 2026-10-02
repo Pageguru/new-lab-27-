@@ -20,14 +20,66 @@ const VALID_VIEWS: AppView[] = [
   'lab_app',
 ];
 
+const RESERVED_PATH_SEGMENTS = [
+  'admin',
+  'api',
+  'login',
+  'technician',
+  'reception',
+  'pathologist',
+  'branch',
+  'reports',
+  'report',
+  'portal',
+  'patient_portal',
+  'lab_app',
+  'app',
+  'assets',
+  'uploads',
+  'favicon.ico',
+  'robots.txt',
+  'sitemap.xml',
+  'sw.js',
+  'manifest.json',
+  'website',
+  'pricing',
+  'demo',
+];
+
+function findMatchingLabId(
+  rawTarget: string,
+  vendorLabsList?: Array<{ id: string; domainPreview?: string; phone?: string; slug?: string; name?: string }>
+): string {
+  if (!rawTarget) return '';
+  const cleanTarget = rawTarget.toLowerCase().trim().replace(/^https?:\/\//, '');
+  if (!vendorLabsList || vendorLabsList.length === 0) {
+    return cleanTarget;
+  }
+
+  const match = vendorLabsList.find((l) => {
+    const idLower = (l.id || '').toLowerCase();
+    const targetLower = cleanTarget.toLowerCase();
+    if (idLower === targetLower) return true;
+    if (idLower === `lab-${targetLower}` || idLower.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '')) return true;
+    if (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) return true;
+    if (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === targetLower) return true;
+    if (l.phone && l.phone.replace(/\D/g, '') === targetLower.replace(/\D/g, '')) return true;
+    if (l.slug && l.slug.toLowerCase() === targetLower) return true;
+    if (l.name && l.name.toLowerCase().replace(/[^a-z0-9]/g, '') === targetLower.replace(/[^a-z0-9]/g, '')) return true;
+    return false;
+  });
+
+  return match ? match.id : cleanTarget;
+}
+
 /**
  * Resolves the active application view and lab tenant based on domain, subdomains, URL paths, and query parameters.
  * 
  * Rules:
- * 1. indianlalaji.com/shop/VENDOR_ID -> Vendor Lab Website ('vendor_website') for that vendor
+ * 1. indianlalaji.com/shop/VENDOR_ID or /lab/VENDOR_ID -> Vendor Lab Website ('vendor_website') for that vendor
  * 2. indianlalaji.com / www.indianlalaji.com -> Main Platform Website ('website')
  * 3. <vendor>.indianlalaji.com -> Vendor Lab Website ('vendor_website') for that vendor
- * 4. indianlalaji.com/?lab=<vendor> or ?shop=<vendor> -> Vendor Lab Website ('vendor_website')
+ * 4. indianlalaji.com/?lab=<vendor> or ?shop=<vendor> or ?vendor=<vendor> -> Vendor Lab Website ('vendor_website')
  * 5. app.indianlalaji.com -> Lab Management Software ('lab_app')
  * 6. report.indianlalaji.com -> Patient Report Portal ('patient_portal')
  * 7. admin.indianlalaji.com -> Super Admin Dashboard ('admin_dashboard')
@@ -37,37 +89,21 @@ const VALID_VIEWS: AppView[] = [
 export function resolveAppRoute(
   hostname: string,
   search: string,
-  vendorLabsList?: Array<{ id: string; domainPreview?: string; phone?: string; slug?: string }>,
+  vendorLabsList?: Array<{ id: string; domainPreview?: string; phone?: string; slug?: string; name?: string }>,
   pathname?: string
 ): DomainRouteResolution {
   const cleanHost = (hostname || '').toLowerCase().trim().replace(/^https?:\/\//, '').split(':')[0];
   const params = new URLSearchParams(search);
   const viewParam = params.get('view') as AppView | null;
-  const labParam = params.get('lab') || params.get('subdomain');
+  const labParam = params.get('lab') || params.get('subdomain') || params.get('vendor') || params.get('id');
   const shopParam = params.get('shop');
   const effectivePath = pathname !== undefined ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
 
-  // 0. Primary Vendor Shop URL Pattern: indianlalaji.com/shop/VENDOR_ID or /shop/VENDOR_ID
-  const shopMatch = effectivePath.match(/^\/shop\/([^/?#]+)/i);
-  if (shopMatch && shopMatch[1]) {
-    const rawTarget = decodeURIComponent(shopMatch[1]).trim();
-    // Resolve vendor from vendorLabsList if available
-    let resolvedVendorId = rawTarget;
-    if (vendorLabsList && vendorLabsList.length > 0) {
-      const match = vendorLabsList.find((l) => {
-        const idLower = l.id.toLowerCase();
-        const targetLower = rawTarget.toLowerCase();
-        if (idLower === targetLower) return true;
-        if (idLower === `lab-${targetLower}` || idLower.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '')) return true;
-        if (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) return true;
-        if (l.phone && l.phone.replace(/\D/g, '') === targetLower.replace(/\D/g, '')) return true;
-        if (l.slug && l.slug.toLowerCase() === targetLower) return true;
-        return false;
-      });
-      if (match) {
-        resolvedVendorId = match.id;
-      }
-    }
+  // 0. Primary Vendor Shop / Lab URL Pattern: /shop/:id, /lab/:id, /labs/:id, /vendor/:id, /v/:id
+  const pathPrefixMatch = effectivePath.match(/^\/(?:shop|lab|labs|vendor|v)\/([^/?#]+)/i);
+  if (pathPrefixMatch && pathPrefixMatch[1]) {
+    const rawTarget = decodeURIComponent(pathPrefixMatch[1]).trim();
+    const resolvedVendorId = findMatchingLabId(rawTarget, vendorLabsList);
 
     return {
       view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
@@ -75,28 +111,32 @@ export function resolveAppRoute(
     };
   }
 
-  // 0b. Direct shop query parameter: ?shop=VENDOR_ID
-  if (shopParam) {
-    const rawTarget = decodeURIComponent(shopParam).trim();
-    let resolvedVendorId = rawTarget;
-    if (vendorLabsList && vendorLabsList.length > 0) {
-      const match = vendorLabsList.find((l) => {
-        const idLower = l.id.toLowerCase();
-        const targetLower = rawTarget.toLowerCase();
-        if (idLower === targetLower) return true;
-        if (idLower === `lab-${targetLower}` || idLower.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '')) return true;
-        if (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) return true;
-        if (l.slug && l.slug.toLowerCase() === targetLower) return true;
-        return false;
-      });
-      if (match) {
-        resolvedVendorId = match.id;
-      }
-    }
+  // 0b. Direct query parameters: ?shop=VENDOR_ID or ?lab=VENDOR_ID or ?vendor=VENDOR_ID or ?id=VENDOR_ID
+  if (shopParam || labParam) {
+    const rawTarget = decodeURIComponent((shopParam || labParam)!).trim();
+    const resolvedVendorId = findMatchingLabId(rawTarget, vendorLabsList);
+
     return {
       view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
       targetLab: resolvedVendorId,
     };
+  }
+
+  // 0c. Direct single slug path: e.g. /apex or /citycare or /lab-1 (if not reserved)
+  const singleSlugMatch = effectivePath.match(/^\/([a-zA-Z0-9_\-]+)\/?$/);
+  if (singleSlugMatch && singleSlugMatch[1]) {
+    const rawSlug = singleSlugMatch[1].toLowerCase().trim();
+    if (!RESERVED_PATH_SEGMENTS.includes(rawSlug)) {
+      // Check if it matches any known lab in vendorLabsList, or starts with lab-
+      const matchedId = findMatchingLabId(rawSlug, vendorLabsList);
+      const isKnown = vendorLabsList && vendorLabsList.some((l) => l.id === matchedId || l.slug === rawSlug);
+      if (isKnown || rawSlug.startsWith('lab-')) {
+        return {
+          view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
+          targetLab: matchedId,
+        };
+      }
+    }
   }
 
   // 0c. Standalone PWA detection: If user opens installed app from mobile home screen at root /

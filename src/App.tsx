@@ -36,7 +36,7 @@ import { CmsAuthModal } from './components/CmsAuthModal';
 import { BranchManagerDashboard } from './components/BranchManagerDashboard';
 import { PathologistDashboard } from './components/PathologistDashboard';
 import { RoleContextBanner } from './components/RoleContextBanner';
-import { Building } from 'lucide-react';
+import { Building, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { isUserAuthorizedForView } from './utils/rbac';
 import { useCms } from './context/CmsContext';
 import { getTenantSubdomain } from './constants/domains';
@@ -63,6 +63,10 @@ export default function App() {
   const [selectedPatientMobile, setSelectedPatientMobile] = useState('');
   const [selectedPatientName, setSelectedPatientName] = useState('');
 
+  // Loading & error state when resolving lab directly from the URL
+  const [isFetchingUrlLab, setIsFetchingUrlLab] = useState(false);
+  const [urlLabError, setUrlLabError] = useState<{ identifier: string; message: string } | null>(null);
+
   const {
     currentUser,
     isAuthModalOpen,
@@ -72,7 +76,94 @@ export default function App() {
     selectedVendorLabId,
     setSelectedVendorLabId,
     vendorLabsList,
+    refreshCloudData,
   } = useCms();
+
+  // Fetch and resolve specific lab directly from the current URL
+  const fetchAndApplyLabFromUrl = async (
+    targetIdentifier: string,
+    currentLabs: typeof vendorLabsList
+  ) => {
+    if (!targetIdentifier) return;
+    const cleanId = targetIdentifier.trim();
+    setIsFetchingUrlLab(true);
+    setUrlLabError(null);
+
+    // Step 1: Check existing local lab list
+    const existing = currentLabs.find((l) => {
+      const id = (l.id || '').toLowerCase();
+      const slug = (l.slug || '').toLowerCase();
+      const targetLower = cleanId.toLowerCase();
+      return (
+        id === targetLower ||
+        id === `lab-${targetLower}` ||
+        id.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '') ||
+        slug === targetLower ||
+        (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) ||
+        (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === targetLower) ||
+        (l.phone && l.phone.replace(/\D/g, '') === targetLower.replace(/\D/g, '')) ||
+        (l.name && l.name.toLowerCase().replace(/[^a-z0-9]/g, '') === targetLower.replace(/[^a-z0-9]/g, ''))
+      );
+    });
+
+    if (existing) {
+      selectVendorLab(existing.id);
+      setSelectedVendorLabId(existing.id);
+      setCurrentView('vendor_website');
+      setIsFetchingUrlLab(false);
+      return;
+    }
+
+    // Step 2: Fetch specific lab directly from backend /api/lab/:identifier
+    try {
+      const res = await fetch(`/api/lab/${encodeURIComponent(cleanId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.found && data.lab) {
+          selectVendorLab(data.lab.id);
+          setSelectedVendorLabId(data.lab.id);
+          setCurrentView('vendor_website');
+          setIsFetchingUrlLab(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Direct lab API fetch failed, checking sync fallback:', err);
+    }
+
+    // Step 3: Trigger cloud sync refresh as a fallback
+    try {
+      await refreshCloudData();
+    } catch {}
+
+    // Check again after refresh
+    const matchAfterSync = vendorLabsList.find((l) => {
+      const id = (l.id || '').toLowerCase();
+      const slug = (l.slug || '').toLowerCase();
+      const targetLower = cleanId.toLowerCase();
+      return (
+        id === targetLower ||
+        id === `lab-${targetLower}` ||
+        id.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '') ||
+        slug === targetLower ||
+        (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) ||
+        (l.name && l.name.toLowerCase().replace(/[^a-z0-9]/g, '') === targetLower.replace(/[^a-z0-9]/g, ''))
+      );
+    });
+
+    if (matchAfterSync) {
+      selectVendorLab(matchAfterSync.id);
+      setSelectedVendorLabId(matchAfterSync.id);
+      setCurrentView('vendor_website');
+    } else {
+      setUrlLabError({
+        identifier: cleanId,
+        message: `Laboratory '${cleanId}' could not be located in our directory.`,
+      });
+    }
+
+    setIsFetchingUrlLab(false);
+  };
 
   // Persist currentView to localStorage whenever it changes (only for authenticated or dashboard views, avoid trapping homepage)
   useEffect(() => {
@@ -85,7 +176,7 @@ export default function App() {
     } catch {}
   }, [currentView]);
 
-  // Sync view and lab tenant from URL parameters, subdomains, /shop/VENDOR_ID paths, or custom domains on initial mount
+  // Sync view and lab tenant from URL parameters, subdomains, /shop/ or /lab/ paths, or custom domains
   useEffect(() => {
     try {
       const resolution = resolveAppRoute(
@@ -96,7 +187,7 @@ export default function App() {
       );
 
       if (resolution.targetLab) {
-        selectVendorLab(resolution.targetLab);
+        fetchAndApplyLabFromUrl(resolution.targetLab, vendorLabsList);
       } else if (!selectedVendorLabId || selectedVendorLabId === 'all' || !vendorLabsList.some((l) => l.id === selectedVendorLabId)) {
         const defaultLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
         if (defaultLab) {
@@ -105,9 +196,9 @@ export default function App() {
       }
 
       if (resolution.isExplicitMainPlatform) {
-        // When visiting indianlalaji.com or www.indianlalaji.com directly:
-        // Always open the main platform website and clear any old cached vendor view
+        // When visiting main platform directly:
         setCurrentView('website');
+        setUrlLabError(null);
         try {
           localStorage.removeItem('cms_current_view');
         } catch {}
@@ -117,7 +208,7 @@ export default function App() {
     } catch {}
   }, [vendorLabsList]);
 
-  // Support browser Back/Forward navigation across /shop/ paths and views
+  // Support browser Back/Forward navigation across /shop/, /lab/ paths and views
   useEffect(() => {
     const handlePopState = () => {
       try {
@@ -128,7 +219,7 @@ export default function App() {
           window.location.pathname
         );
         if (resolution.targetLab) {
-          selectVendorLab(resolution.targetLab);
+          fetchAndApplyLabFromUrl(resolution.targetLab, vendorLabsList);
         }
         if (resolution.view) {
           setCurrentView(resolution.view);
@@ -139,7 +230,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [vendorLabsList, selectVendorLab]);
 
-  // Update URL search parameters and /shop/VENDOR_ID path when view or selected lab changes
+  // Update URL search parameters and path when view or selected lab changes
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
@@ -147,8 +238,9 @@ export default function App() {
         url.searchParams.delete('view');
         url.searchParams.delete('lab');
         url.searchParams.delete('shop');
+        url.searchParams.delete('vendor');
         url.searchParams.delete('subdomain');
-        const cleanPath = url.pathname.startsWith('/shop/') ? '/' : url.pathname;
+        const cleanPath = url.pathname.startsWith('/shop/') || url.pathname.startsWith('/lab/') ? '/' : url.pathname;
         window.history.replaceState({}, '', cleanPath + (url.search ? url.search : ''));
       } else if (currentView === 'vendor_website') {
         const hostname = window.location.hostname.toLowerCase();
@@ -165,18 +257,20 @@ export default function App() {
           url.searchParams.delete('view');
           url.searchParams.delete('lab');
           url.searchParams.delete('shop');
+          url.searchParams.delete('vendor');
           url.searchParams.delete('subdomain');
           window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
         } else {
-          // Format as requested: indianlalaji.com/shop/VENDOR_ID
           const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
           const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab';
           const vendorId = currentLab?.id || selectedVendorLabId || defaultActiveLab;
           url.searchParams.delete('view');
           url.searchParams.delete('lab');
           url.searchParams.delete('shop');
+          url.searchParams.delete('vendor');
           url.searchParams.delete('subdomain');
-          window.history.replaceState({}, '', `/shop/${vendorId}` + (url.search ? url.search : ''));
+          const prefix = window.location.pathname.startsWith('/lab/') ? '/lab/' : '/shop/';
+          window.history.replaceState({}, '', `${prefix}${vendorId}` + (url.search ? url.search : ''));
         }
       } else if (currentView === 'patient_portal') {
         url.searchParams.set('view', 'patient_portal');
@@ -290,16 +384,101 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Dedicated Loading Experience when fetching a specific lab from URL
+  if (isFetchingUrlLab) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="w-16 h-16 rounded-2xl bg-[#123B6D] text-amber-300 flex items-center justify-center shadow-lg mb-4 animate-pulse">
+          <Building className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 mb-1">
+          Loading Laboratory Website...
+        </h2>
+        <p className="text-xs text-slate-500 max-w-sm mb-4 leading-relaxed">
+          Fetching verified diagnostic catalog, test pricing, and doctor profiles directly from the URL...
+        </p>
+        <div className="flex items-center gap-2 text-xs font-bold text-[#123B6D]">
+          <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+          <span>Connecting to laboratory portal...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback Experience if the specific lab requested in the URL could not be found
+  if (urlLabError && currentView === 'vendor_website') {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-black text-slate-900">
+              Laboratory Website Not Found
+            </h2>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              We couldn't locate a verified diagnostic laboratory matching <span className="font-bold text-slate-800 font-mono bg-slate-100 px-1.5 py-0.5 rounded">"{urlLabError.identifier}"</span> in our network. It may have moved or the link may be mistyped.
+            </p>
+          </div>
+
+          <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200 text-left space-y-2">
+            <span className="text-[11px] font-bold text-slate-600 block">Verified Active Laboratories:</span>
+            <div className="space-y-1.5">
+              {vendorLabsList.slice(0, 3).map((lab) => (
+                <button
+                  key={lab.id}
+                  type="button"
+                  onClick={() => {
+                    setUrlLabError(null);
+                    selectVendorLab(lab.id);
+                    setSelectedVendorLabId(lab.id);
+                    window.history.pushState({}, '', `/shop/${lab.id}`);
+                  }}
+                  className="w-full p-2.5 rounded-xl bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition flex items-center justify-between text-xs font-bold text-slate-800 text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Building className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span className="truncate">{lab.name}</span>
+                  </div>
+                  <span className="text-[10px] text-blue-700 bg-blue-100/60 px-2 py-0.5 rounded-full shrink-0 font-extrabold">Visit Lab</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setUrlLabError(null);
+                setCurrentView('website');
+                window.history.pushState({}, '', '/');
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-black transition cursor-pointer"
+            >
+              Go to IndianLalaji Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 1. Dedicated Experience: Diagnostic Laboratory (Vendor) Website
   if (currentView === 'vendor_website') {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-[#172033] flex flex-col font-sans">
         <LabVendorWebsite
+          targetLabId={selectedVendorLabId}
           language={language}
           onSelectLanguage={setLanguage}
           onOpenReportPortal={handleViewPatientPortal}
           onOpenLabSoftware={handleLaunchLabApp}
-          onOpenSoftwareWebsite={() => setCurrentView('website')}
+          onOpenSoftwareWebsite={() => {
+            setCurrentView('website');
+            window.history.pushState({}, '', '/');
+          }}
           onOpenVendorDashboard={() => setCurrentView('vendor_dashboard')}
           onOpenReceptionDashboard={() => setCurrentView('reception_dashboard')}
           onOpenAdminDashboard={() => setCurrentView('admin_dashboard')}

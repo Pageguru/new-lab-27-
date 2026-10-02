@@ -79,6 +79,7 @@ import { isTenantMatch } from '../utils/tenantSecurity';
 import { optimizeImageFile } from '../utils/imageOptimizer';
 
 interface LabVendorWebsiteProps {
+  targetLabId?: string;
   language?: Language;
   onSelectLanguage?: (lang: Language) => void;
   onOpenReportPortal: (reportId?: string, mobile?: string, labId?: string) => void;
@@ -90,6 +91,7 @@ interface LabVendorWebsiteProps {
 }
 
 export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
+  targetLabId,
   language = 'en',
   onSelectLanguage,
   onOpenReportPortal,
@@ -117,7 +119,25 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     addContactSubmission,
   } = useCms();
 
+  const effectiveLabId = targetLabId || selectedVendorLabId || vendorLabSettings?.labId;
+
   const currentLabItem = React.useMemo(() => {
+    if (effectiveLabId) {
+      const match = vendorLabsList.find((l) => {
+        const idLower = (l.id || '').toLowerCase();
+        const effLower = effectiveLabId.toLowerCase();
+        return (
+          idLower === effLower ||
+          idLower === `lab-${effLower}` ||
+          idLower.replace(/^lab-/, '') === effLower.replace(/^lab-/, '') ||
+          (l.domainPreview && l.domainPreview.toLowerCase().includes(effLower)) ||
+          (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === effLower) ||
+          (l.slug && l.slug.toLowerCase() === effLower) ||
+          (l.name && l.name.toLowerCase().replace(/[^a-z0-9]/g, '') === effLower.replace(/[^a-z0-9]/g, ''))
+        );
+      });
+      if (match) return match;
+    }
     return (
       vendorLabsList.find((l) => l.id === (vendorLabSettings?.labId || selectedVendorLabId)) ||
       vendorLabsList.find(
@@ -126,7 +146,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       vendorLabsList[0] ||
       null
     );
-  }, [vendorLabsList, vendorLabSettings, selectedVendorLabId]);
+  }, [vendorLabsList, vendorLabSettings, selectedVendorLabId, effectiveLabId]);
 
   const currentVendorReport = React.useMemo(() => {
     const tid = currentLabItem?.id || selectedVendorLabId;
