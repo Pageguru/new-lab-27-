@@ -111,9 +111,15 @@ export function applySeoSettingsToDOM(settings: SeoSettings): void {
   if (effective.googleAnalyticsId && effective.googleAnalyticsId.trim()) {
     const gaId = effective.googleAnalyticsId.trim();
     let gaScript = document.getElementById('seo-ga-script') as HTMLScriptElement | null;
-    if (!gaScript) {
+    const currentGaId = gaScript?.getAttribute('data-ga-id');
+    if (!gaScript || currentGaId !== gaId) {
+      if (gaScript) gaScript.remove();
+      const oldInit = document.getElementById('seo-ga-init-script');
+      if (oldInit) oldInit.remove();
+
       gaScript = document.createElement('script');
       gaScript.id = 'seo-ga-script';
+      gaScript.setAttribute('data-ga-id', gaId);
       gaScript.async = true;
       gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
       document.head.appendChild(gaScript);
@@ -130,6 +136,20 @@ export function applySeoSettingsToDOM(settings: SeoSettings): void {
     }
   }
 
+  // Helper to safely inject HTML and execute embedded <script> tags
+  const injectHtmlWithScripts = (container: HTMLElement, rawHtml: string) => {
+    container.innerHTML = rawHtml;
+    const scripts = Array.from(container.querySelectorAll('script'));
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach((attr) => {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+      newScript.textContent = oldScript.textContent;
+      oldScript.parentNode?.replaceChild(newScript, oldScript);
+    });
+  };
+
   // 10. Custom Header Code Container
   let headerContainer = document.getElementById('seo-custom-header-container');
   if (!headerContainer) {
@@ -139,7 +159,7 @@ export function applySeoSettingsToDOM(settings: SeoSettings): void {
     document.head.appendChild(headerContainer);
   }
   if (effective.customHeaderCode && effective.customHeaderCode.trim()) {
-    headerContainer.innerHTML = effective.customHeaderCode;
+    injectHtmlWithScripts(headerContainer, effective.customHeaderCode);
   } else {
     headerContainer.innerHTML = '';
   }
@@ -153,7 +173,7 @@ export function applySeoSettingsToDOM(settings: SeoSettings): void {
     document.body.appendChild(footerContainer);
   }
   if (effective.customFooterCode && effective.customFooterCode.trim()) {
-    footerContainer.innerHTML = effective.customFooterCode;
+    injectHtmlWithScripts(footerContainer, effective.customFooterCode);
   } else {
     footerContainer.innerHTML = '';
   }

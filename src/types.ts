@@ -360,6 +360,7 @@ export interface VendorLabSettings {
   ownerPin?: string;
   ownerName?: string;
   // Site Settings & Plan Visibility
+  faviconUrl?: string;
   featureImageUrl?: string;
   siteDescription?: string;
   siteName?: string;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Globe,
   Search,
@@ -21,9 +21,15 @@ import {
   Info,
   Smartphone,
   Laptop,
+  Trash2,
+  Loader2,
+  UploadCloud,
+  RefreshCw,
+  Link2,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 import { SeoSettings, DEFAULT_SEO_SETTINGS } from '../../types';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 
 interface SeoSettingsTabProps {
   showToast?: (message: string) => void;
@@ -40,6 +46,94 @@ export const SeoSettingsTab: React.FC<SeoSettingsTabProps> = ({ showToast }) => 
   const [isSaved, setIsSaved] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
+
+  // File upload state & refs for Favicon and Featured / OG Image
+  const faviconFileInputRef = useRef<HTMLInputElement>(null);
+  const ogImageFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [isUploadingOgImage, setIsUploadingOgImage] = useState(false);
+  const [faviconMode, setFaviconMode] = useState<'upload' | 'presets' | 'url'>('upload');
+  const [ogImageMode, setOgImageMode] = useState<'upload' | 'presets' | 'url'>('upload');
+
+  // Helper to persist image to backend /api/upload or return base64 dataUrl fallback
+  const uploadToServerOrFallback = async (dataUrl: string, prefix: string): Promise<string> => {
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl, prefix }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.url) return json.url;
+      }
+    } catch (err) {
+      console.warn('Upload fallback to dataUrl:', err);
+    }
+    return dataUrl;
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingFavicon(true);
+    try {
+      let optimized = '';
+      if (file.type === 'image/svg+xml') {
+        optimized = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        optimized = await optimizeImageFile(file, {
+          maxWidth: 128,
+          maxHeight: 128,
+          quality: 0.9,
+          format: 'image/png',
+        });
+      }
+
+      if (optimized) {
+        const finalUrl = await uploadToServerOrFallback(optimized, 'favicon');
+        handleFieldChange('faviconUrl', finalUrl);
+        triggerToast('✅ Favicon uploaded successfully! Click Save to apply.');
+      }
+    } catch (err: any) {
+      console.error('Error uploading favicon:', err);
+      triggerToast('❌ Failed to upload favicon image.');
+    } finally {
+      setIsUploadingFavicon(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingOgImage(true);
+    try {
+      const optimized = await optimizeImageFile(file, {
+        maxWidth: 1200,
+        maxHeight: 630,
+        quality: 0.85,
+        format: 'image/jpeg',
+      });
+
+      if (optimized) {
+        const finalUrl = await uploadToServerOrFallback(optimized, 'og_banner');
+        handleFieldChange('ogImageUrl', finalUrl);
+        triggerToast('✅ Featured / OG image uploaded successfully! Click Save to apply.');
+      }
+    } catch (err: any) {
+      console.error('Error uploading featured image:', err);
+      triggerToast('❌ Failed to upload featured image.');
+    } finally {
+      setIsUploadingOgImage(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   // Sync formData when seoSettings updates from context
   useEffect(() => {
@@ -743,118 +837,401 @@ export const SeoSettingsTab: React.FC<SeoSettingsTabProps> = ({ showToast }) => 
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 1. FAVICON */}
-              <div className="space-y-3 p-4 rounded-xl bg-slate-50/70 border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-                    <span>Favicon</span>
-                    <span className="text-rose-500">*</span>
-                    <span className="text-[10px] text-slate-500 font-normal">
-                      (Browser tab icon)
-                    </span>
-                  </label>
-                  <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shadow-2xs">
-                    <img
-                      src={formData.faviconUrl || '/icon.svg'}
-                      alt="favicon preview"
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/icon.svg';
-                      }}
-                    />
+              {/* 1. FAVICON (BROWSER TAB ICON) */}
+              <div className="space-y-4 p-5 rounded-2xl bg-slate-50/80 border border-slate-200">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-[#123B6D] flex items-center justify-center font-bold">
+                      <Globe className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                        <span>Website Favicon</span>
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium block">
+                        Browser tab & bookmark icon
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Current Active Icon Badge */}
+                  <div className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-500">Active:</span>
+                    <div className="w-5 h-5 rounded-md bg-slate-100 border border-slate-200 p-0.5 flex items-center justify-center">
+                      <img
+                        src={formData.faviconUrl || '/icon.svg'}
+                        alt="Active Favicon"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/icon.svg';
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
+                {/* Sub-mode selector (Upload | Presets | URL) */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setFaviconMode('upload')}
+                    className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      faviconMode === 'upload'
+                        ? 'bg-[#123B6D] text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>Upload File</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFaviconMode('presets')}
+                    className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      faviconMode === 'presets'
+                        ? 'bg-[#123B6D] text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span>Presets</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFaviconMode('url')}
+                    className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      faviconMode === 'url'
+                        ? 'bg-[#123B6D] text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Link2 className="w-3 h-3" />
+                    <span>Custom URL</span>
+                  </button>
+                </div>
+
+                {/* Hidden File Input */}
                 <input
-                  type="text"
-                  required
-                  value={formData.faviconUrl}
-                  onChange={(e) => handleFieldChange('faviconUrl', e.target.value)}
-                  placeholder="/icon.svg or https://example.com/favicon.png"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold focus:ring-2 focus:ring-[#123B6D]/20 focus:border-[#123B6D] focus:outline-none bg-white"
+                  ref={faviconFileInputRef}
+                  type="file"
+                  accept=".ico,.png,.svg,.jpg,.jpeg,.webp,image/x-icon,image/png,image/svg+xml,image/jpeg,image/webp"
+                  onChange={handleFaviconUpload}
+                  className="hidden"
                 />
 
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-600 block">Preset Favicons:</span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {faviconPresets.map((pre, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleFieldChange('faviconUrl', pre.url)}
-                        className={`p-1.5 rounded-lg border text-left text-[11px] font-semibold flex items-center gap-2 cursor-pointer transition ${
-                          formData.faviconUrl === pre.url
-                            ? 'bg-blue-50 border-[#123B6D] text-[#123B6D]'
-                            : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        <img src={pre.url} alt="" className="w-4 h-4 object-contain" />
-                        <span className="truncate">{pre.label}</span>
-                      </button>
-                    ))}
+                {/* MODE 1: UPLOAD FILE */}
+                {faviconMode === 'upload' && (
+                  <div className="space-y-3">
+                    <div className="border-2 border-dashed border-blue-200 hover:border-[#123B6D] bg-white rounded-2xl p-4 transition text-center space-y-3">
+                      <div className="flex justify-center items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center p-2 shadow-2xs">
+                          <img
+                            src={formData.faviconUrl || '/icon.svg'}
+                            alt="Favicon preview"
+                            className="w-8 h-8 object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/icon.svg';
+                            }}
+                          />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-xs font-black text-slate-800">
+                            Custom Favicon Icon
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Format: .ico, .svg, .png, .jpg
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isUploadingFavicon}
+                          onClick={() => faviconFileInputRef.current?.click()}
+                          className="px-4 py-2 bg-[#123B6D] hover:bg-[#0e2c52] text-white rounded-xl text-xs font-black transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          {isUploadingFavicon ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                              <span>Optimizing & Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3.5 h-3.5 text-amber-300" />
+                              <span>Select & Upload Favicon</span>
+                            </>
+                          )}
+                        </button>
+
+                        {formData.faviconUrl && formData.faviconUrl !== '/icon.svg' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleFieldChange('faviconUrl', '/icon.svg');
+                              triggerToast('Reverted to default /icon.svg');
+                            }}
+                            className="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition cursor-pointer"
+                            title="Reset to default icon"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      💡 <strong>Pro Tip:</strong> Upload a 64×64 or 128×128 square PNG or vector SVG icon. Automatically converted to a lightweight data/server asset.
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {/* MODE 2: PRESET ICONS */}
+                {faviconMode === 'presets' && (
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold text-slate-600 block">Select a Recommended Icon:</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {faviconPresets.map((pre, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            handleFieldChange('faviconUrl', pre.url);
+                            triggerToast(`Applied "${pre.label}" favicon!`);
+                          }}
+                          className={`p-2 rounded-xl border text-left text-[11px] font-semibold flex items-center gap-2.5 cursor-pointer transition ${
+                            formData.faviconUrl === pre.url
+                              ? 'bg-blue-50 border-[#123B6D] text-[#123B6D] font-bold shadow-2xs'
+                              : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          <div className="w-6 h-6 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center p-1 shrink-0">
+                            <img src={pre.url} alt="" className="w-4 h-4 object-contain" />
+                          </div>
+                          <span className="truncate">{pre.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* MODE 3: CUSTOM URL */}
+                {faviconMode === 'url' && (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-700 block">Direct Favicon URL:</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.faviconUrl}
+                      onChange={(e) => handleFieldChange('faviconUrl', e.target.value)}
+                      placeholder="/icon.svg or https://example.com/favicon.png"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold focus:ring-2 focus:ring-[#123B6D]/20 focus:border-[#123B6D] focus:outline-none bg-white"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      Can be a root path (e.g. <code className="bg-slate-200 px-1 py-0.5 rounded">/icon.svg</code>) or full CDN URL.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* 2. FEATURED IMAGE / OG IMAGE */}
-              <div className="space-y-3 p-4 rounded-xl bg-slate-50/70 border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-                    <span>Featured Image / OG Image</span>
-                    <span className="text-rose-500">*</span>
-                    <span className="text-[10px] text-slate-500 font-normal">
-                      (1200×630px social card)
-                    </span>
-                  </label>
-                  <span className="text-[10px] font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded font-bold">
-                    1.91:1 Ratio
+              {/* 2. FEATURED IMAGE / OG IMAGE (SOCIAL MEDIA SHARING IMAGE) */}
+              <div className="space-y-4 p-5 rounded-2xl bg-slate-50/80 border border-slate-200">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                      <ImageIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                        <span>Featured Image / OG Image</span>
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium block">
+                        Social media preview banner (WhatsApp, Twitter, FB)
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] font-mono text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full font-bold">
+                    1200×630 (1.91:1)
                   </span>
                 </div>
 
+                {/* Sub-mode selector (Upload | Presets | URL) */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setOgImageMode('upload')}
+                    className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      ogImageMode === 'upload'
+                        ? 'bg-purple-700 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>Upload Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOgImageMode('presets')}
+                    className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      ogImageMode === 'presets'
+                        ? 'bg-purple-700 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-300" />
+                    <span>Presets</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOgImageMode('url')}
+                    className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      ogImageMode === 'url'
+                        ? 'bg-purple-700 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Link2 className="w-3 h-3" />
+                    <span>Custom URL</span>
+                  </button>
+                </div>
+
+                {/* Hidden File Input */}
                 <input
-                  type="url"
-                  required
-                  value={formData.ogImageUrl}
-                  onChange={(e) => handleFieldChange('ogImageUrl', e.target.value)}
-                  placeholder="https://images.unsplash.com/... or /og-image.jpg"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold focus:ring-2 focus:ring-[#123B6D]/20 focus:border-[#123B6D] focus:outline-none bg-white"
+                  ref={ogImageFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/*"
+                  onChange={handleOgImageUpload}
+                  className="hidden"
                 />
 
-                <div className="h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 relative group">
-                  <img
-                    src={formData.ogImageUrl}
-                    alt="OG Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1200&q=80';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
-                    Social Card Thumbnail
-                  </div>
-                </div>
+                {/* MODE 1: UPLOAD PHOTO */}
+                {ogImageMode === 'upload' && (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 relative group aspect-[1.91/1]">
+                      <img
+                        src={formData.ogImageUrl}
+                        alt="OG Preview"
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1200&q=80';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-3 sm:p-4 text-white">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div>
+                            <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">
+                              Social Card Preview
+                            </span>
+                            <span className="text-xs font-bold line-clamp-1">
+                              {formData.seoTitle || 'Website Title'}
+                            </span>
+                          </div>
 
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-600 block">Recommended Medical Banners:</span>
-                  <div className="space-y-1">
-                    {ogImagePresets.map((pre, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleFieldChange('ogImageUrl', pre.url)}
-                        className={`w-full p-1.5 rounded-lg border text-left text-[11px] font-semibold flex items-center justify-between cursor-pointer transition ${
-                          formData.ogImageUrl === pre.url
-                            ? 'bg-purple-50 border-purple-600 text-purple-900'
-                            : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        <span className="truncate">{pre.label}</span>
-                        {formData.ogImageUrl === pre.url && <Check className="w-3.5 h-3.5 text-purple-700 shrink-0" />}
-                      </button>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isUploadingOgImage}
+                              onClick={() => ogImageFileInputRef.current?.click()}
+                              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
+                            >
+                              {isUploadingOgImage ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                                  <span>Optimizing...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-3.5 h-3.5 text-amber-300" />
+                                  <span>Upload New Photo</span>
+                                </>
+                              )}
+                            </button>
+
+                            {formData.ogImageUrl && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleFieldChange('ogImageUrl', ogImagePresets[0].url);
+                                  triggerToast('Reverted to default stock banner');
+                                }}
+                                className="p-1.5 bg-black/50 hover:bg-rose-600 text-white rounded-xl transition cursor-pointer"
+                                title="Reset to default banner"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      💡 <strong>Pro Tip:</strong> Select any photo from your device. It is automatically compressed to 1200×630 WebP/JPEG under 100KB so WhatsApp and Twitter load previews instantly.
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {/* MODE 2: PRESET BANNERS */}
+                {ogImageMode === 'presets' && (
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold text-slate-600 block">Select a High-Res Diagnostic Banner:</span>
+                    <div className="space-y-1.5">
+                      {ogImagePresets.map((pre, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            handleFieldChange('ogImageUrl', pre.url);
+                            triggerToast(`Applied "${pre.label}" banner!`);
+                          }}
+                          className={`w-full p-2 rounded-xl border text-left text-[11px] font-semibold flex items-center justify-between cursor-pointer transition ${
+                            formData.ogImageUrl === pre.url
+                              ? 'bg-purple-50 border-purple-600 text-purple-900 font-bold shadow-2xs'
+                              : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <div className="w-10 h-6 rounded bg-slate-200 overflow-hidden shrink-0">
+                              <img src={pre.url} alt="" className="w-full h-full object-cover" />
+                            </div>
+                            <span className="truncate">{pre.label}</span>
+                          </div>
+                          {formData.ogImageUrl === pre.url && <Check className="w-3.5 h-3.5 text-purple-700 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* MODE 3: CUSTOM URL */}
+                {ogImageMode === 'url' && (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-700 block">Direct Image URL:</label>
+                    <input
+                      type="url"
+                      required
+                      value={formData.ogImageUrl}
+                      onChange={(e) => handleFieldChange('ogImageUrl', e.target.value)}
+                      placeholder="https://images.unsplash.com/... or https://yourcdn.com/og.jpg"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-semibold focus:ring-2 focus:ring-[#123B6D]/20 focus:border-[#123B6D] focus:outline-none bg-white"
+                    />
+                    <div className="h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                      <img
+                        src={formData.ogImageUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1200&q=80';
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
