@@ -62,10 +62,67 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
     };
   }, []);
 
+  // Update dynamic PWA manifest so when user installs PWA from this modal, it directly launches this vendor shop
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const vendorTargetUrl = websiteDirectUrl || `/shop/${labId}`;
+    try {
+      const dynamicManifest = {
+        id: `/shop/${labId}`,
+        name: `${labName} Diagnostic App`,
+        short_name: (labName || 'Lab App').slice(0, 24),
+        description: `Official Diagnostic & Pathology Mobile App for ${labName}`,
+        start_url: vendorTargetUrl,
+        scope: '/',
+        display: 'standalone',
+        theme_color: '#123B6D',
+        background_color: '#F8FAFC',
+        icons: [
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+        ],
+      };
+
+      const blob = new Blob([JSON.stringify(dynamicManifest)], { type: 'application/manifest+json' });
+      const manifestUrl = URL.createObjectURL(blob);
+      let link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'manifest';
+        document.head.appendChild(link);
+      }
+      link.href = manifestUrl;
+
+      localStorage.setItem('cms_installed_vendor_app_slug', labId);
+      localStorage.setItem('cms_installed_vendor_app_id', labId);
+
+      return () => {
+        URL.revokeObjectURL(manifestUrl);
+      };
+    } catch (e) {
+      console.warn('Dynamic manifest setup warning:', e);
+    }
+  }, [labId, labName, websiteDirectUrl]);
+
   if (!isOpen) return null;
 
   // Handle 1-Click Android PWA Install
   const handleAndroidInstall = async () => {
+    try {
+      localStorage.setItem('cms_installed_vendor_app_slug', labId);
+      localStorage.setItem('cms_installed_vendor_app_id', labId);
+    } catch {}
+
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const choiceResult = await deferredPrompt.userChoice;
@@ -87,7 +144,14 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
     try {
       const sanitizedName = labName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
       const filename = `${sanitizedName}_lab_app.apk`;
+      const vendorLaunchUrl = websiteDirectUrl || downloadAppUrl.replace(/[?&]page=download-app/, '');
       
+      // Save installed vendor target
+      try {
+        localStorage.setItem('cms_installed_vendor_app_slug', labId);
+        localStorage.setItem('cms_installed_vendor_app_id', labId);
+      } catch {}
+
       // Create a manifest/APK descriptor file for direct install
       const apkMetadata = JSON.stringify(
         {
@@ -95,7 +159,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
           packageId: `com.indianlalaji.lab.${labId}`,
           version: '2.4.0',
           platform: 'Android',
-          startUrl: downloadAppUrl,
+          startUrl: vendorLaunchUrl,
           installedAt: new Date().toISOString(),
           note: 'Official Medical Diagnostic Lab PWA/APK launcher for ' + labName,
         },

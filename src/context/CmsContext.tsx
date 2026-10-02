@@ -2253,6 +2253,55 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [selectedVendorLabId, setSelectedVendorLabId] = useState<string>(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const shopMatch = path.match(/^\/shop\/([^/?#]+)/i);
+        if (shopMatch && shopMatch[1]) {
+          const raw = decodeURIComponent(shopMatch[1]).trim().toLowerCase();
+          const cleanSub = raw.split('.')[0].replace(/^lab-/, '');
+          const dirMatch = VENDOR_LABS_DIRECTORY.find(
+            (l) =>
+              l.id.toLowerCase() === raw ||
+              l.id.toLowerCase() === `lab-${raw}` ||
+              l.id.toLowerCase().replace(/^lab-/, '') === cleanSub ||
+              (l.domainPreview && l.domainPreview.toLowerCase().includes(cleanSub)) ||
+              (l.slug && l.slug.toLowerCase() === cleanSub)
+          );
+          if (dirMatch) return dirMatch.id;
+          return raw.startsWith('lab-') ? raw : `lab-${raw}`;
+        }
+        const searchParams = new URLSearchParams(window.location.search);
+        const labParam = searchParams.get('lab') || searchParams.get('subdomain') || searchParams.get('shop');
+        if (labParam) {
+          const raw = labParam.trim().toLowerCase();
+          const cleanSub = raw.split('.')[0].replace(/^lab-/, '');
+          const dirMatch = VENDOR_LABS_DIRECTORY.find(
+            (l) =>
+              l.id.toLowerCase() === raw ||
+              l.id.toLowerCase() === `lab-${raw}` ||
+              l.id.toLowerCase().replace(/^lab-/, '') === cleanSub ||
+              (l.domainPreview && l.domainPreview.toLowerCase().includes(cleanSub)) ||
+              (l.slug && l.slug.toLowerCase() === cleanSub)
+          );
+          if (dirMatch) return dirMatch.id;
+          return raw.startsWith('lab-') ? raw : `lab-${raw}`;
+        }
+
+        // Standalone PWA mode: check installed vendor app
+        const isStandalone =
+          window.matchMedia('(display-mode: standalone)').matches ||
+          (window.navigator as any).standalone === true;
+        if (isStandalone) {
+          const installedSlug =
+            localStorage.getItem('cms_installed_vendor_app_slug') ||
+            localStorage.getItem('cms_installed_vendor_app_id');
+          if (installedSlug) {
+            const clean = installedSlug.trim().toLowerCase();
+            return clean.startsWith('lab-') ? clean : `lab-${clean}`;
+          }
+        }
+      }
+
       const savedUser = localStorage.getItem('cms_current_user');
       if (savedUser) {
         const u = JSON.parse(savedUser);

@@ -597,6 +597,7 @@ export interface VendorLabDirectoryItem {
   paymentNotes?: string;
   joinedDate?: string;
   domainPreview?: string;
+  slug?: string;
   establishedYear?: number;
   reviewsCount?: number;
   features?: string[];

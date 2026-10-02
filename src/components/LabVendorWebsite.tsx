@@ -468,27 +468,121 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     setIsPolicyModalOpen(true);
   };
 
+  // Resolves the clean slug for the current vendor laboratory
+  const effectiveVendorId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || 'lab-apex';
+  const effectiveSlug = React.useMemo(() => {
+    if (currentLabItem?.slug) return currentLabItem.slug;
+    if (currentLabItem?.domainPreview) {
+      const dp = currentLabItem.domainPreview.toLowerCase().replace(/^https?:\/\//, '');
+      const first = dp.split('.')[0];
+      if (first && first !== 'indianlalaji' && first !== 'www') return first;
+    }
+    return getTenantSubdomain(effectiveVendorId);
+  }, [currentLabItem, effectiveVendorId]);
+
+  // Canonical live public URL for the vendor's dedicated website
+  const vendorCanonicalWebsiteUrl = React.useMemo(() => {
+    // 1. If custom domain is active
+    if (vendorLabSettings?.isCustomDomainActive && vendorLabSettings?.websiteDomain) {
+      const cleanDom = vendorLabSettings.websiteDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
+      if (cleanDom && !cleanDom.includes('indianlalaji.com') && !cleanDom.includes('indianalala.com')) {
+        return `https://${cleanDom}`;
+      }
+    }
+    if (vendorLabSettings?.websiteUrl && !vendorLabSettings.websiteUrl.includes('labname.com')) {
+      const cleanUrl = vendorLabSettings.websiteUrl.trim();
+      if (cleanUrl.startsWith('http')) return cleanUrl;
+    }
+    // 2. Canonical vendor shop format: https://indianlalaji.com/shop/VENDOR_ID
+    return `https://${SUPER_ADMIN_DOMAIN}/shop/${effectiveSlug}`;
+  }, [vendorLabSettings, effectiveSlug]);
+
+  // In-browser direct URL (for local preview, in-app navigation, and copy button)
   const websiteDirectUrl = React.useMemo(() => {
     if (typeof window !== 'undefined') {
       const origin = window.location.origin;
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('page');
-        if (url.searchParams.has('lab') || url.searchParams.has('subdomain')) {
-          return `${origin}${url.pathname}${url.search}`;
-        }
-      } catch {}
-      const slug = currentLabItem?.domainPreview?.replace(`.${SUPER_ADMIN_DOMAIN}`, '') || currentLabItem?.id || 'apexdiagnostics';
-      return `${origin}/?lab=${slug}`;
+      // If deployed on indianlalaji.com or production domain:
+      if (origin.includes(SUPER_ADMIN_DOMAIN) || origin.includes('indianalala.com')) {
+        return vendorCanonicalWebsiteUrl;
+      }
+      // If vendor custom domain is configured:
+      if (vendorLabSettings?.isCustomDomainActive && vendorLabSettings?.websiteDomain) {
+        return vendorCanonicalWebsiteUrl;
+      }
+      // In development or preview environment:
+      return `${origin}/shop/${effectiveSlug}`;
     }
-    return canonicalUrl;
-  }, [currentLabItem, canonicalUrl]);
+    return vendorCanonicalWebsiteUrl;
+  }, [vendorCanonicalWebsiteUrl, vendorLabSettings, effectiveSlug]);
 
-  // Direct URL for Download App QR (Directly opens Download App page/modal when scanned)
+  // The QR Code URL for "Visit Website": Always guaranteed to route to the specific vendor website
+  const qrWebsiteUrl = React.useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname.toLowerCase();
+      // If running on public internet domain, websiteDirectUrl is 100% routable
+      if (!hostname.includes('localhost') && !hostname.includes('127.0.0.1') && !hostname.includes('.run.app')) {
+        return websiteDirectUrl;
+      }
+    }
+    // For local dev / cloud preview, QR scanned by mobile camera routes to live vendor website:
+    return vendorCanonicalWebsiteUrl;
+  }, [websiteDirectUrl, vendorCanonicalWebsiteUrl]);
+
+  // Direct URL for Download App QR (Directly routes to vendor website and opens Download App modal)
   const downloadAppUrl = React.useMemo(() => {
-    const base = websiteDirectUrl;
+    const base = qrWebsiteUrl;
     return `${base}${base.includes('?') ? '&' : '?'}page=download-app`;
-  }, [websiteDirectUrl]);
+  }, [qrWebsiteUrl]);
+
+  // Auto-update PWA manifest so installing app opens directly to this vendor website
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    try {
+      const targetStartUrl = `/shop/${effectiveSlug}`;
+      const dynamicManifest = {
+        id: `/shop/${effectiveSlug}`,
+        name: `${labName} Diagnostic App`,
+        short_name: (labName || 'Lab App').slice(0, 24),
+        description: `Official Diagnostic & Pathology Mobile App for ${labName}`,
+        start_url: targetStartUrl,
+        scope: '/',
+        display: 'standalone',
+        theme_color: '#123B6D',
+        background_color: '#F8FAFC',
+        icons: [
+          {
+            src: labLogoUrl || '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: labLogoUrl || '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+        ],
+      };
+
+      const blob = new Blob([JSON.stringify(dynamicManifest)], { type: 'application/manifest+json' });
+      const manifestUrl = URL.createObjectURL(blob);
+      let link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'manifest';
+        document.head.appendChild(link);
+      }
+      link.href = manifestUrl;
+
+      localStorage.setItem('cms_installed_vendor_app_slug', effectiveSlug);
+      localStorage.setItem('cms_installed_vendor_app_id', effectiveVendorId);
+
+      return () => {
+        URL.revokeObjectURL(manifestUrl);
+      };
+    } catch {}
+  }, [effectiveSlug, effectiveVendorId, labName, labLogoUrl]);
 
   // Auto-open Download App Modal if URL contains ?page=download-app or #download-app
   useEffect(() => {
@@ -4704,7 +4798,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                   title="Click to view Visit Website QR"
                 >
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(websiteDirectUrl)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrWebsiteUrl)}`}
                     alt="Visit Website QR Code"
                     className="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-lg"
                   />
@@ -4995,7 +5089,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         isOpen={isDownloadAppModalOpen}
         onClose={handleCloseDownloadAppModal}
         labName={labName}
-        labId={labShopId}
+        labId={effectiveSlug}
         downloadAppUrl={downloadAppUrl}
         websiteDirectUrl={websiteDirectUrl}
       />
@@ -5034,7 +5128,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4 shadow-inner flex flex-col items-center">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(websiteDirectUrl)}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrWebsiteUrl)}`}
                 alt={`${labName} Website QR`}
                 className="w-48 h-48 rounded-xl object-contain bg-white p-2 border border-slate-200 shadow-xs"
               />
@@ -5045,11 +5139,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </div>
 
             <div className="w-full bg-slate-50 rounded-xl p-2.5 border border-slate-200 mb-4 flex items-center justify-between text-xs font-mono text-slate-700">
-              <span className="truncate pr-2 select-all">{websiteDirectUrl}</span>
+              <span className="truncate pr-2 select-all">{qrWebsiteUrl}</span>
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(websiteDirectUrl);
+                  navigator.clipboard.writeText(qrWebsiteUrl);
                   setCopiedWebsiteUrl(true);
                   setTimeout(() => setCopiedWebsiteUrl(false), 2000);
                 }}

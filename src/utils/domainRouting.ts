@@ -58,6 +58,7 @@ export function resolveAppRoute(
         const idLower = l.id.toLowerCase();
         const targetLower = rawTarget.toLowerCase();
         if (idLower === targetLower) return true;
+        if (idLower === `lab-${targetLower}` || idLower.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '')) return true;
         if (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) return true;
         if (l.phone && l.phone.replace(/\D/g, '') === targetLower.replace(/\D/g, '')) return true;
         if (l.slug && l.slug.toLowerCase() === targetLower) return true;
@@ -76,10 +77,46 @@ export function resolveAppRoute(
 
   // 0b. Direct shop query parameter: ?shop=VENDOR_ID
   if (shopParam) {
+    const rawTarget = decodeURIComponent(shopParam).trim();
+    let resolvedVendorId = rawTarget;
+    if (vendorLabsList && vendorLabsList.length > 0) {
+      const match = vendorLabsList.find((l) => {
+        const idLower = l.id.toLowerCase();
+        const targetLower = rawTarget.toLowerCase();
+        if (idLower === targetLower) return true;
+        if (idLower === `lab-${targetLower}` || idLower.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '')) return true;
+        if (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) return true;
+        if (l.slug && l.slug.toLowerCase() === targetLower) return true;
+        return false;
+      });
+      if (match) {
+        resolvedVendorId = match.id;
+      }
+    }
     return {
       view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
-      targetLab: shopParam,
+      targetLab: resolvedVendorId,
     };
+  }
+
+  // 0c. Standalone PWA detection: If user opens installed app from mobile home screen at root /
+  if (typeof window !== 'undefined' && (effectivePath === '/' || effectivePath === '')) {
+    try {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      if (isStandalone && !viewParam && !labParam && !shopParam) {
+        const installedSlug =
+          localStorage.getItem('cms_installed_vendor_app_slug') ||
+          localStorage.getItem('cms_installed_vendor_app_id');
+        if (installedSlug) {
+          return {
+            view: 'vendor_website',
+            targetLab: installedSlug,
+          };
+        }
+      }
+    } catch {}
   }
 
   // 1. Check for platform root domain (indianalala.com, indianlalaji.com, or www.*)
