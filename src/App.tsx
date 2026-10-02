@@ -77,6 +77,7 @@ export default function App() {
     setSelectedVendorLabId,
     vendorLabsList,
     refreshCloudData,
+    injectCloudLab,
   } = useCms();
 
   // Fetch and resolve specific lab directly from the current URL
@@ -120,6 +121,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         if (data.found && data.lab) {
+          injectCloudLab(data.lab, data.settings);
           selectVendorLab(data.lab.id);
           setSelectedVendorLabId(data.lab.id);
           setCurrentView('vendor_website');
@@ -183,12 +185,13 @@ export default function App() {
         window.location.hostname,
         window.location.search,
         vendorLabsList,
-        window.location.pathname
+        window.location.pathname,
+        window.location.hash
       );
 
       if (resolution.targetLab) {
         fetchAndApplyLabFromUrl(resolution.targetLab, vendorLabsList);
-      } else if (!selectedVendorLabId || selectedVendorLabId === 'all' || !vendorLabsList.some((l) => l.id === selectedVendorLabId)) {
+      } else if (!selectedVendorLabId || selectedVendorLabId === 'all') {
         const defaultLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
         if (defaultLab) {
           selectVendorLab(defaultLab);
@@ -216,7 +219,8 @@ export default function App() {
           window.location.hostname,
           window.location.search,
           vendorLabsList,
-          window.location.pathname
+          window.location.pathname,
+          window.location.hash
         );
         if (resolution.targetLab) {
           fetchAndApplyLabFromUrl(resolution.targetLab, vendorLabsList);
@@ -232,8 +236,28 @@ export default function App() {
 
   // Update URL search parameters and path when view or selected lab changes
   useEffect(() => {
+    // CRITICAL: If we are currently fetching or resolving a lab from URL, DO NOT overwrite the browser URL
+    if (isFetchingUrlLab) return;
+
     try {
       const url = new URL(window.location.href);
+      const currentRoute = resolveAppRoute(
+        window.location.hostname,
+        window.location.search,
+        vendorLabsList,
+        window.location.pathname,
+        window.location.hash
+      );
+
+      // If the URL already targets a lab that has not yet resolved, avoid overwriting with the fallback lab
+      if (currentRoute.targetLab && selectedVendorLabId) {
+        const targetClean = currentRoute.targetLab.toLowerCase().replace(/^lab-/, '');
+        const selClean = selectedVendorLabId.toLowerCase().replace(/^lab-/, '');
+        if (targetClean !== selClean) {
+          return;
+        }
+      }
+
       if (currentView === 'website') {
         url.searchParams.delete('view');
         url.searchParams.delete('lab');

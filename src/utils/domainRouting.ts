@@ -90,14 +90,23 @@ export function resolveAppRoute(
   hostname: string,
   search: string,
   vendorLabsList?: Array<{ id: string; domainPreview?: string; phone?: string; slug?: string; name?: string }>,
-  pathname?: string
+  pathname?: string,
+  hash?: string
 ): DomainRouteResolution {
   const cleanHost = (hostname || '').toLowerCase().trim().replace(/^https?:\/\//, '').split(':')[0];
   const params = new URLSearchParams(search);
   const viewParam = params.get('view') as AppView | null;
-  const labParam = params.get('lab') || params.get('subdomain') || params.get('vendor') || params.get('id');
+  const labParam =
+    params.get('lab') ||
+    params.get('subdomain') ||
+    params.get('vendor') ||
+    params.get('id') ||
+    params.get('labId') ||
+    params.get('slug') ||
+    params.get('tenant');
   const shopParam = params.get('shop');
   const effectivePath = pathname !== undefined ? pathname : (typeof window !== 'undefined' ? window.location.pathname : '');
+  const effectiveHash = hash !== undefined ? hash : (typeof window !== 'undefined' ? window.location.hash : '');
 
   // 0. Primary Vendor Shop / Lab URL Pattern: /shop/:id, /lab/:id, /labs/:id, /vendor/:id, /v/:id
   const pathPrefixMatch = effectivePath.match(/^\/(?:shop|lab|labs|vendor|v)\/([^/?#]+)/i);
@@ -107,35 +116,65 @@ export function resolveAppRoute(
 
     return {
       view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
-      targetLab: resolvedVendorId,
+      targetLab: resolvedVendorId || rawTarget,
     };
   }
 
-  // 0b. Direct query parameters: ?shop=VENDOR_ID or ?lab=VENDOR_ID or ?vendor=VENDOR_ID or ?id=VENDOR_ID
+  // 0b. Hash-based routing common in mobile browsers / WhatsApp / shared links: #/shop/:id, #/lab/:id
+  if (effectiveHash) {
+    const cleanHash = effectiveHash.replace(/^#\/?/, '/');
+    const hashPathMatch = cleanHash.match(/^\/?(?:shop|lab|labs|vendor|v)\/([^/?#]+)/i);
+    if (hashPathMatch && hashPathMatch[1]) {
+      const rawTarget = decodeURIComponent(hashPathMatch[1]).trim();
+      const resolvedVendorId = findMatchingLabId(rawTarget, vendorLabsList);
+      return {
+        view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
+        targetLab: resolvedVendorId || rawTarget,
+      };
+    }
+
+    const hashQIdx = effectiveHash.indexOf('?');
+    if (hashQIdx !== -1) {
+      const hashParams = new URLSearchParams(effectiveHash.slice(hashQIdx));
+      const hashTarget =
+        hashParams.get('lab') ||
+        hashParams.get('shop') ||
+        hashParams.get('vendor') ||
+        hashParams.get('id') ||
+        hashParams.get('labId') ||
+        hashParams.get('slug');
+      if (hashTarget) {
+        const rawTarget = decodeURIComponent(hashTarget).trim();
+        const resolvedVendorId = findMatchingLabId(rawTarget, vendorLabsList);
+        return {
+          view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
+          targetLab: resolvedVendorId || rawTarget,
+        };
+      }
+    }
+  }
+
+  // 0c. Direct query parameters: ?shop=VENDOR_ID or ?lab=VENDOR_ID or ?vendor=VENDOR_ID or ?id=VENDOR_ID
   if (shopParam || labParam) {
     const rawTarget = decodeURIComponent((shopParam || labParam)!).trim();
     const resolvedVendorId = findMatchingLabId(rawTarget, vendorLabsList);
 
     return {
       view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
-      targetLab: resolvedVendorId,
+      targetLab: resolvedVendorId || rawTarget,
     };
   }
 
-  // 0c. Direct single slug path: e.g. /apex or /citycare or /lab-1 (if not reserved)
+  // 0d. Direct single slug path: e.g. /apex or /citycare or /lab-1 or /mylabalok (if not reserved)
   const singleSlugMatch = effectivePath.match(/^\/([a-zA-Z0-9_\-]+)\/?$/);
   if (singleSlugMatch && singleSlugMatch[1]) {
     const rawSlug = singleSlugMatch[1].toLowerCase().trim();
     if (!RESERVED_PATH_SEGMENTS.includes(rawSlug)) {
-      // Check if it matches any known lab in vendorLabsList, or starts with lab-
       const matchedId = findMatchingLabId(rawSlug, vendorLabsList);
-      const isKnown = vendorLabsList && vendorLabsList.some((l) => l.id === matchedId || l.slug === rawSlug);
-      if (isKnown || rawSlug.startsWith('lab-')) {
-        return {
-          view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
-          targetLab: matchedId,
-        };
-      }
+      return {
+        view: (viewParam && VALID_VIEWS.includes(viewParam)) ? viewParam : 'vendor_website',
+        targetLab: matchedId || rawSlug,
+      };
     }
   }
 

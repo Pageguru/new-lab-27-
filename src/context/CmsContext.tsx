@@ -34,6 +34,7 @@ export { VENDOR_LABS_DIRECTORY };
 import { getPermissionsForRole, LAB_OPTIONS } from '../utils/rbac';
 import { isTenantMatch, verifyTenantOwnership, stampTenant } from '../utils/tenantSecurity';
 import { applySeoSettingsToDOM } from '../utils/seoManager';
+import { resolveAppRoute } from '../utils/domainRouting';
 import {
   syncReceptionEntryToCloud,
   deleteReceptionEntryFromCloud,
@@ -1967,6 +1968,7 @@ interface CmsContextType {
   updateVendorLabCredentials: (labId: string, password: string, pin?: string) => void;
   deleteVendorLab: (id: string) => void;
   setVendorStatus: (id: string, status: VendorStatus) => void;
+  injectCloudLab: (lab: VendorLabDirectoryItem, settings?: VendorLabSettings) => void;
 
   // Vendor Website Sections
   updateVendorSection: (sectionKey: keyof VendorWebsiteSections, enabled: boolean) => void;
@@ -2279,34 +2281,23 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedVendorLabId, setSelectedVendorLabId] = useState<string>(() => {
     try {
       if (typeof window !== 'undefined') {
-        const path = window.location.pathname;
-        const shopMatch = path.match(/^\/shop\/([^/?#]+)/i);
-        if (shopMatch && shopMatch[1]) {
-          const raw = decodeURIComponent(shopMatch[1]).trim().toLowerCase();
+        const routeRes = resolveAppRoute(
+          window.location.hostname,
+          window.location.search,
+          undefined,
+          window.location.pathname,
+          window.location.hash
+        );
+        if (routeRes.targetLab) {
+          const raw = routeRes.targetLab.trim();
           const cleanSub = raw.split('.')[0].replace(/^lab-/, '');
           const dirMatch = VENDOR_LABS_DIRECTORY.find(
             (l) =>
-              l.id.toLowerCase() === raw ||
-              l.id.toLowerCase() === `lab-${raw}` ||
-              l.id.toLowerCase().replace(/^lab-/, '') === cleanSub ||
-              (l.domainPreview && l.domainPreview.toLowerCase().includes(cleanSub)) ||
-              (l.slug && l.slug.toLowerCase() === cleanSub)
-          );
-          if (dirMatch) return dirMatch.id;
-          return raw.startsWith('lab-') ? raw : `lab-${raw}`;
-        }
-        const searchParams = new URLSearchParams(window.location.search);
-        const labParam = searchParams.get('lab') || searchParams.get('subdomain') || searchParams.get('shop');
-        if (labParam) {
-          const raw = labParam.trim().toLowerCase();
-          const cleanSub = raw.split('.')[0].replace(/^lab-/, '');
-          const dirMatch = VENDOR_LABS_DIRECTORY.find(
-            (l) =>
-              l.id.toLowerCase() === raw ||
-              l.id.toLowerCase() === `lab-${raw}` ||
-              l.id.toLowerCase().replace(/^lab-/, '') === cleanSub ||
-              (l.domainPreview && l.domainPreview.toLowerCase().includes(cleanSub)) ||
-              (l.slug && l.slug.toLowerCase() === cleanSub)
+              l.id.toLowerCase() === raw.toLowerCase() ||
+              l.id.toLowerCase() === `lab-${raw.toLowerCase()}` ||
+              l.id.toLowerCase().replace(/^lab-/, '') === cleanSub.toLowerCase() ||
+              (l.domainPreview && l.domainPreview.toLowerCase().includes(cleanSub.toLowerCase())) ||
+              (l.slug && l.slug.toLowerCase() === cleanSub.toLowerCase())
           );
           if (dirMatch) return dirMatch.id;
           return raw.startsWith('lab-') ? raw : `lab-${raw}`;
@@ -2383,8 +2374,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     // 3. If a specific vendor lab is currently selected (in vendor dashboard, lab app, website, portal) -> that lab
     if (selectedVendorLabId && selectedVendorLabId !== 'all') {
-      const exists = vendorLabsList.some((l) => l.id === selectedVendorLabId);
-      if (exists) return selectedVendorLabId;
+      return selectedVendorLabId;
     }
     // 4. Global admin view
     if (currentUser?.role === 'admin') {
@@ -2430,15 +2420,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return currentUser.labId;
     }
     if (selectedVendorLabId && selectedVendorLabId !== 'all') {
-      const exists =
-        vendorLabsList.some((l) => l.id === selectedVendorLabId) ||
-        VENDOR_LABS_DIRECTORY.some((l) => l.id === selectedVendorLabId) ||
-        Boolean(vendorLabSettingsMap[selectedVendorLabId]);
-      if (exists) return selectedVendorLabId;
+      return selectedVendorLabId;
     }
     const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
     return defaultActiveLab || selectedVendorLabId || 'lab-1';
-  }, [currentUser, selectedVendorLabId, vendorLabsList, vendorLabSettingsMap]);
+  }, [currentUser, selectedVendorLabId, vendorLabsList]);
 
   const vendorLabSettings = useMemo<VendorLabSettings>(() => {
     if (vendorLabSettingsMap[effectiveSettingsLabId]) {
@@ -2450,11 +2436,20 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (dirMatch) {
       return buildDefaultSettingsForLab(dirMatch);
     }
-    const fallbackDirLab = vendorLabsList.find((l) => l.status === 'Active') || vendorLabsList[0];
-    if (fallbackDirLab) {
-      return vendorLabSettingsMap[fallbackDirLab.id] || buildDefaultSettingsForLab(fallbackDirLab);
-    }
-    return DEFAULT_VENDOR_LAB_SETTINGS;
+    // If it's a lab requested directly from the URL or mobile link:
+    const cleanLabSlug = effectiveSettingsLabId.replace(/^lab-/, '');
+    const formattedLabName = cleanLabSlug
+      .split(/[-_]/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ') + ' Laboratory';
+    return {
+      ...DEFAULT_VENDOR_LAB_SETTINGS,
+      labId: effectiveSettingsLabId,
+      labShopId: `LSP-${cleanLabSlug.toUpperCase()}`,
+      labName: formattedLabName,
+      name: formattedLabName,
+      domainPreview: `${cleanLabSlug}.indianlalaji.com`,
+    };
   }, [vendorLabSettingsMap, effectiveSettingsLabId, vendorLabsList]);
 
   const getLabSettings = useCallback((labId?: string): VendorLabSettings => {
@@ -6051,8 +6046,60 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return prev;
       });
+    } else {
+      // If lab is not yet in directory list, ensure placeholder exists so it doesn't fall back to Apex
+      setVendorLabSettingsMap((prev) => {
+        if (!prev[targetId]) {
+          const cleanSlug = targetId.replace(/^lab-/, '');
+          const formattedName = cleanSlug
+            .split(/[-_]/)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ') + ' Laboratory';
+          return {
+            ...prev,
+            [targetId]: {
+              ...DEFAULT_VENDOR_LAB_SETTINGS,
+              labId: targetId,
+              labShopId: `LSP-${cleanSlug.toUpperCase()}`,
+              labName: formattedName,
+              name: formattedName,
+              domainPreview: `${cleanSlug}.indianlalaji.com`,
+            },
+          };
+        }
+        return prev;
+      });
     }
   };
+
+  const injectCloudLab = useCallback((lab: VendorLabDirectoryItem, settings?: VendorLabSettings) => {
+    if (!lab || !lab.id) return;
+    setVendorLabsList((prev) => {
+      const idx = prev.findIndex((l) => l.id === lab.id);
+      if (idx !== -1) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...lab };
+        return next;
+      }
+      return [lab, ...prev];
+    });
+    if (settings) {
+      setVendorLabSettingsMap((prev) => ({
+        ...prev,
+        [lab.id]: settings,
+      }));
+    } else {
+      setVendorLabSettingsMap((prev) => {
+        if (!prev[lab.id]) {
+          return {
+            ...prev,
+            [lab.id]: buildDefaultSettingsForLab(lab),
+          };
+        }
+        return prev;
+      });
+    }
+  }, []);
 
   const registerNewLab = (payload: {
     labName: string;
@@ -6878,6 +6925,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateVendorLabCredentials,
         deleteVendorLab,
         setVendorStatus,
+        injectCloudLab,
 
         reports,
         labReports: reports,

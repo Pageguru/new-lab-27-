@@ -223,7 +223,60 @@ Sitemap: https://indianlalaji.com/sitemap.xml`;
     const doctors: any[] = store.lab_doctors || store.doctors || [];
     const branches: any[] = store.vendor_branches || store.branches || [];
 
-    const matchedLab = vendorLabs.find((l: any) => {
+    const DEFAULT_VENDOR_LABS = [
+      {
+        id: 'lab-apex',
+        name: 'Apex Diagnostic & Clinical Pathology Laboratory',
+        tagline: 'Advanced Pathology, Biochemistry & Digital Testing Centre',
+        city: 'Ludhiana',
+        state: 'Punjab',
+        address: 'SCF 42-43, Sector 18-C, Central Healthcare Complex, Ludhiana',
+        phone: '+91 7087033009',
+        nablCode: 'MC-4821',
+        badge: 'Central Reference Lab',
+        status: 'Active',
+        isWebsiteApproved: true,
+        domainPreview: 'apexdiagnostics.indianlalaji.com',
+        slug: 'apex',
+      },
+      {
+        id: 'lab-citycare',
+        name: 'CityCare Advanced Diagnostics & Scan Centre',
+        tagline: 'Automated Immunoassay, Biochemistry & Preventive Profiles',
+        city: 'Mohali',
+        state: 'Punjab',
+        address: 'SCO 14, Phase 7, Near Fortis Chowk, Mohali',
+        phone: '+91 9815012345',
+        nablCode: 'MC-3912 (QCI Certified)',
+        badge: 'Enterprise Diagnostic Network',
+        status: 'Active',
+        isWebsiteApproved: true,
+        domainPreview: 'citycare.indianlalaji.com',
+        slug: 'citycare',
+      },
+      {
+        id: 'lab-metropath',
+        name: 'MetroPath Scans & Molecular Pathology Hub',
+        tagline: 'Hormone Assays, Vitamin Profiling & Cancer Tumor Markers',
+        city: 'Chandigarh',
+        state: 'Chandigarh (UT)',
+        address: 'SCO 128-129, Sector 34-A, Healthcare District, Chandigarh',
+        phone: '+91 9417098765',
+        nablCode: 'MC-5104 (NABL Accredited)',
+        badge: 'Super Specialty Lab',
+        status: 'Active',
+        isWebsiteApproved: true,
+        domainPreview: 'metropath.indianlalaji.com',
+        slug: 'metropath',
+      },
+    ];
+
+    const allKnownLabs = [
+      ...vendorLabs,
+      ...DEFAULT_VENDOR_LABS.filter((d) => !vendorLabs.some((v: any) => v.id === d.id)),
+    ];
+
+    const matchedLab = allKnownLabs.find((l: any) => {
       const id = (l.id || '').toLowerCase();
       const slug = (l.slug || '').toLowerCase();
       const dp = (l.domainPreview || '').toLowerCase();

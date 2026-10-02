@@ -137,6 +137,28 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         );
       });
       if (match) return match;
+
+      // If not yet in vendorLabsList, synthesize lab item from effectiveLabId and vendorLabSettings
+      const cleanSlug = effectiveLabId.replace(/^lab-/, '');
+      const formattedName = cleanSlug
+        .split(/[-_]/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ') + ' Laboratory';
+      return {
+        id: effectiveLabId,
+        name: vendorLabSettings?.labName || vendorLabSettings?.name || formattedName,
+        tagline: vendorLabSettings?.tagline || 'Advanced Diagnostic & Pathology Services',
+        city: vendorLabSettings?.city || 'India',
+        state: vendorLabSettings?.state || 'India',
+        address: vendorLabSettings?.address || 'Healthcare Complex, India',
+        phone: vendorLabSettings?.phone || '+91 9876543210',
+        nablCode: (vendorLabSettings as any)?.nablCode || vendorLabSettings?.nablAccreditationNo || vendorLabSettings?.nablNumber || 'NABL Accredited',
+        badge: 'Verified Diagnostic Lab',
+        status: 'Active',
+        isWebsiteApproved: true,
+        domainPreview: vendorLabSettings?.domainPreview || `${cleanSlug}.indianlalaji.com`,
+        slug: cleanSlug,
+      } as any;
     }
     return (
       vendorLabsList.find((l) => l.id === (vendorLabSettings?.labId || selectedVendorLabId)) ||
