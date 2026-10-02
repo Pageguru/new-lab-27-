@@ -90,19 +90,25 @@ export default function App() {
     setIsFetchingUrlLab(true);
     setUrlLabError(null);
 
+    const targetLower = cleanId.toLowerCase();
+    const cleanDigits = cleanId.replace(/\D/g, '');
+    const clean10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : '';
+
     // Step 1: Check existing local lab list
     const existing = currentLabs.find((l) => {
       const id = (l.id || '').toLowerCase();
       const slug = (l.slug || '').toLowerCase();
-      const targetLower = cleanId.toLowerCase();
+      const labPhoneDigits = (l.phone || '').replace(/\D/g, '');
+      const labPhone10 = labPhoneDigits.length >= 10 ? labPhoneDigits.slice(-10) : '';
+
       return (
         id === targetLower ||
         id === `lab-${targetLower}` ||
         id.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '') ||
         slug === targetLower ||
+        (clean10 && labPhone10 === clean10) ||
         (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) ||
         (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === targetLower) ||
-        (l.phone && l.phone.replace(/\D/g, '') === targetLower.replace(/\D/g, '')) ||
         (l.name && l.name.toLowerCase().replace(/[^a-z0-9]/g, '') === targetLower.replace(/[^a-z0-9]/g, ''))
       );
     });
@@ -142,12 +148,15 @@ export default function App() {
     const matchAfterSync = vendorLabsList.find((l) => {
       const id = (l.id || '').toLowerCase();
       const slug = (l.slug || '').toLowerCase();
-      const targetLower = cleanId.toLowerCase();
+      const labPhoneDigits = (l.phone || '').replace(/\D/g, '');
+      const labPhone10 = labPhoneDigits.length >= 10 ? labPhoneDigits.slice(-10) : '';
+
       return (
         id === targetLower ||
         id === `lab-${targetLower}` ||
         id.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '') ||
         slug === targetLower ||
+        (clean10 && labPhone10 === clean10) ||
         (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) ||
         (l.name && l.name.toLowerCase().replace(/[^a-z0-9]/g, '') === targetLower.replace(/[^a-z0-9]/g, ''))
       );
@@ -190,7 +199,37 @@ export default function App() {
       );
 
       if (resolution.targetLab) {
-        fetchAndApplyLabFromUrl(resolution.targetLab, vendorLabsList);
+        const cleanId = resolution.targetLab.trim();
+        const targetLower = cleanId.toLowerCase();
+        const cleanDigits = cleanId.replace(/\D/g, '');
+        const clean10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : '';
+
+        // Immediate direct synchronous resolution from current vendor directory
+        const directMatch = vendorLabsList.find((l) => {
+          const id = (l.id || '').toLowerCase();
+          const slug = (l.slug || '').toLowerCase();
+          const labPhoneDigits = (l.phone || '').replace(/\D/g, '');
+          const labPhone10 = labPhoneDigits.length >= 10 ? labPhoneDigits.slice(-10) : '';
+
+          return (
+            id === targetLower ||
+            id === `lab-${targetLower}` ||
+            id.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '') ||
+            slug === targetLower ||
+            (clean10 && labPhone10 === clean10) ||
+            (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) ||
+            (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === targetLower)
+          );
+        });
+
+        if (directMatch) {
+          selectVendorLab(directMatch.id);
+          setSelectedVendorLabId(directMatch.id);
+          setCurrentView(resolution.view === 'patient_portal' ? 'patient_portal' : 'vendor_website');
+          setUrlLabError(null);
+        } else {
+          fetchAndApplyLabFromUrl(resolution.targetLab, vendorLabsList);
+        }
       } else if (!selectedVendorLabId || selectedVendorLabId === 'all') {
         const defaultLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
         if (defaultLab) {
@@ -205,7 +244,7 @@ export default function App() {
         try {
           localStorage.removeItem('cms_current_view');
         } catch {}
-      } else if (resolution.view) {
+      } else if (resolution.view && !resolution.targetLab) {
         setCurrentView(resolution.view);
       }
     } catch {}
@@ -253,7 +292,12 @@ export default function App() {
       if (currentRoute.targetLab && selectedVendorLabId) {
         const targetClean = currentRoute.targetLab.toLowerCase().replace(/^lab-/, '');
         const selClean = selectedVendorLabId.toLowerCase().replace(/^lab-/, '');
-        if (targetClean !== selClean) {
+        const targetDigits = currentRoute.targetLab.replace(/\D/g, '');
+        const selDigits = selectedVendorLabId.replace(/\D/g, '');
+        const match =
+          targetClean === selClean ||
+          (targetDigits.length >= 10 && selDigits.length >= 10 && targetDigits.slice(-10) === selDigits.slice(-10));
+        if (!match) {
           return;
         }
       }
@@ -287,7 +331,7 @@ export default function App() {
         } else {
           const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
           const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab';
-          const vendorId = currentLab?.id || selectedVendorLabId || defaultActiveLab;
+          const vendorId = currentLab?.slug || currentLab?.id || selectedVendorLabId || defaultActiveLab;
           url.searchParams.delete('view');
           url.searchParams.delete('lab');
           url.searchParams.delete('shop');

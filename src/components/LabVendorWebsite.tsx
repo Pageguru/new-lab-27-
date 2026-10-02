@@ -123,13 +123,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
   const currentLabItem = React.useMemo(() => {
     if (effectiveLabId) {
+      const effDigits = effectiveLabId.replace(/\D/g, '');
+      const eff10 = effDigits.length >= 10 ? effDigits.slice(-10) : '';
+
       const match = vendorLabsList.find((l) => {
         const idLower = (l.id || '').toLowerCase();
         const effLower = effectiveLabId.toLowerCase();
+        const labPhoneDigits = (l.phone || '').replace(/\D/g, '');
+        const labPhone10 = labPhoneDigits.length >= 10 ? labPhoneDigits.slice(-10) : '';
+
         return (
           idLower === effLower ||
           idLower === `lab-${effLower}` ||
           idLower.replace(/^lab-/, '') === effLower.replace(/^lab-/, '') ||
+          (eff10 && labPhone10 === eff10) ||
           (l.domainPreview && l.domainPreview.toLowerCase().includes(effLower)) ||
           (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === effLower) ||
           (l.slug && l.slug.toLowerCase() === effLower) ||
@@ -266,16 +273,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     }
   };
 
-  const labShopId = vendorLabSettings?.labShopId || (defaultDirectoryLab ? `LSP-${defaultDirectoryLab.id.replace('lab-', '').toUpperCase()}` : 'LSP-101');
+  const labShopId = vendorLabSettings?.labShopId || (currentLabItem ? `LSP-${currentLabItem.id.replace('lab-', '').toUpperCase()}` : (defaultDirectoryLab ? `LSP-${defaultDirectoryLab.id.replace('lab-', '').toUpperCase()}` : 'LSP-101'));
   const labName = currentLabItem?.name || vendorLabSettings?.labName || vendorLabSettings?.name || defaultDirectoryLab?.name || 'Diagnostic Laboratory';
-  const labNabl = vendorLabSettings?.nablAccreditationNo || vendorLabSettings?.nablNumber || defaultDirectoryLab?.nablCode || 'Verified';
-  const labPhone = vendorLabSettings?.phone || vendorLabSettings?.helplinePhone || defaultDirectoryLab?.phone || '7087033009';
-  const labWhatsapp = vendorLabSettings?.whatsapp || labPhone || '7087033009';
-  const labEmail = vendorLabSettings?.email || defaultDirectoryLab?.email || 'care@indianlalaji.com';
-  const labTagline = vendorLabSettings?.tagline || defaultDirectoryLab?.tagline || 'Advanced Pathology, Biochemistry & Diagnostic Testing Centre';
+  const labNabl = vendorLabSettings?.nablAccreditationNo || vendorLabSettings?.nablNumber || currentLabItem?.nablCode || defaultDirectoryLab?.nablCode || 'Verified';
+  const labPhone = currentLabItem?.phone || vendorLabSettings?.phone || vendorLabSettings?.helplinePhone || defaultDirectoryLab?.phone || '6070809010';
+  const labWhatsapp = vendorLabSettings?.whatsapp || currentLabItem?.phone || labPhone || '6070809010';
+  const labEmail = currentLabItem?.email || vendorLabSettings?.email || defaultDirectoryLab?.email || 'care@indianlalaji.com';
+  const labTagline = currentLabItem?.tagline || vendorLabSettings?.tagline || defaultDirectoryLab?.tagline || 'Advanced Pathology, Biochemistry & Diagnostic Testing Centre';
   const labHours = vendorLabSettings?.openingHours || 'Open 7:00 AM – 9:00 PM (All 7 Days)';
   const labEmergency = vendorLabSettings?.emergencyHours || '24x7 Emergency Services at Central Lab';
-  const labAddress = vendorLabSettings?.address || defaultDirectoryLab?.address || 'Healthcare Complex, India';
+  const labAddress = currentLabItem?.address || vendorLabSettings?.address || defaultDirectoryLab?.address || 'Healthcare Complex, India';
   const labDescription = vendorLabSettings?.description || labTagline || `${labName} - Authorized NABL Accredited Diagnostic Center.`;
   const labWebsiteUrl = vendorLabSettings?.websiteUrl && !vendorLabSettings.websiteUrl.includes('labname.com') ? vendorLabSettings.websiteUrl : canonicalUrl;
   const labLogoUrl = vendorLabSettings?.logoUrl || '';
@@ -290,14 +297,14 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const stickyTelUrl = `tel:+91${cleanPhone}`;
 
   // Multi-number support for WhatsApp & Calling
-  const whatsappNumberList = React.useMemo(() => {
-    const raw = vendorLabSettings?.whatsapp || labWhatsapp || '7087033009';
+  const whatsappNumberList = React.useMemo<string[]>(() => {
+    const raw = vendorLabSettings?.whatsapp || labWhatsapp || '6070809010';
     const splitNums = raw.split(/[,/|&]+/).map((s: string) => s.trim()).filter(Boolean);
-    const unique = Array.from(new Set(splitNums));
-    return unique.length > 0 ? unique : ['7087033009'];
+    const unique = Array.from<string>(new Set(splitNums));
+    return unique.length > 0 ? unique : ['6070809010'];
   }, [vendorLabSettings?.whatsapp, labWhatsapp]);
 
-  const callNumberList = React.useMemo(() => {
+  const callNumberList = React.useMemo<string[]>(() => {
     const rawList: string[] = [];
     if (vendorLabSettings?.phone) {
       rawList.push(...vendorLabSettings.phone.split(/[,/|&]+/));
@@ -308,8 +315,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     if (rawList.length === 0 && labPhone) {
       rawList.push(...labPhone.split(/[,/|&]+/));
     }
-    const cleanList = Array.from(new Set(rawList.map((s: string) => s.trim()).filter(Boolean)));
-    return cleanList.length > 0 ? cleanList : ['7087033009'];
+    const cleanList = Array.from<string>(new Set(rawList.map((s: string) => s.trim()).filter(Boolean)));
+    return cleanList.length > 0 ? cleanList : ['6070809010'];
   }, [vendorLabSettings?.phone, vendorLabSettings?.helplinePhone, labPhone]);
 
   // Dynamic Social Media Links (Only show channels where a valid link/handle is entered)
@@ -974,6 +981,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         const rUhid = (r.uhid || '').trim().toLowerCase();
         const rToken = (r.tokenNumber || '').trim().toLowerCase();
         const rTokenDigits = rToken.replace(/\D/g, '');
+        const rIdDigits = rId.replace(/\D/g, '');
+        const rUhidDigits = rUhid.replace(/\D/g, '');
 
         return (
           rId === cleanVal ||
@@ -981,7 +990,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           rToken === cleanVal ||
           rToken === `tk-${cleanVal}` ||
           `tk-${rToken}` === cleanVal ||
-          (cleanDigits.length > 0 && rTokenDigits === cleanDigits)
+          rId === `rpt-${cleanVal}` ||
+          `rpt-${rId}` === cleanVal ||
+          rUhid === `uhid-${cleanVal}` ||
+          (cleanDigits.length > 0 && (rTokenDigits === cleanDigits || rIdDigits === cleanDigits || rUhidDigits === cleanDigits))
         );
       });
 
@@ -997,14 +1009,18 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         const entryTokenDigits = entryToken.replace(/\D/g, '');
         const uhidLower = (e.uhid || '').trim().toLowerCase();
         const reportIdLower = (e.reportId || '').trim().toLowerCase();
+        const rIdDigits = reportIdLower.replace(/\D/g, '');
+        const rUhidDigits = uhidLower.replace(/\D/g, '');
 
         return (
           entryToken === cleanVal ||
           entryToken === `tk-${cleanVal}` ||
           `tk-${entryToken}` === cleanVal ||
-          (cleanDigits.length > 0 && entryTokenDigits === cleanDigits) ||
+          (cleanDigits.length > 0 && (entryTokenDigits === cleanDigits || rIdDigits === cleanDigits || rUhidDigits === cleanDigits)) ||
           reportIdLower === cleanVal ||
-          uhidLower === cleanVal
+          reportIdLower === `rpt-${cleanVal}` ||
+          uhidLower === cleanVal ||
+          uhidLower === `uhid-${cleanVal}`
         );
       });
 
@@ -1881,24 +1897,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               </p>
             </div>
           ) : (
-            /* Result Case 3: Searched, but no published report found yet */
+            /* Result Case 3: Searched, but no report found in this lab */
             <div className="space-y-2 animate-in fade-in duration-200">
-              <button
-                type="button"
-                disabled
-                className="w-full py-3 px-4 rounded-xl bg-amber-50 border border-amber-300/80 text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-2xs cursor-not-allowed"
-                id="btn-report-under-process"
-              >
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                </span>
-                <Clock className="w-4 h-4 text-amber-700" />
-                <span>Report is Under Process</span>
-              </button>
-              <p className="text-xs text-amber-800 text-center font-medium leading-normal">
-                Report not yet published for this entry. Testing may be in progress.
-              </p>
+              <div className="p-3.5 rounded-xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs text-center space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-center gap-1.5 font-bold text-rose-900 text-xs sm:text-sm">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>No Report Found in {labName}</span>
+                </div>
+                <p className="text-[11px] text-rose-700 leading-relaxed max-w-sm mx-auto">
+                  No patient record matches this number in <strong>{labName}</strong>. Each diagnostic laboratory maintains strictly isolated patient records. Please check your registered number or contact <strong>{labPhone}</strong>.
+                </p>
+              </div>
             </div>
           )}
         </div>

@@ -56,6 +56,9 @@ function findMatchingLabId(
     return cleanTarget;
   }
 
+  const targetDigits = cleanTarget.replace(/\D/g, '');
+  const target10 = targetDigits.length >= 10 ? targetDigits.slice(-10) : '';
+
   const match = vendorLabsList.find((l) => {
     const idLower = (l.id || '').toLowerCase();
     const targetLower = cleanTarget.toLowerCase();
@@ -63,7 +66,14 @@ function findMatchingLabId(
     if (idLower === `lab-${targetLower}` || idLower.replace(/^lab-/, '') === targetLower.replace(/^lab-/, '')) return true;
     if (l.domainPreview && l.domainPreview.toLowerCase().includes(targetLower)) return true;
     if (l.domainPreview && l.domainPreview.toLowerCase().split('.')[0] === targetLower) return true;
-    if (l.phone && l.phone.replace(/\D/g, '') === targetLower.replace(/\D/g, '')) return true;
+
+    // Check exact 10-digit phone match (handles +91, spaces, hyphens)
+    if (target10) {
+      const phoneDigits = (l.phone || '').replace(/\D/g, '');
+      const phone10 = phoneDigits.length >= 10 ? phoneDigits.slice(-10) : '';
+      if (phone10 === target10) return true;
+    }
+
     if (l.slug && l.slug.toLowerCase() === targetLower) return true;
     if (l.name && l.name.toLowerCase().replace(/[^a-z0-9]/g, '') === targetLower.replace(/[^a-z0-9]/g, '')) return true;
     return false;

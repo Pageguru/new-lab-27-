@@ -2552,9 +2552,8 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const existingIds = new Set(parsed.map((r: any) => r.reportId));
-          const existingLabIds = new Set(parsed.map((r: any) => r.labId));
-          const missingReports = INITIAL_REPORTS.filter((r) => !existingIds.has(r.reportId) && !existingLabIds.has(r.labId));
-          return [...parsed.map((r: any) => ({ ...r, labId: r.labId || 'lab-apex' })), ...missingReports];
+          const missingReports = INITIAL_REPORTS.filter((r) => !existingIds.has(r.reportId));
+          return [...parsed.map((r: any) => ({ ...r, labId: r.labId || 'lab-6070809010' })), ...missingReports];
         }
       }
       return INITIAL_REPORTS;
@@ -2569,8 +2568,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const rawList = saved ? JSON.parse(saved) : INITIAL_RECEPTION_ENTRIES;
       let list = Array.isArray(rawList) ? rawList : INITIAL_RECEPTION_ENTRIES;
       const existingIds = new Set(list.map((e: any) => e.id));
-      const existingLabIds = new Set(list.map((e: any) => e.labId));
-      const missingEntries = INITIAL_RECEPTION_ENTRIES.filter((e) => !existingIds.has(e.id) && !existingLabIds.has(e.labId));
+      const missingEntries = INITIAL_RECEPTION_ENTRIES.filter((e) => !existingIds.has(e.id));
       list = [...list, ...missingEntries];
       return list.filter(Boolean).map((e: any, idx: number) => {
         const token = String(e?.tokenNumber || e?.tokenNo || `TK-${101 + idx}`);
@@ -2578,7 +2576,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...e,
           tokenNumber: token,
           tokenNo: token,
-          labId: e.labId || 'lab-apex',
+          labId: e.labId || 'lab-6070809010',
         };
       });
     } catch {
