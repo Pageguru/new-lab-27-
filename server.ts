@@ -42,6 +42,7 @@ function readDevDb(): Record<string, any> {
     staff: [],
     vendorLabs: [],
     companySettings: null,
+    seoSettings: null,
     portalSections: null,
     domainRequests: [],
     contactSubmissions: [],
@@ -108,6 +109,22 @@ async function startServer() {
       timestamp: new Date().toISOString(),
       version: '3.5.0-hostinger'
     });
+  });
+
+  // Robots.txt dynamic serving from Super Admin SEO Settings
+  app.get('/robots.txt', (_req, res) => {
+    const store = readDevDb();
+    const seo = store.seo_settings || store.seoSettings;
+    const defaultRobots = `User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /technician
+Disallow: /reception
+
+Sitemap: https://indianlalaji.com/sitemap.xml`;
+    const robotsContent = seo?.robotsTxt || defaultRobots;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(robotsContent);
   });
 
   // 3. Image & File Upload Endpoint (Saves to Hostinger Server Storage)
@@ -242,6 +259,7 @@ async function startServer() {
       vendor_labs: store.vendor_labs || store.vendorLabs || [],
       company_settings: store.company_settings || store.companySettings || null,
       portal_sections: store.portal_sections || store.portalSections || null,
+      seo_settings: store.seo_settings || store.seoSettings || null,
       domain_requests: store.domain_requests || store.domainRequests || [],
       contact_submissions: store.contact_submissions || store.contactSubmissions || [],
       pricing_plans: store.pricing_plans || store.pricingPlans || [],
@@ -259,6 +277,7 @@ async function startServer() {
       vendorLabs: store.vendor_labs || store.vendorLabs || [],
       companySettings: store.company_settings || store.companySettings || null,
       portalSections: store.portal_sections || store.portalSections || null,
+      seoSettings: store.seo_settings || store.seoSettings || null,
     };
 
     function normalizeTenantIdServer(id: any): string {
@@ -324,6 +343,7 @@ async function startServer() {
     const isLabSettings = collection === 'lab_settings' || collection === 'labSettingsMap';
     const isCompanySettings = collection === 'company_settings' || collection === 'companySettings';
     const isPortalSections = collection === 'portal_sections' || collection === 'portalSections';
+    const isSeoSettings = collection === 'seo_settings' || collection === 'seoSettings';
 
     if (isLabSettings) {
       if (!store.lab_settings) store.lab_settings = {};
@@ -344,6 +364,9 @@ async function startServer() {
     } else if (isPortalSections) {
       store.portal_sections = data;
       store.portalSections = data;
+    } else if (isSeoSettings) {
+      store.seo_settings = data;
+      store.seoSettings = data;
     } else {
       const key = collection;
       if (!Array.isArray(store[key])) {

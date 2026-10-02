@@ -113,6 +113,68 @@ export interface CompanySettings {
   qrCodeUrl?: string;
 }
 
+export interface SeoSettings {
+  faviconUrl: string; // Favicon – Website browser tab icon
+  ogImageUrl: string; // Featured Image / OG Image – Social media sharing image
+  seoTitle: string; // SEO Title – Search engine title
+  metaDescription: string; // Meta Description – Website/page description
+  metaKeywords: string; // Meta Keywords – Optional keywords
+  googleSiteVerification: string; // Google Site Verification – Verification code
+  googleAnalyticsId: string; // Google Analytics ID – Analytics tracking
+  robotsTxt: string; // Robots.txt – Search engine crawling settings
+  canonicalUrl: string; // Canonical URL – Preferred page URL
+  customHeaderCode: string; // Custom Header Code – <head> scripts/code
+  customFooterCode: string; // Custom Footer Code – Footer scripts/code
+  schemaJsonLd: string; // Schema / JSON-LD – Structured SEO data
+  updatedAt?: string;
+}
+
+export const DEFAULT_SEO_SETTINGS: SeoSettings = {
+  faviconUrl: '/icon.svg',
+  ogImageUrl: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1200&q=80',
+  seoTitle: 'INDIANLALAJI.COM - Pathology Laboratory & Diagnostic Operating System',
+  metaDescription: 'Complete diagnostic laboratory management software for Indian pathology labs. Works offline, ₹ INR billing, automated WhatsApp PDF reports, and instant no-login patient report portal.',
+  metaKeywords: 'pathology lab software, laboratory management system, diagnostic lab billing, nabl software india, lab report generator, whatsapp lab report, indian pathology software',
+  googleSiteVerification: '',
+  googleAnalyticsId: '',
+  robotsTxt: `User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /technician
+Disallow: /reception
+
+Sitemap: https://indianlalaji.com/sitemap.xml`,
+  canonicalUrl: 'https://indianlalaji.com',
+  customHeaderCode: `<!-- Super Admin SEO Custom Head Code -->
+<meta name="application-name" content="IndianLalaji Lab OS" />`,
+  customFooterCode: `<!-- Super Admin SEO Custom Footer Code -->`,
+  schemaJsonLd: JSON.stringify(
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "IndianLalaji Pathology Lab OS",
+      "url": "https://indianlalaji.com",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Web, Windows, Android, macOS",
+      "description": "Comprehensive NABL-compliant pathology lab operating system with instant patient report portal, WhatsApp reports, and ₹ INR billing.",
+      "offers": {
+        "@type": "Offer",
+        "price": "4999",
+        "priceCurrency": "INR"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "INDIANLALAJI.COM",
+        "url": "https://indianlalaji.com",
+        "logo": "https://indianlalaji.com/icon.svg"
+      }
+    },
+    null,
+    2
+  ),
+  updatedAt: new Date().toISOString(),
+};
+
 export interface PricingPlan {
   id: string;
   name: string;

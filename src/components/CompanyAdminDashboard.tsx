@@ -48,6 +48,7 @@ import { VendorManagementTab } from './admin/VendorManagementTab';
 import { HostingerDatabaseCard } from './admin/HostingerDatabaseCard';
 import { WebsiteBackupTab } from './admin/WebsiteBackupTab';
 import { VendorPlanRenewTab } from './admin/VendorPlanRenewTab';
+import { SeoSettingsTab } from './admin/SeoSettingsTab';
 
 interface CompanyAdminDashboardProps {
   onNavigateView: (view: AppView) => void;
@@ -90,10 +91,10 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     allPlanRequests,
   } = useCms();
 
-  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests' | 'plans';
+  type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests' | 'plans' | 'seo';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
-  type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features';
+  type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features' | 'seo';
   const [homeSubTab, setHomeSubTab] = useState<HomeSubTab>('pricing');
   const activeTab = homeSubTab;
 
@@ -673,6 +674,31 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               )}
             </button>
 
+            {/* SEO Settings Tab */}
+            <button
+              type="button"
+              id="menu-btn-seo-settings"
+              onClick={() => setActiveMenu('seo')}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shrink-0 relative ${
+                activeMenu === 'seo'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-2xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+              title="Super Admin SEO Settings (Favicon, OG Image, Meta Tags, Robots.txt, Schema.org)"
+            >
+              <Globe className="w-3.5 h-3.5 text-amber-300" />
+              <span>SEO Settings</span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full hidden sm:inline-block leading-none ${
+                  activeMenu === 'seo'
+                    ? 'bg-slate-900 text-amber-300'
+                    : 'bg-emerald-500/30 text-emerald-200'
+                }`}
+              >
+                Google
+              </span>
+            </button>
+
             {/* Separator */}
             <div className="h-4 w-px bg-white/15 mx-0.5 hidden sm:block shrink-0"></div>
 
@@ -962,6 +988,18 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 >
                   <Building className="w-3.5 h-3.5" />
                   <span>Branding & Hero Content</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveMenu('seo')}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer text-emerald-900 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200"
+                  title="Configure Website SEO Settings"
+                >
+                  <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>SEO Settings</span>
+                  <span className="text-[10px] bg-emerald-200 text-emerald-950 font-black px-1.5 py-0.2 rounded-full">
+                    Google
+                  </span>
                 </button>
 
                 <button
@@ -2536,6 +2574,13 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
             onNavigateView('website');
           }}
         />
+      </div>
+    )}
+
+    {/* VIEW 7: SUPER ADMIN SEO SETTINGS TAB */}
+    {activeMenu === 'seo' && (
+      <div className="animate-in fade-in-50 duration-200">
+        <SeoSettingsTab showToast={showToast} />
       </div>
     )}
   </div>

@@ -26,11 +26,14 @@ import {
   ContactSubmission,
   DomainRequest,
   PlanRenewalRequest,
+  SeoSettings,
+  DEFAULT_SEO_SETTINGS,
 } from '../types';
 import { MOCK_TESTS, FAQ_LIST, SAMPLE_REPORT, INITIAL_REPORTS, VENDOR_LABS_DIRECTORY, INITIAL_RECEPTION_ENTRIES, DEFAULT_LAB_MANAGEMENT_FEATURES } from '../data/mockData';
 export { VENDOR_LABS_DIRECTORY };
 import { getPermissionsForRole, LAB_OPTIONS } from '../utils/rbac';
 import { isTenantMatch, verifyTenantOwnership, stampTenant } from '../utils/tenantSecurity';
+import { applySeoSettingsToDOM } from '../utils/seoManager';
 import {
   syncReceptionEntryToCloud,
   deleteReceptionEntryFromCloud,
@@ -1857,6 +1860,9 @@ interface CmsContextType {
   // Company CMS
   companySettings: CompanySettings;
   updateCompanySettings: (newSettings: Partial<CompanySettings>) => void;
+  seoSettings: SeoSettings;
+  updateSeoSettings: (newSettings: Partial<SeoSettings>) => void;
+  resetSeoSettings: () => void;
   portalSections: PortalWebsiteSections;
   updatePortalSection: (sectionKey: keyof PortalWebsiteSections, enabled: boolean) => void;
   toggleAllPortalSections: (enabled: boolean) => void;
@@ -2100,6 +2106,25 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return DEFAULT_COMPANY_SETTINGS;
     }
   });
+
+  const [seoSettings, setSeoSettings] = useState<SeoSettings>(() => {
+    try {
+      const saved = localStorage.getItem('cms_seo_settings');
+      if (saved) {
+        return { ...DEFAULT_SEO_SETTINGS, ...JSON.parse(saved) };
+      }
+      return DEFAULT_SEO_SETTINGS;
+    } catch {
+      return DEFAULT_SEO_SETTINGS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cms_seo_settings', JSON.stringify(seoSettings));
+    } catch {}
+    applySeoSettingsToDOM(seoSettings);
+  }, [seoSettings]);
 
   const [portalSections, setPortalSections] = useState<PortalWebsiteSections>(() => {
     try {
@@ -2548,7 +2573,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const missingEntries = INITIAL_RECEPTION_ENTRIES.filter((e) => !existingIds.has(e.id) && !existingLabIds.has(e.labId));
       list = [...list, ...missingEntries];
       return list.filter(Boolean).map((e: any, idx: number) => {
-        const token = String(e?.tokenNumber || e?.tokenNo || (e?.id ? `TK-${e.id}` : ''));
+        const token = String(e?.tokenNumber || e?.tokenNo || `TK-${101 + idx}`);
         return {
           ...e,
           tokenNumber: token,
@@ -4790,6 +4815,39 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const updateSeoSettings = (newSettings: Partial<SeoSettings>) => {
+    setSeoSettings((prev) => {
+      const updated = {
+        ...prev,
+        ...newSettings,
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem('cms_seo_settings', JSON.stringify(updated));
+      } catch {}
+      applySeoSettingsToDOM(updated);
+      fetch('/api/cms?action=sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collection: 'seo_settings', data: updated }),
+      }).catch(() => {});
+      return updated;
+    });
+  };
+
+  const resetSeoSettings = () => {
+    setSeoSettings(DEFAULT_SEO_SETTINGS);
+    try {
+      localStorage.setItem('cms_seo_settings', JSON.stringify(DEFAULT_SEO_SETTINGS));
+    } catch {}
+    applySeoSettingsToDOM(DEFAULT_SEO_SETTINGS);
+    fetch('/api/cms?action=sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collection: 'seo_settings', data: DEFAULT_SEO_SETTINGS }),
+    }).catch(() => {});
+  };
+
   const addPricingPlan = (plan: Omit<PricingPlan, 'id'>) => {
     const newPlan: PricingPlan = {
       ...plan,
@@ -6720,6 +6778,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         companySettings,
         updateCompanySettings,
+        seoSettings,
+        updateSeoSettings,
+        resetSeoSettings,
         portalSections,
         updatePortalSection,
         toggleAllPortalSections,
