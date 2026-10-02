@@ -115,18 +115,20 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
 
   // Target reports & reception entries scoped to active vendor lab (or all if universal search)
   const scopedReports = React.useMemo(() => {
-    if (activeVendorLab) {
-      return (allReports || []).filter((r) => isTenantMatch(r, activeVendorLab.id));
+    const targetLab = activeVendorLab?.id || (currentLabIdentifier && currentLabIdentifier !== 'all' ? currentLabIdentifier : null);
+    if (targetLab) {
+      return (allReports || []).filter((r) => isTenantMatch(r, targetLab));
     }
-    return allReports || reports;
-  }, [activeVendorLab, allReports, reports]);
+    return reports || [];
+  }, [activeVendorLab, currentLabIdentifier, allReports, reports]);
 
   const scopedReceptionEntries = React.useMemo(() => {
-    if (activeVendorLab) {
-      return (allReceptionEntries || []).filter((e) => isTenantMatch(e, activeVendorLab.id));
+    const targetLab = activeVendorLab?.id || (currentLabIdentifier && currentLabIdentifier !== 'all' ? currentLabIdentifier : null);
+    if (targetLab) {
+      return (allReceptionEntries || []).filter((e) => isTenantMatch(e, targetLab));
     }
-    return allReceptionEntries || receptionEntries;
-  }, [activeVendorLab, allReceptionEntries, receptionEntries]);
+    return receptionEntries || [];
+  }, [activeVendorLab, currentLabIdentifier, allReceptionEntries, receptionEntries]);
 
   // Demo test chips for quick 1-click verification
   const demoReport = React.useMemo(() => {

@@ -261,9 +261,33 @@ async function startServer() {
       portalSections: store.portal_sections || store.portalSections || null,
     };
 
+    function normalizeTenantIdServer(id: any): string {
+      if (!id || typeof id !== 'string') return '';
+      const clean = id.trim().toLowerCase();
+      if (clean === 'lab-apex' || clean === 'apexdiagnostics' || clean === 'apex' || clean === 'lsp-7087' || clean === 'lsp_7087') {
+        return 'apexdiagnostics';
+      }
+      return clean;
+    }
+
+    function isTenantMatchServer(itemLabId: any, targetLabId: any): boolean {
+      if (!targetLabId || targetLabId === 'all') return true;
+      const normTarget = normalizeTenantIdServer(targetLabId);
+      const normItem = normalizeTenantIdServer(itemLabId);
+      if (!normItem) return normTarget === 'apexdiagnostics';
+      return normItem === normTarget;
+    }
+
     if (action === 'get_collection') {
       const collection = req.query.collection as string;
-      const data = canonicalData[collection] || store[collection] || [];
+      const targetLabId = (req.query.labId || req.query.tenantId) as string;
+      let data = canonicalData[collection] || store[collection] || [];
+      if (targetLabId && targetLabId !== 'all' && Array.isArray(data)) {
+        data = data.filter((item: any) => {
+          const itemLabId = item.labId || item.tenantId;
+          return isTenantMatchServer(itemLabId, targetLabId);
+        });
+      }
       res.json({
         status: 'success',
         success: true,

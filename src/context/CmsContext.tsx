@@ -2289,13 +2289,23 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Compute the current active tenant/laboratory ID
   const activeTenantId = useMemo(() => {
-    if (currentUser) {
-      if (currentUser.role === 'admin') {
-        return superAdminTenantScope;
-      }
-      return currentUser.labId || 'lab-apex';
+    // 1. If non-admin logged in user (vendor, reception, technician, pathologist) -> strictly their lab
+    if (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all') {
+      return currentUser.labId;
     }
-    return selectedVendorLabId || 'lab-apex';
+    // 2. If super admin explicitly scoped to a specific lab -> that lab
+    if (superAdminTenantScope && superAdminTenantScope !== 'all') {
+      return superAdminTenantScope;
+    }
+    // 3. If a specific vendor lab is currently selected (in vendor dashboard, lab app, website, portal) -> that lab
+    if (selectedVendorLabId && selectedVendorLabId !== 'all') {
+      return selectedVendorLabId;
+    }
+    // 4. Global admin view
+    if (currentUser?.role === 'admin') {
+      return 'all';
+    }
+    return 'lab-apex';
   }, [currentUser, superAdminTenantScope, selectedVendorLabId]);
 
   const isTenantIsolated = activeTenantId !== 'all';
@@ -3053,92 +3063,92 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Tenant-Scoped Filtered Views (Zero cross-lab data leakage)
   const reports = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allReports;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : 'lab-apex'));
     return allReports.filter((r) => isTenantMatch(r, targetLab));
   }, [allReports, currentUser, superAdminTenantScope, selectedVendorLabId]);
 
   const receptionEntries = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allReceptionEntries;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : 'lab-apex'));
     return allReceptionEntries.filter((e) => isTenantMatch(e, targetLab));
   }, [allReceptionEntries, currentUser, superAdminTenantScope, selectedVendorLabId]);
 
   const vendorBranches = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allVendorBranches;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     return allVendorBranches.filter((b) => isTenantMatch(b, targetLab));
   }, [allVendorBranches, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const vendorBookings = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allVendorBookings;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     return allVendorBookings.filter((b) => isTenantMatch(b, targetLab));
   }, [allVendorBookings, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const contactSubmissions = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allContactSubmissions;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     return allContactSubmissions.filter((c) => isTenantMatch(c, targetLab));
   }, [allContactSubmissions, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const domainRequests = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allDomainRequests;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     return allDomainRequests.filter((d) => isTenantMatch(d, targetLab));
   }, [allDomainRequests, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const planRequests = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allPlanRequests;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     return allPlanRequests.filter((r) => isTenantMatch(r, targetLab));
   }, [allPlanRequests, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const staffAccounts = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allStaffAccounts;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     return allStaffAccounts.filter((s) => isTenantMatch(s, targetLab));
   }, [allStaffAccounts, currentUser, superAdminTenantScope, selectedVendorLabId]);
 
   const vendorTests = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && !selectedVendorLabId) {
+    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
       return allVendorTests;
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId || 'lab-apex'));
+      : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     return allVendorTests.filter((t) => isTenantMatch(t, targetLab));
   }, [allVendorTests, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -3177,9 +3187,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Secure Mutators - Lab Reports
   const addLabReport = (report: LabReport) => {
-    const effectiveTenant = activeTenantId === 'all' ? (report.labId || 'lab-apex') : activeTenantId;
+    const effectiveTenant = (report.labId && report.labId !== 'all')
+      ? report.labId
+      : (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     const effectiveBranch = report.branchId || (activeBranchId !== 'all' ? activeBranchId : 'branch-1');
-    const stamped = stampTenant({ ...report, branchId: effectiveBranch }, effectiveTenant);
+    const stamped = stampTenant({ ...report, branchId: effectiveBranch, labId: effectiveTenant }, effectiveTenant);
     setAllReports((prev) => [stamped, ...prev.filter((r) => r.reportId !== stamped.reportId)]);
     // Hostinger Server & Database Sync across computers
     syncLabReportToCloud(stamped);
@@ -3197,8 +3209,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const cleanStampedMobile = String(stamped.mobile || '').replace(/\D/g, '').slice(-10);
           const cleanEntryMobile = String(e.mobile || '').replace(/\D/g, '').slice(-10);
           const isMobileMatch = cleanStampedMobile && cleanEntryMobile && cleanStampedMobile === cleanEntryMobile && cleanStampedMobile.length >= 7;
+          const cleanStampedName = String(stamped.patientName || '').trim().toLowerCase();
+          const cleanEntryName = String(e.patientName || '').trim().toLowerCase();
+          const isNameMatch = cleanStampedName && cleanEntryName && cleanStampedName === cleanEntryName;
 
-          if (isIdMatch || isUhidMatch || isTokenMatch || isMobileMatch) {
+          if (isIdMatch || isUhidMatch || isTokenMatch || isMobileMatch || isNameMatch) {
             const nextEntry: ReceptionPatientEntry = {
               ...e,
               reportId: stamped.reportId,
@@ -3225,7 +3240,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReports((prev) =>
       prev.map((r) => {
         if (r.reportId.toLowerCase() === reportId.toLowerCase()) {
-          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(r, activeTenantId)) {
+          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(r, activeTenantId, currentUser)) {
             console.warn(`[SECURITY] Blocked unauthorized cross-tenant report update for reportId: ${reportId}`);
             return r;
           }
@@ -3253,8 +3268,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const cleanRptMobile = String(completedRpt.mobile || '').replace(/\D/g, '').slice(-10);
             const cleanEMobile = String(e.mobile || '').replace(/\D/g, '').slice(-10);
             const isMobileMatch = cleanRptMobile && cleanEMobile && cleanRptMobile === cleanEMobile && cleanRptMobile.length >= 7;
+            const cleanRptName = String(completedRpt.patientName || '').trim().toLowerCase();
+            const cleanEName = String(e.patientName || '').trim().toLowerCase();
+            const isNameMatch = cleanRptName && cleanEName && cleanRptName === cleanEName;
 
-            if (isIdMatch || isUhidMatch || isTokenMatch || isMobileMatch) {
+            if (isIdMatch || isUhidMatch || isTokenMatch || isMobileMatch || isNameMatch) {
               const nextEntry: ReceptionPatientEntry = {
                 ...e,
                 reportId: completedRpt.reportId,
@@ -3379,7 +3397,9 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Secure Mutators - Reception Patients
   const addReceptionEntry = (entry: Omit<ReceptionPatientEntry, 'id'>): ReceptionPatientEntry => {
     const tokenVal = String(entry.tokenNumber || entry.tokenNo || `TK-${Math.floor(100 + Math.random() * 900)}`);
-    const effectiveTenant = activeTenantId === 'all' ? (entry.labId || 'lab-apex') : activeTenantId;
+    const effectiveTenant = (entry.labId && entry.labId !== 'all')
+      ? entry.labId
+      : (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
     const effectiveBranch = entry.branchId || (activeBranchId !== 'all' ? activeBranchId : 'branch-1');
     const newEntry: ReceptionPatientEntry = {
       ...entry,
@@ -3400,7 +3420,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReceptionEntries((prev) =>
       prev.map((e) => {
         if (e.id === id) {
-          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId)) {
+          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId, currentUser)) {
             console.warn(`[SECURITY] Blocked unauthorized cross-tenant patient status update`);
             return e;
           }
@@ -3423,7 +3443,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReceptionEntries((prev) =>
       prev.map((e) => {
         if (e.id === id) {
-          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId)) {
+          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId, currentUser)) {
             console.warn(`[SECURITY] Blocked unauthorized cross-tenant patient update`);
             return e;
           }
@@ -3465,7 +3485,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReceptionEntries((prev) =>
       prev.filter((e) => {
         if (e.id === id) {
-          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId)) {
+          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId, currentUser)) {
             console.warn(`[SECURITY] Blocked unauthorized cross-tenant patient deletion`);
             return true;
           }
@@ -3495,7 +3515,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReceptionEntries((prev) =>
       prev.map((e) => {
         if (e.id === id) {
-          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId)) {
+          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId, currentUser)) {
             console.warn(`[SECURITY] Blocked unauthorized cross-tenant lab handoff`);
             return e;
           }
@@ -3522,7 +3542,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReceptionEntries((prev) =>
       prev.map((e) => {
         if (e.id === id) {
-          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId)) {
+          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId, currentUser)) {
             return e;
           }
           const updated: ReceptionPatientEntry = {
@@ -3546,7 +3566,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAllReceptionEntries((prev) =>
       prev.map((e) => {
         if (e.id === id) {
-          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId)) {
+          if (currentUser?.role !== 'admin' && activeTenantId !== 'all' && !verifyTenantOwnership(e, activeTenantId, currentUser)) {
             return e;
           }
           const updated: ReceptionPatientEntry = {
@@ -5861,8 +5881,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         );
       });
 
+    const targetId = lab ? lab.id : (query.startsWith('lab-') ? query : `lab-${query}`);
+    setSelectedVendorLabId(targetId);
+    if (currentUser?.role === 'admin') {
+      setSuperAdminTenantScope(targetId);
+    }
+    try {
+      localStorage.setItem('cms_selected_vendor_lab_id', targetId);
+    } catch {}
+
     if (lab) {
-      setSelectedVendorLabId(lab.id);
       // Ensure settings map entry exists for this lab
       setVendorLabSettingsMap((prev) => {
         if (!prev[lab.id]) {

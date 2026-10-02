@@ -169,11 +169,13 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
       const cleanRptId = String(r.reportId || '').trim().toLowerCase();
       const cleanUhid = String(r.uhid || '').trim().toLowerCase();
       const cleanMobile = String(r.mobile || '').replace(/\D/g, '').slice(-10);
+      const cleanName = String(r.patientName || '').trim().toLowerCase();
 
       const existingReport = reports.find((rp) => {
         if (cleanRptId && rp.reportId && String(rp.reportId).trim().toLowerCase() === cleanRptId) return true;
         if (cleanUhid && rp.uhid && String(rp.uhid).trim().toLowerCase() === cleanUhid) return true;
-        if (cleanMobile && cleanMobile.length >= 10 && rp.mobile && String(rp.mobile).replace(/\D/g, '').slice(-10) === cleanMobile) return true;
+        if (cleanMobile && cleanMobile.length >= 7 && rp.mobile && String(rp.mobile).replace(/\D/g, '').slice(-10) === cleanMobile) return true;
+        if (cleanName && rp.patientName && String(rp.patientName).trim().toLowerCase() === cleanName) return true;
         return false;
       }) || null;
 
@@ -182,6 +184,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
         !isDraft &&
         (r.status === 'Report Ready' ||
           r.technicianStatus === 'Report Generated' ||
+          Boolean(r.reportId) ||
           Boolean(existingReport && !existingReport.isDraft) ||
           (Boolean(r.reportId) && Boolean(existingReport?.verified)));
       const isInTesting = !isReportDone && !isReturned && (r.technicianStatus === 'Accepted' || r.status === 'In Lab' || isDraft);
@@ -746,13 +749,15 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     const cleanRptId = String(report.reportId || '').trim().toLowerCase();
     const cleanRptUhid = String(report.uhid || '').trim().toLowerCase();
     const cleanRptMobile = String(report.mobile || '').replace(/\D/g, '').slice(-10);
+    const cleanRptName = String(report.patientName || '').trim().toLowerCase();
 
     const rec = receptionEntries.find(
       (r) =>
         (patientId && r.id === patientId) ||
         (cleanRptId && r.reportId && String(r.reportId).trim().toLowerCase() === cleanRptId) ||
         (cleanRptUhid && r.uhid && String(r.uhid).trim().toLowerCase() === cleanRptUhid) ||
-        (cleanRptMobile && cleanRptMobile.length >= 10 && r.mobile && String(r.mobile).replace(/\D/g, '').slice(-10) === cleanRptMobile)
+        (cleanRptMobile && cleanRptMobile.length >= 7 && r.mobile && String(r.mobile).replace(/\D/g, '').slice(-10) === cleanRptMobile) ||
+        (cleanRptName && r.patientName && String(r.patientName).trim().toLowerCase() === cleanRptName)
     );
 
     if (rec) {
@@ -796,10 +801,12 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
       }
     }
 
-    // Move to Report Ready tab and clear search so patient is immediately visible
+    // Move to Report Ready tab and clear search and filters so patient is immediately visible
+    setActiveTab('dashboard');
     setPatientTab('report_ready');
     setSearchTokenOrPhone('');
     setDateFilter('All Dates');
+    setPaymentModeFilter('All');
 
     setToastNotice(`Report completed and moved to Report Ready tab for ${report.patientName}!`);
     setTimeout(() => setToastNotice(null), 4500);

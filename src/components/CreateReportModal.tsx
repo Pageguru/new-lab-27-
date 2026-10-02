@@ -73,6 +73,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     receptionEntries,
     currentUser: cmsUser,
     activeTenantId,
+    selectedVendorLabId,
   } = useCms();
 
   const isTechnician = cmsUser?.role === 'technician';
@@ -695,7 +696,11 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       clinicalImpression,
       isDraft,
       status: isDraft ? 'Normal' : 'Verified',
-      labId: activeTenantId !== 'all' ? activeTenantId : (existingReport?.labId || 'lab-apex'),
+      labId: (activeTenantId && activeTenantId !== 'all')
+        ? activeTenantId
+        : (selectedVendorLabId && selectedVendorLabId !== 'all'
+          ? selectedVendorLabId
+          : (preSelectedPatient?.labId || preselectedPatient?.labId || existingReport?.labId || 'lab-apex')),
     };
 
     return finalReport;

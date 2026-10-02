@@ -32,23 +32,79 @@ $TABLE_MAP = [
 ];
 
 /**
+ * Normalizes tenant identifiers and resolves known laboratory aliases in PHP
+ */
+function normalizeTenantIdPhp($id) {
+    if (!$id || !is_string($id)) return '';
+    $clean = strtolower(trim($id));
+    if ($clean === 'lab-apex' || $clean === 'apexdiagnostics' || $clean === 'apex' || $clean === 'lsp-7087' || $clean === 'lsp_7087') {
+        return 'apexdiagnostics';
+    }
+    return $clean;
+}
+
+/**
+ * Checks whether an item's labId matches the requested filter labId.
+ * Records with missing/empty labId belong exclusively to default legacy lab 'apexdiagnostics'.
+ * Newly created labs MUST NEVER receive records with empty or mismatched labIds.
+ */
+function isTenantMatchPhp($itemLabId, $filterLabId) {
+    if (!$filterLabId || $filterLabId === 'all') return true;
+    $normFilter = normalizeTenantIdPhp($filterLabId);
+    $normItem = normalizeTenantIdPhp($itemLabId);
+    if (empty($normItem)) {
+        return $normFilter === 'apexdiagnostics';
+    }
+    return $normItem === $normFilter;
+}
+
+/**
  * Read collection from MySQL if available, with graceful fallback to JSON file
  */
 function fetchCollectionData($collection) {
     global $pdo, $TABLE_MAP;
     
+    $filterLabId = $_GET['labId'] ?? ($_GET['tenantId'] ?? null);
+
     if ($pdo && isset($TABLE_MAP[$collection])) {
         $meta = $TABLE_MAP[$collection];
         $tableName = $meta['table'];
         $idCol = $meta['id'];
         
         try {
-            $stmt = $pdo->query("SELECT * FROM `{$tableName}`");
+            // Ensure labId column exists for multi-tenant isolation tables
+            if (in_array($collection, ['reception_entries', 'lab_reports', 'vendor_bookings', 'lab_staff', 'lab_tests', 'lab_packages', 'lab_doctors', 'vendor_branches'])) {
+                try {
+                    $chk = $pdo->query("SHOW COLUMNS FROM `{$tableName}` LIKE 'labId'");
+                    if ($chk && $chk->rowCount() === 0) {
+                        $pdo->exec("ALTER TABLE `{$tableName}` ADD COLUMN `labId` VARCHAR(100) NOT NULL DEFAULT 'lab-apex' AFTER `{$idCol}`");
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            if ($filterLabId && $filterLabId !== 'all') {
+                $checkLab = $pdo->query("SHOW COLUMNS FROM `{$tableName}` LIKE 'labId'");
+                if ($checkLab && $checkLab->rowCount() > 0) {
+                    $normFilter = normalizeTenantIdPhp($filterLabId);
+                    if ($normFilter === 'apexdiagnostics') {
+                        $stmt = $pdo->query("SELECT * FROM `{$tableName}` WHERE `labId` IN ('lab-apex', 'apexdiagnostics', 'apex', 'lsp-7087', 'lsp_7087', '') OR `labId` IS NULL");
+                    } else {
+                        $stmt = $pdo->prepare("SELECT * FROM `{$tableName}` WHERE LOWER(TRIM(`labId`)) = :labId");
+                        $stmt->execute([':labId' => strtolower(trim($filterLabId))]);
+                    }
+                } else {
+                    $stmt = $pdo->query("SELECT * FROM `{$tableName}`");
+                }
+            } else {
+                $stmt = $pdo->query("SELECT * FROM `{$tableName}`");
+            }
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             if (is_array($rows) && count($rows) > 0) {
                 $processed = [];
                 foreach ($rows as $row) {
+                    $dbLabId = !empty($row['labId']) ? $row['labId'] : null;
+
                     // Normalize JSON fields - frontend data takes precedence over empty database defaults
                     if (isset($row['settingsJson']) && $row['settingsJson']) {
                         $extra = json_decode($row['settingsJson'], true);
@@ -72,6 +128,10 @@ function fetchCollectionData($collection) {
                             $row = array_merge($row, $extra);
                         }
                     }
+                    // Retain genuine labId column value to prevent cross-lab contamination
+                    if ($dbLabId) {
+                        $row['labId'] = $dbLabId;
+                    }
                     if (isset($row['sectionsJson']) && $row['sectionsJson']) {
                         $extra = json_decode($row['sectionsJson'], true);
                         if (is_array($extra)) {
@@ -92,6 +152,12 @@ function fetchCollectionData($collection) {
                     }
                     $processed[] = $row;
                 }
+                if ($filterLabId && $filterLabId !== 'all') {
+                    $processed = array_values(array_filter($processed, function($item) use ($filterLabId) {
+                        $lid = $item['labId'] ?? '';
+                        return isTenantMatchPhp($lid, $filterLabId);
+                    }));
+                }
                 return $processed;
             }
         } catch (Exception $e) {
@@ -99,7 +165,14 @@ function fetchCollectionData($collection) {
         }
     }
     
-    return readCollectionFile($collection);
+    $fileData = readCollectionFile($collection);
+    if ($filterLabId && $filterLabId !== 'all' && is_array($fileData)) {
+        return array_values(array_filter($fileData, function($item) use ($filterLabId) {
+            $lid = $item['labId'] ?? '';
+            return isTenantMatchPhp($lid, $filterLabId);
+        }));
+    }
+    return $fileData;
 }
 
 /**
@@ -193,6 +266,17 @@ function persistDocToMySql($collection, $id, $data) {
         }
 
         if ($collection === 'reception_entries') {
+            try {
+                $chk = $pdo->query("SHOW COLUMNS FROM `lab_reception_entries` LIKE 'labId'");
+                if ($chk && $chk->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_reception_entries` ADD COLUMN `labId` VARCHAR(100) NOT NULL DEFAULT 'lab-apex' AFTER `id`");
+                }
+                $chkD = $pdo->query("SHOW COLUMNS FROM `lab_reception_entries` LIKE 'data'");
+                if ($chkD && $chkD->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_reception_entries` ADD COLUMN `data` LONGTEXT DEFAULT NULL");
+                }
+            } catch (\Exception $e) {}
+
             $stmt = $pdo->prepare("REPLACE INTO `lab_reception_entries` (
                 `id`, `labId`, `branchId`, `tokenNumber`, `uhid`, `barcode`, `patientName`,
                 `patientAge`, `patientGender`, `patientMobile`, `patientEmail`, `patientAddress`,
@@ -208,7 +292,7 @@ function persistDocToMySql($collection, $id, $data) {
             )");
             $stmt->execute([
                 ':id' => $id,
-                ':labId' => $data['labId'] ?? 'lab-apex',
+                ':labId' => !empty($data['labId']) ? $data['labId'] : (!empty($data['lab_id']) ? $data['lab_id'] : 'lab-apex'),
                 ':branchId' => $data['branchId'] ?? null,
                 ':tokenNumber' => $data['tokenNumber'] ?? ($data['tokenNo'] ?? $id),
                 ':uhid' => $data['uhid'] ?? '',
@@ -240,6 +324,17 @@ function persistDocToMySql($collection, $id, $data) {
         }
 
         if ($collection === 'lab_reports') {
+            try {
+                $chk = $pdo->query("SHOW COLUMNS FROM `lab_reports` LIKE 'labId'");
+                if ($chk && $chk->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_reports` ADD COLUMN `labId` VARCHAR(100) NOT NULL DEFAULT 'lab-apex' AFTER `reportId`");
+                }
+                $chkD = $pdo->query("SHOW COLUMNS FROM `lab_reports` LIKE 'data'");
+                if ($chkD && $chkD->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_reports` ADD COLUMN `data` LONGTEXT DEFAULT NULL");
+                }
+            } catch (\Exception $e) {}
+
             $stmt = $pdo->prepare("REPLACE INTO `lab_reports` (
                 `reportId`, `labId`, `branchId`, `receptionId`, `tokenNumber`, `uhid`,
                 `patientName`, `patientAge`, `patientGender`, `patientMobile`, `referredBy`,
@@ -253,7 +348,7 @@ function persistDocToMySql($collection, $id, $data) {
             )");
             $stmt->execute([
                 ':reportId' => $id,
-                ':labId' => $data['labId'] ?? 'lab-apex',
+                ':labId' => !empty($data['labId']) ? $data['labId'] : (!empty($data['lab_id']) ? $data['lab_id'] : 'lab-apex'),
                 ':branchId' => $data['branchId'] ?? null,
                 ':receptionId' => $data['receptionId'] ?? null,
                 ':tokenNumber' => $data['tokenNumber'] ?? null,
@@ -270,6 +365,116 @@ function persistDocToMySql($collection, $id, $data) {
                 ':reportedDate' => $data['reportedDate'] ?? date('Y-m-d'),
                 ':sampleType' => $data['sampleType'] ?? null,
                 ':parameters' => json_encode($data['parameters'] ?? [], JSON_UNESCAPED_UNICODE),
+                ':notes' => $data['notes'] ?? null,
+                ':data' => json_encode($data, JSON_UNESCAPED_UNICODE)
+            ]);
+            return true;
+        }
+
+        if ($collection === 'lab_tests') {
+            try {
+                $chk = $pdo->query("SHOW COLUMNS FROM `lab_tests` LIKE 'labId'");
+                if ($chk && $chk->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_tests` ADD COLUMN `labId` VARCHAR(100) NOT NULL DEFAULT 'lab-apex' AFTER `id`");
+                }
+                $chkD = $pdo->query("SHOW COLUMNS FROM `lab_tests` LIKE 'data'");
+                if ($chkD && $chkD->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_tests` ADD COLUMN `data` LONGTEXT DEFAULT NULL");
+                }
+            } catch (\Exception $e) {}
+
+            $stmt = $pdo->prepare("REPLACE INTO `lab_tests` (
+                `id`, `labId`, `code`, `name`, `category`, `sampleType`, `unit`, `normalRange`,
+                `priceINR`, `tatHours`, `turnaroundTime`, `description`, `isPopular`, `status`, `data`
+            ) VALUES (
+                :id, :labId, :code, :name, :category, :sampleType, :unit, :normalRange,
+                :priceINR, :tatHours, :turnaroundTime, :description, :isPopular, :status, :data
+            )");
+            $stmt->execute([
+                ':id' => $id,
+                ':labId' => !empty($data['labId']) ? $data['labId'] : 'lab-apex',
+                ':code' => $data['code'] ?? ($data['testCode'] ?? $id),
+                ':name' => $data['name'] ?? ($data['testName'] ?? 'Diagnostic Test'),
+                ':category' => $data['category'] ?? 'General',
+                ':sampleType' => $data['sampleType'] ?? 'Blood',
+                ':unit' => $data['unit'] ?? '',
+                ':normalRange' => $data['normalRange'] ?? ($data['referenceRange'] ?? 'Normal'),
+                ':priceINR' => (float)($data['priceINR'] ?? ($data['price'] ?? 0)),
+                ':tatHours' => (int)($data['tatHours'] ?? 4),
+                ':turnaroundTime' => $data['turnaroundTime'] ?? '4 Hours',
+                ':description' => $data['description'] ?? '',
+                ':isPopular' => !empty($data['isPopular']) ? 1 : 0,
+                ':status' => $data['status'] ?? 'Active',
+                ':data' => json_encode($data, JSON_UNESCAPED_UNICODE)
+            ]);
+            return true;
+        }
+
+        if ($collection === 'vendor_branches') {
+            try {
+                $chk = $pdo->query("SHOW COLUMNS FROM `lab_branches` LIKE 'labId'");
+                if ($chk && $chk->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_branches` ADD COLUMN `labId` VARCHAR(100) NOT NULL DEFAULT 'lab-apex' AFTER `id`");
+                }
+                $chkD = $pdo->query("SHOW COLUMNS FROM `lab_branches` LIKE 'data'");
+                if ($chkD && $chkD->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_branches` ADD COLUMN `data` LONGTEXT DEFAULT NULL");
+                }
+            } catch (\Exception $e) {}
+
+            $stmt = $pdo->prepare("REPLACE INTO `lab_branches` (
+                `id`, `labId`, `name`, `badge`, `type`, `address`, `phone`, `timings`, `isEmergency`, `data`
+            ) VALUES (
+                :id, :labId, :name, :badge, :type, :address, :phone, :timings, :isEmergency, :data
+            )");
+            $stmt->execute([
+                ':id' => $id,
+                ':labId' => !empty($data['labId']) ? $data['labId'] : 'lab-apex',
+                ':name' => $data['name'] ?? 'Branch',
+                ':badge' => $data['badge'] ?? 'Main Hub',
+                ':type' => $data['type'] ?? 'Diagnostic Hub',
+                ':address' => $data['address'] ?? null,
+                ':phone' => $data['phone'] ?? null,
+                ':timings' => $data['timings'] ?? '7:00 AM - 9:00 PM',
+                ':isEmergency' => isset($data['isEmergency']) ? ($data['isEmergency'] ? 1 : 0) : 1,
+                ':data' => json_encode($data, JSON_UNESCAPED_UNICODE)
+            ]);
+            return true;
+        }
+
+        if ($collection === 'vendor_bookings') {
+            try {
+                $chk = $pdo->query("SHOW COLUMNS FROM `lab_bookings` LIKE 'labId'");
+                if ($chk && $chk->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_bookings` ADD COLUMN `labId` VARCHAR(100) NOT NULL DEFAULT 'lab-apex' AFTER `id`");
+                }
+                $chkD = $pdo->query("SHOW COLUMNS FROM `lab_bookings` LIKE 'data'");
+                if ($chkD && $chkD->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE `lab_bookings` ADD COLUMN `data` LONGTEXT DEFAULT NULL");
+                }
+            } catch (\Exception $e) {}
+
+            $stmt = $pdo->prepare("REPLACE INTO `lab_bookings` (
+                `id`, `labId`, `patientName`, `patientMobile`, `patientEmail`, `address`, `city`, `pincode`,
+                `testPackageName`, `amount`, `preferredDate`, `preferredSlot`, `status`, `notes`, `data`
+            ) VALUES (
+                :id, :labId, :patientName, :patientMobile, :patientEmail, :address, :city, :pincode,
+                :testPackageName, :amount, :preferredDate, :preferredSlot, :status, :notes, :data
+            )");
+            $stmt->execute([
+                ':id' => $id,
+                ':labId' => !empty($data['labId']) ? $data['labId'] : 'lab-apex',
+                ':patientName' => $data['patientName'] ?? ($data['name'] ?? 'Patient'),
+                ':patientMobile' => $data['patientMobile'] ?? ($data['phone'] ?? ''),
+                ':patientEmail' => $data['patientEmail'] ?? ($data['email'] ?? null),
+                ':address' => $data['address'] ?? '',
+                ':city' => $data['city'] ?? null,
+                ':pincode' => $data['pincode'] ?? null,
+                ':testPackageName' => $data['testPackageName'] ?? ($data['testName'] ?? 'Diagnostic Test'),
+                ':amount' => (float)($data['amount'] ?? 0),
+                ':preferredDate' => $data['preferredDate'] ?? null,
+                ':preferredSlot' => $data['preferredSlot'] ?? null,
+                ':status' => $data['status'] ?? 'Pending',
                 ':notes' => $data['notes'] ?? null,
                 ':data' => json_encode($data, JSON_UNESCAPED_UNICODE)
             ]);
