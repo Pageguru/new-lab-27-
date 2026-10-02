@@ -697,6 +697,10 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       clinicalImpression,
       isDraft,
       status: isDraft ? 'Normal' : 'Verified',
+      receptionId:
+        selectedPatientId && selectedPatientId !== 'new_walkin'
+          ? selectedPatientId
+          : preSelectedPatient?.id || preselectedPatient?.id || (existingReport as any)?.receptionId || '',
       labId: (activeTenantId && activeTenantId !== 'all')
         ? activeTenantId
         : (selectedVendorLabId && selectedVendorLabId !== 'all'
@@ -739,7 +743,8 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     const reportObj = buildLabReportObject(isDraft);
 
     // 1. Save / Update to global CmsContext
-    if (isEditMode || isDraftMode) {
+    const existing = getReportById(reportObj.reportId) || reports.find((r) => r.reportId.toLowerCase() === reportObj.reportId.toLowerCase());
+    if (existing || isEditMode || isDraftMode) {
       updateLabReport(reportObj.reportId, reportObj);
     } else {
       addLabReport(reportObj);
@@ -766,7 +771,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       setTimeout(() => {
         setSaveSuccess(false);
         onClose();
-      }, 700);
+      }, 400);
     }
   };
 

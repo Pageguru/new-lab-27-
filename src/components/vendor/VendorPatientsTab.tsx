@@ -77,7 +77,10 @@ export const VendorPatientsTab: React.FC<VendorPatientsTabProps> = ({ onOpenRepo
       (p.tokenNo || p.tokenNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.mobile || '').includes(searchTerm);
 
-    const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
+    const isReportReady = p.status === 'Report Ready' || p.technicianStatus === 'Report Generated' || Boolean(p.reportId);
+    const matchesStatus =
+      statusFilter === 'All' ||
+      (statusFilter === 'Report Ready' ? isReportReady : p.status === statusFilter);
     const matchesPayment = paymentFilter === 'All' || p.paymentStatus === paymentFilter;
 
     return matchesSearch && matchesStatus && matchesPayment;

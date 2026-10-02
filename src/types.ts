@@ -561,6 +561,7 @@ export interface LabReport {
   barcode: string;
   tokenNumber?: string;
   sampleType?: string;
+  receptionId?: string;
   items: ReportItem[];
   verified: boolean;
   verificationHash: string;
