@@ -97,8 +97,11 @@ export default function App() {
 
       if (resolution.targetLab) {
         selectVendorLab(resolution.targetLab);
-      } else if (!selectedVendorLabId || selectedVendorLabId === 'all') {
-        selectVendorLab('lab-apex');
+      } else if (!selectedVendorLabId || selectedVendorLabId === 'all' || !vendorLabsList.some((l) => l.id === selectedVendorLabId)) {
+        const defaultLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
+        if (defaultLab) {
+          selectVendorLab(defaultLab);
+        }
       }
 
       if (resolution.isExplicitMainPlatform) {
@@ -167,7 +170,8 @@ export default function App() {
         } else {
           // Format as requested: indianlalaji.com/shop/VENDOR_ID
           const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
-          const vendorId = currentLab?.id || selectedVendorLabId || 'lab-apex';
+          const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab';
+          const vendorId = currentLab?.id || selectedVendorLabId || defaultActiveLab;
           url.searchParams.delete('view');
           url.searchParams.delete('lab');
           url.searchParams.delete('shop');
@@ -649,7 +653,8 @@ export default function App() {
             onOpenDemo={handleOpenDemo}
             onLaunchApp={handleLaunchLabApp}
             onLaunchLabShop={() => {
-              selectVendorLab(selectedVendorLabId || 'lab-apex');
+              const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || '';
+              selectVendorLab(selectedVendorLabId || defaultActiveLab);
               setCurrentView('vendor_website');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}

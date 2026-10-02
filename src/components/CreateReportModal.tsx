@@ -74,6 +74,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
     currentUser: cmsUser,
     activeTenantId,
     selectedVendorLabId,
+    vendorLabsList,
   } = useCms();
 
   const isTechnician = cmsUser?.role === 'technician';
@@ -683,10 +684,10 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       doctor: referringDoctor || 'Dr. Self',
       sampleCollectedAt,
       reportedAt,
-      labName: vendorLabSettings.labName || 'APEX DIAGNOSTICS & PATHOLOGY LABORATORY',
-      labAddress: vendorLabSettings.address || 'SCO 42, Green Park Avenue, Near Civil Hospital, Ludhiana, Punjab - 141001',
+      labName: vendorLabSettings.labName || vendorLabSettings.name || 'Diagnostic Laboratory',
+      labAddress: vendorLabSettings.address || 'Medical Complex, India',
       labPhone: vendorLabSettings.phone || '+91 7087033009',
-      nablAccreditationNo: vendorLabSettings.nablAccreditationNo || 'MC-2849',
+      nablAccreditationNo: vendorLabSettings.nablAccreditationNo || 'NABL Verified',
       pathologist: pathologistName,
       pathologistDegrees: pathologistDegrees,
       barcode: '||||| | |||| ||| |||||| ||||| |||',
@@ -700,7 +701,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
         ? activeTenantId
         : (selectedVendorLabId && selectedVendorLabId !== 'all'
           ? selectedVendorLabId
-          : (preSelectedPatient?.labId || preselectedPatient?.labId || existingReport?.labId || 'lab-apex')),
+          : (preSelectedPatient?.labId || preselectedPatient?.labId || existingReport?.labId || vendorLabsList[0]?.id || 'lab')),
     };
 
     return finalReport;

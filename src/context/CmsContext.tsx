@@ -2311,9 +2311,19 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       const savedLab = localStorage.getItem('cms_selected_vendor_lab_id');
       if (savedLab) return savedLab;
-      return 'lab-apex';
+      try {
+        const savedList = localStorage.getItem('cms_vendor_labs_list');
+        if (savedList) {
+          const parsed = JSON.parse(savedList);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const firstActive = parsed.find((l: any) => l.status === 'Active')?.id || parsed[0]?.id;
+            if (firstActive) return firstActive;
+          }
+        }
+      } catch {}
+      return VENDOR_LABS_DIRECTORY.find((l) => l.status === 'Active')?.id || VENDOR_LABS_DIRECTORY[0]?.id || 'lab-1';
     } catch {
-      return 'lab-apex';
+      return VENDOR_LABS_DIRECTORY.find((l) => l.status === 'Active')?.id || VENDOR_LABS_DIRECTORY[0]?.id || 'lab-1';
     }
   });
 
@@ -2348,21 +2358,23 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     // 3. If a specific vendor lab is currently selected (in vendor dashboard, lab app, website, portal) -> that lab
     if (selectedVendorLabId && selectedVendorLabId !== 'all') {
-      return selectedVendorLabId;
+      const exists = vendorLabsList.some((l) => l.id === selectedVendorLabId);
+      if (exists) return selectedVendorLabId;
     }
     // 4. Global admin view
     if (currentUser?.role === 'admin') {
       return 'all';
     }
-    return 'lab-apex';
-  }, [currentUser, superAdminTenantScope, selectedVendorLabId]);
+    const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
+    return defaultActiveLab || 'lab-1';
+  }, [currentUser, superAdminTenantScope, selectedVendorLabId, vendorLabsList]);
 
   const isTenantIsolated = activeTenantId !== 'all';
 
   const activeTenantName = useMemo(() => {
     if (activeTenantId === 'all') return 'All Laboratories (Super Admin Global Scope)';
     const match = vendorLabsList.find((l) => l.id === activeTenantId);
-    return match ? match.name : (currentUser?.labName || 'Apex Diagnostic Central');
+    return match ? match.name : (currentUser?.labName || vendorLabsList[0]?.name || 'Diagnostic Laboratory');
   }, [activeTenantId, vendorLabsList, currentUser]);
 
   // Per-Vendor Lab Settings Map (Isolated by labId)
@@ -2392,16 +2404,25 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all') {
       return currentUser.labId;
     }
-    return selectedVendorLabId || 'lab-apex';
-  }, [currentUser, selectedVendorLabId]);
+    if (selectedVendorLabId && selectedVendorLabId !== 'all') {
+      const exists = vendorLabsList.some((l) => l.id === selectedVendorLabId);
+      if (exists) return selectedVendorLabId;
+    }
+    const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id;
+    return defaultActiveLab || selectedVendorLabId || 'lab-1';
+  }, [currentUser, selectedVendorLabId, vendorLabsList]);
 
   const vendorLabSettings = useMemo<VendorLabSettings>(() => {
     if (vendorLabSettingsMap[effectiveSettingsLabId]) {
       return vendorLabSettingsMap[effectiveSettingsLabId];
     }
-    const dirMatch = vendorLabsList.find((l) => l.id === effectiveSettingsLabId) || VENDOR_LABS_DIRECTORY.find((l) => l.id === effectiveSettingsLabId);
+    const dirMatch = vendorLabsList.find((l) => l.id === effectiveSettingsLabId);
     if (dirMatch) {
       return buildDefaultSettingsForLab(dirMatch);
+    }
+    const fallbackDirLab = vendorLabsList.find((l) => l.status === 'Active') || vendorLabsList[0];
+    if (fallbackDirLab) {
+      return vendorLabSettingsMap[fallbackDirLab.id] || buildDefaultSettingsForLab(fallbackDirLab);
     }
     return DEFAULT_VENDOR_LAB_SETTINGS;
   }, [vendorLabSettingsMap, effectiveSettingsLabId, vendorLabsList]);
@@ -2411,9 +2432,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (vendorLabSettingsMap[targetId]) {
       return vendorLabSettingsMap[targetId];
     }
-    const dirMatch = vendorLabsList.find((l) => l.id === targetId) || VENDOR_LABS_DIRECTORY.find((l) => l.id === targetId);
+    const dirMatch = vendorLabsList.find((l) => l.id === targetId);
     if (dirMatch) {
       return buildDefaultSettingsForLab(dirMatch);
+    }
+    const fallbackDirLab = vendorLabsList.find((l) => l.status === 'Active') || vendorLabsList[0];
+    if (fallbackDirLab) {
+      return vendorLabSettingsMap[fallbackDirLab.id] || buildDefaultSettingsForLab(fallbackDirLab);
     }
     return DEFAULT_VENDOR_LAB_SETTINGS;
   }, [vendorLabSettingsMap, effectiveSettingsLabId, vendorLabsList]);
@@ -3117,9 +3142,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : 'lab-apex'));
-    return allReports.filter((r) => isTenantMatch(r, targetLab));
-  }, [allReports, currentUser, superAdminTenantScope, selectedVendorLabId]);
+      : (selectedVendorLabId && selectedVendorLabId !== 'all'
+        ? selectedVendorLabId
+        : (superAdminTenantScope && superAdminTenantScope !== 'all'
+          ? superAdminTenantScope
+          : (vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || '')));
+    return allReports.filter((r) => isTenantMatch(r, targetLab, false));
+  }, [allReports, currentUser, superAdminTenantScope, selectedVendorLabId, vendorLabsList]);
 
   const receptionEntries = useMemo(() => {
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
@@ -3127,9 +3156,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
-      : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : 'lab-apex'));
-    return allReceptionEntries.filter((e) => isTenantMatch(e, targetLab));
-  }, [allReceptionEntries, currentUser, superAdminTenantScope, selectedVendorLabId]);
+      : (selectedVendorLabId && selectedVendorLabId !== 'all'
+        ? selectedVendorLabId
+        : (superAdminTenantScope && superAdminTenantScope !== 'all'
+          ? superAdminTenantScope
+          : (vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || '')));
+    return allReceptionEntries.filter((e) => isTenantMatch(e, targetLab, false));
+  }, [allReceptionEntries, currentUser, superAdminTenantScope, selectedVendorLabId, vendorLabsList]);
 
   const vendorBranches = useMemo(() => {
     if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
@@ -3236,9 +3269,10 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Secure Mutators - Lab Reports
   const addLabReport = (report: LabReport) => {
+    const defaultActive = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab';
     const effectiveTenant = (report.labId && report.labId !== 'all')
       ? report.labId
-      : (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
+      : (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : defaultActive));
     const effectiveBranch = report.branchId || (activeBranchId !== 'all' ? activeBranchId : 'branch-1');
     const stamped = stampTenant({ ...report, branchId: effectiveBranch, labId: effectiveTenant }, effectiveTenant);
     setAllReports((prev) => [stamped, ...prev.filter((r) => r.reportId !== stamped.reportId)]);
@@ -3250,6 +3284,10 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAllReceptionEntries((prev) => {
         let entryToSync: ReceptionPatientEntry | null = null;
         const updated = prev.map((e) => {
+          // STRICT SECURITY: Do NOT touch or transition another laboratory's patient entry!
+          if (!isTenantMatch(e, stamped.labId, false)) {
+            return e;
+          }
           const isIdMatch = e.reportId && e.reportId.toLowerCase() === stamped.reportId.toLowerCase();
           const isUhidMatch = e.uhid && stamped.uhid && e.uhid.toLowerCase() === stamped.uhid.toLowerCase();
           const cleanStampedToken = String(stamped.tokenNumber || '').replace(/\D/g, '');

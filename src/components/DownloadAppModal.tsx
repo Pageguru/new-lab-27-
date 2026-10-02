@@ -30,7 +30,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   isOpen,
   onClose,
   labName,
-  labId = 'apexdiagnostics',
+  labId = 'lab',
   downloadAppUrl,
   websiteDirectUrl,
 }) => {

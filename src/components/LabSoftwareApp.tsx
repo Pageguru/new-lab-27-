@@ -81,6 +81,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     logout,
     activeBranchId,
     setActiveBranchId,
+    activeTenantId,
   } = useCms();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'patients' | 'results' | 'reception_orders'>('dashboard');
   const [receptionFilter, setReceptionFilter] = useState<'All' | 'Awaiting' | 'Accepted' | 'Completed'>('All');
@@ -876,16 +877,17 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
       doctor: pat.referringDoctor,
       sampleCollectedAt: 'Today, 08:30 AM',
       reportedAt: 'Today, ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      labName: vendorLabSettings.labName || 'APEX DIAGNOSTICS & PATHOLOGY LABORATORY',
-      labAddress: vendorLabSettings.address || 'SCO 42, Green Park Avenue, Near Civil Hospital, Ludhiana - 141001',
+      labName: vendorLabSettings.labName || vendorLabSettings.name || 'Diagnostic Laboratory',
+      labAddress: vendorLabSettings.address || 'Medical Complex, India',
       labPhone: vendorLabSettings.phone || '+91 7087033009',
-      nablAccreditationNo: vendorLabSettings.nablAccreditationNo || 'MC-2849',
+      nablAccreditationNo: vendorLabSettings.nablAccreditationNo || 'NABL Accredited',
       pathologist: 'Dr. Rohit Sharma, MD (Pathology)',
       pathologistDegrees: 'Consultant Pathologist • Reg No: PMC-48192',
       barcode: '||||| | |||| ||| |||||| ||||| |||',
       verified: true,
       verificationHash: `SHA256: ${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`,
       items,
+      labId: pat.labId || vendorLabSettings.labId || (activeTenantId !== 'all' ? activeTenantId : 'lab'),
     };
 
     addLabReport(rpt);

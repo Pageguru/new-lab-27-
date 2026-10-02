@@ -41,7 +41,7 @@ export function getEffectiveTenantId(
 
 /**
  * Normalizes tenant identifiers and resolves known laboratory aliases.
- * 'lab-apex' and 'apexdiagnostics' point to the same primary lab.
+ * E.g., 'lab-citycare', 'citycare', 'citycare.indianlalaji.com' all resolve to 'citycare'.
  */
 export function normalizeTenantId(id: string | undefined | null): string {
   if (!id || typeof id !== 'string') return '';
@@ -49,19 +49,32 @@ export function normalizeTenantId(id: string | undefined | null): string {
   if (clean === 'lab-apex' || clean === 'apexdiagnostics' || clean === 'apex' || clean === 'lsp-7087' || clean === 'lsp_7087') {
     return 'apexdiagnostics';
   }
-  return clean;
+  // Strip url protocols, paths, query params if a full url or path was passed
+  const withoutProtocol = clean.replace(/^https?:\/\//, '');
+  const pathPart = withoutProtocol.split('/shop/')[1]?.split('/')[0]?.split('?')[0] || withoutProtocol.split('/')[0].split('?')[0];
+  // Strip subdomains like .indianlalaji.com or .indianalala.com
+  const withoutDomain = pathPart.replace(/\.(indianlalaji|indianalala)\.com.*$/, '');
+  // Strip leading prefixes 'lab-', 'lsp-', 'lab_' or 'lsp_'
+  const canonical = withoutDomain.replace(/^(lab|lsp)[-_]/, '');
+  return canonical;
 }
 
 /**
  * Verifies if an entity or lab ID belongs to the active tenant.
  * Accepts either a record object with labId or a raw string labId.
- * Guarantees zero cross-lab data leakage for newly created labs.
+ * Guarantees zero cross-lab data leakage across websites and portals.
+ *
+ * @param allowGlobalAdminAll - When true (e.g. Super Admin dashboard), 'all' returns true.
+ *                             When false (e.g. public vendor website, patient portal search),
+ *                             'all' or empty is rejected to prevent cross-lab report leakage!
  */
 export function isTenantMatch(
   recordOrLabId: { labId?: string } | string | undefined | null,
-  activeTenantId: string | undefined | null
+  activeTenantId: string | undefined | null,
+  allowGlobalAdminAll: boolean = true
 ): boolean {
-  if (!activeTenantId || activeTenantId === 'all') return true;
+  if (allowGlobalAdminAll && activeTenantId === 'all') return true;
+  if (!activeTenantId || activeTenantId === 'all') return false;
 
   let rawLabId: string | undefined;
   if (typeof recordOrLabId === 'string') {
@@ -70,14 +83,16 @@ export function isTenantMatch(
     rawLabId = (recordOrLabId as { labId?: string }).labId;
   }
 
+  // A record with no labId must NEVER leak into any tenant website or search
+  if (!rawLabId) {
+    return false;
+  }
+
   const normalizedActive = normalizeTenantId(activeTenantId);
   const normalizedRecord = normalizeTenantId(rawLabId);
 
-  // If the record has no labId or empty labId:
-  // It can only associate with default legacy lab 'apexdiagnostics'.
-  // Any other newly created lab MUST NOT see it.
-  if (!rawLabId || !normalizedRecord) {
-    return normalizedActive === 'apexdiagnostics';
+  if (!normalizedActive || !normalizedRecord) {
+    return false;
   }
 
   return normalizedRecord === normalizedActive;
@@ -88,12 +103,16 @@ export function isTenantMatch(
  */
 export function filterTenantData<T extends { labId?: string }>(
   items: T[],
-  activeTenantId: string | undefined | null
+  activeTenantId: string | undefined | null,
+  allowGlobalAdminAll: boolean = true
 ): T[] {
-  if (!activeTenantId || activeTenantId === 'all') {
+  if (allowGlobalAdminAll && activeTenantId === 'all') {
     return items;
   }
-  return items.filter((item) => isTenantMatch(item, activeTenantId));
+  if (!activeTenantId || activeTenantId === 'all') {
+    return [];
+  }
+  return items.filter((item) => isTenantMatch(item, activeTenantId, allowGlobalAdminAll));
 }
 
 /**
@@ -109,18 +128,17 @@ export function verifyTenantOwnership<T extends { labId?: string }>(
     return true;
   }
 
-  if (!activeTenantId || activeTenantId === 'all') {
-    return true;
-  }
-
   if (user?.role === 'admin') {
     return true;
   }
 
+  if (!activeTenantId || activeTenantId === 'all') {
+    return false;
+  }
+
   const rawId = typeof record === 'object' ? record.labId : undefined;
-  // If record has no labId yet, permit the current active tenant to adopt it
   if (!rawId) {
-    return true;
+    return false;
   }
 
   const recordLabId = normalizeTenantId(rawId);
@@ -142,7 +160,7 @@ export function stampTenant<T extends Record<string, any>>(
   entity: T,
   activeTenantId: string
 ): T & { labId: string } {
-  const labId = activeTenantId === 'all' ? DEFAULT_TENANT_ID : activeTenantId;
+  const labId = (activeTenantId && activeTenantId !== 'all') ? activeTenantId : (entity.labId || 'lab');
   return {
     ...entity,
     labId: entity.labId || labId,

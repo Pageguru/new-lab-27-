@@ -143,7 +143,7 @@ export const QRVerifyModal: React.FC<{ isOpen: boolean; onClose: () => void; rep
 
   const displayReportId = matched?.reportId || reportId;
   const patName = matched ? `${matched.patientName} (${matched.ageGender || ''})` : 'Verified Diagnostic Patient';
-  const issuing = matched ? `${matched.labName} (NABL ${matched.nablAccreditationNo || 'Verified'})` : 'Apex Diagnostics (NABL MC-2849)';
+  const issuing = matched ? `${matched.labName} (NABL ${matched.nablAccreditationNo || 'Verified'})` : 'Diagnostic Laboratory (NABL Verified)';
   const pathologist = matched ? `${matched.pathologist} (${matched.pathologistDegrees || 'Consultant Pathologist'})` : 'Dr. Rohit Sharma, MD (Reg: PMC-48192)';
   const timestamp = matched ? matched.reportedAt : '03-Sep-2026 11:30:14 AM IST';
   const hash = matched?.verificationHash || 'SHA256: 9b2d8e41a94f6c8d37e1b52c009a24ec410f9b62';

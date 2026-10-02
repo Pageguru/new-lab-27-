@@ -113,22 +113,34 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
   const labNabl = activeVendorLab?.nablCode || currentSettings?.nablAccreditationNo || 'NABL Accredited';
   const labUpi = currentSettings?.upiId || 'apexlab@upi';
 
-  // Target reports & reception entries scoped to active vendor lab (or all if universal search)
+  // Target reports & reception entries scoped strictly to active vendor lab (zero cross-lab data leakage)
   const scopedReports = React.useMemo(() => {
     const targetLab = activeVendorLab?.id || (currentLabIdentifier && currentLabIdentifier !== 'all' ? currentLabIdentifier : null);
     if (targetLab) {
-      return (allReports || []).filter((r) => isTenantMatch(r, targetLab));
+      return (allReports || []).filter((r) => isTenantMatch(r, targetLab, false));
     }
-    return reports || [];
-  }, [activeVendorLab, currentLabIdentifier, allReports, reports]);
+    const defaultActive = (selectedVendorLabId && selectedVendorLabId !== 'all')
+      ? selectedVendorLabId
+      : (vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id);
+    if (defaultActive) {
+      return (allReports || []).filter((r) => isTenantMatch(r, defaultActive, false));
+    }
+    return [];
+  }, [activeVendorLab, currentLabIdentifier, allReports, selectedVendorLabId, vendorLabsList]);
 
   const scopedReceptionEntries = React.useMemo(() => {
     const targetLab = activeVendorLab?.id || (currentLabIdentifier && currentLabIdentifier !== 'all' ? currentLabIdentifier : null);
     if (targetLab) {
-      return (allReceptionEntries || []).filter((e) => isTenantMatch(e, targetLab));
+      return (allReceptionEntries || []).filter((e) => isTenantMatch(e, targetLab, false));
     }
-    return receptionEntries || [];
-  }, [activeVendorLab, currentLabIdentifier, allReceptionEntries, receptionEntries]);
+    const defaultActive = (selectedVendorLabId && selectedVendorLabId !== 'all')
+      ? selectedVendorLabId
+      : (vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id);
+    if (defaultActive) {
+      return (allReceptionEntries || []).filter((e) => isTenantMatch(e, defaultActive, false));
+    }
+    return [];
+  }, [activeVendorLab, currentLabIdentifier, allReceptionEntries, selectedVendorLabId, vendorLabsList]);
 
   // Demo test chips for quick 1-click verification
   const demoReport = React.useMemo(() => {

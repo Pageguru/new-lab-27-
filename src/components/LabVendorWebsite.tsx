@@ -130,16 +130,20 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
   const currentVendorReport = React.useMemo(() => {
     const tid = currentLabItem?.id || selectedVendorLabId;
-    return (allReports || []).find((r) => isTenantMatch(r, tid));
+    return (allReports || []).find((r) => isTenantMatch(r, tid, false));
   }, [allReports, currentLabItem?.id, selectedVendorLabId]);
 
+  const defaultDirectoryLab = React.useMemo(() => {
+    return vendorLabsList.find((l) => l.status === 'Active') || vendorLabsList[0];
+  }, [vendorLabsList]);
+
   // Dynamic team members for the currently displayed website laboratory
-  const currentWebsiteLabId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || 'lab-apex';
+  const currentWebsiteLabId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || defaultDirectoryLab?.id || 'lab';
   const effectiveTeamDoctors = React.useMemo(() => {
     if (allVendorDoctors && allVendorDoctors.length > 0) {
-      return allVendorDoctors.filter((d) => isTenantMatch(d, currentWebsiteLabId));
+      return allVendorDoctors.filter((d) => isTenantMatch(d, currentWebsiteLabId, false));
     }
-    return (vendorDoctors || []).filter((d) => isTenantMatch(d, currentWebsiteLabId));
+    return (vendorDoctors || []).filter((d) => isTenantMatch(d, currentWebsiteLabId, false));
   }, [allVendorDoctors, vendorDoctors, currentWebsiteLabId]);
 
   const handleCheckReport = (reportId?: string, mobile?: string) => {
@@ -220,17 +224,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     }
   };
 
-  const labShopId = vendorLabSettings?.labShopId || 'LSP-7087';
-  const labName = vendorLabSettings?.labName || vendorLabSettings?.name || 'Apex Diagnostic & Clinical Pathology Laboratory';
-  const labNabl = vendorLabSettings?.nablAccreditationNo || vendorLabSettings?.nablNumber || 'MC-4821';
-  const labPhone = vendorLabSettings?.phone || vendorLabSettings?.helplinePhone || '7087033009';
+  const labShopId = vendorLabSettings?.labShopId || (defaultDirectoryLab ? `LSP-${defaultDirectoryLab.id.replace('lab-', '').toUpperCase()}` : 'LSP-101');
+  const labName = currentLabItem?.name || vendorLabSettings?.labName || vendorLabSettings?.name || defaultDirectoryLab?.name || 'Diagnostic Laboratory';
+  const labNabl = vendorLabSettings?.nablAccreditationNo || vendorLabSettings?.nablNumber || defaultDirectoryLab?.nablCode || 'Verified';
+  const labPhone = vendorLabSettings?.phone || vendorLabSettings?.helplinePhone || defaultDirectoryLab?.phone || '7087033009';
   const labWhatsapp = vendorLabSettings?.whatsapp || labPhone || '7087033009';
-  const labEmail = vendorLabSettings?.email || 'care@apexdiagnostics.in';
-  const labTagline = vendorLabSettings?.tagline || 'Advanced Pathology, Biochemistry & Diagnostic Testing Centre';
+  const labEmail = vendorLabSettings?.email || defaultDirectoryLab?.email || 'care@indianlalaji.com';
+  const labTagline = vendorLabSettings?.tagline || defaultDirectoryLab?.tagline || 'Advanced Pathology, Biochemistry & Diagnostic Testing Centre';
   const labHours = vendorLabSettings?.openingHours || 'Open 7:00 AM – 9:00 PM (All 7 Days)';
   const labEmergency = vendorLabSettings?.emergencyHours || '24x7 Emergency Services at Central Lab';
-  const labAddress = vendorLabSettings?.address || 'SCF 42-43, Sector 18-C, Central Healthcare Complex, Ludhiana';
-  const labDescription = vendorLabSettings?.description || labTagline || 'Advanced Pathology, Biochemistry & Diagnostic Testing Centre. 100% NABL Accredited.';
+  const labAddress = vendorLabSettings?.address || defaultDirectoryLab?.address || 'Healthcare Complex, India';
+  const labDescription = vendorLabSettings?.description || labTagline || `${labName} - Authorized NABL Accredited Diagnostic Center.`;
   const labWebsiteUrl = vendorLabSettings?.websiteUrl && !vendorLabSettings.websiteUrl.includes('labname.com') ? vendorLabSettings.websiteUrl : canonicalUrl;
   const labLogoUrl = vendorLabSettings?.logoUrl || '';
   const labOgImageUrl = vendorLabSettings?.ogImageUrl || labLogoUrl || generateDefaultOgImage(labName, labShopId, labNabl);
@@ -469,7 +473,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   };
 
   // Resolves the clean slug for the current vendor laboratory
-  const effectiveVendorId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || 'lab-apex';
+  const effectiveVendorId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || defaultDirectoryLab?.id || 'lab';
   const effectiveSlug = React.useMemo(() => {
     if (currentLabItem?.slug) return currentLabItem.slug;
     if (currentLabItem?.domainPreview) {
@@ -862,8 +866,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     const currentLabId = currentWebsiteLabId || currentLabItem?.id || selectedVendorLabId;
 
     // Filter reports and reception entries strictly for current lab - NO cross-lab data leakage
-    const availableReports = (allReports || []).filter((r) => isTenantMatch(r, currentLabId));
-    const availableEntries = (allReceptionEntries || []).filter((e) => isTenantMatch(e, currentLabId));
+    const availableReports = (allReports || []).filter((r) => isTenantMatch(r, currentLabId, false));
+    const availableEntries = (allReceptionEntries || []).filter((e) => isTenantMatch(e, currentLabId, false));
 
     if (activeTab === 'mobile') {
       const cleanDigits = val.replace(/\D/g, '');
@@ -1067,7 +1071,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         email: contactEmail?.trim() || undefined,
         subject: contactSubject?.trim() || 'General Test Inquiry',
         message: contactMessage?.trim() || 'Website inquiry received',
-        labId: currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || 'lab-apex',
+        labId: currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || defaultDirectoryLab?.id || 'lab',
         referenceToken: generatedRef,
       });
       setContactSubmitting(false);
@@ -1354,11 +1358,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
   const handleWhatsAppBooking = (testName: string, price?: number) => {
     const text = encodeURIComponent(
-      `Hello Apex Diagnostic Lab, I would like to book "${testName}"${
+      `Hello ${labName}, I would like to book "${testName}"${
         price ? ` (₹${price})` : ''
       }. Please confirm home sample collection slot.`
     );
-    window.open(`https://wa.me/917087033009?text=${text}`, '_blank');
+    const cleanWa = (labWhatsapp || '7087033009').replace(/\D/g, '');
+    const waNumber = cleanWa.length === 10 ? `91${cleanWa}` : cleanWa;
+    window.open(`https://wa.me/${waNumber}?text=${text}`, '_blank');
   };
 
   // Check if website is in Draft mode (Not Approved/Published by Admin)
