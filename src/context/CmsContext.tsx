@@ -385,6 +385,116 @@ const DEFAULT_VENDOR_LAB_SETTINGS: VendorLabSettings = {
 };
 
 export const DEFAULT_ALL_VENDOR_PACKAGES: VendorPackage[] = [
+  // ================= LAB 1 PACKAGES (lab-1020304050) =================
+  {
+    id: 'pkg-lab1-1',
+    labId: 'lab-1020304050',
+    name: 'Full Body Health Screening (Lab 1 Special)',
+    testsCount: 72,
+    description: 'Comprehensive health checkup covering Liver, Kidney, Lipid, Thyroid, Blood Count, and Glucose.',
+    priceINR: 899,
+    mrpINR: 2200,
+    isPopular: true,
+    features: [
+      'Complete Hemogram (CBC + ESR - 24 tests)',
+      'Liver Function Test (LFT - 11 tests)',
+      'Kidney Function Test (KFT - 9 tests)',
+      'Lipid Profile (Cholesterol & Triglycerides - 8 tests)',
+      'Thyroid Profile (TSH)',
+      'Fasting Blood Glucose (Sugar)',
+      'Urine Routine & Microscopic Examination (14 tests)',
+    ],
+  },
+  {
+    id: 'pkg-lab1-2',
+    labId: 'lab-1020304050',
+    name: 'Advanced Diabetic & Renal Care',
+    testsCount: 26,
+    description: 'Specialized profile for blood glucose management, renal screening, and microalbumin ratio.',
+    priceINR: 649,
+    mrpINR: 1550,
+    isPopular: false,
+    features: [
+      'HbA1c (Glycosylated Hemoglobin)',
+      'Fasting Blood Sugar (FBS)',
+      'Post Prandial Glucose (PPBS)',
+      'Serum Creatinine & Blood Urea',
+      'Urine Microalbumin / Creatinine Ratio',
+    ],
+  },
+  {
+    id: 'pkg-lab1-3',
+    labId: 'lab-1020304050',
+    name: 'Senior Citizen Vitality Screen',
+    testsCount: 82,
+    description: 'Full profile for 50+ age with bone minerals, cardiac risk factors, and vital organs.',
+    priceINR: 1399,
+    mrpINR: 3400,
+    isPopular: false,
+    features: [
+      'Complete Hemogram & ESR',
+      'Vitamin D3 (25-OH) & Vitamin B12',
+      'Liver & Kidney Function Panels',
+      'Lipid Profile & High Sensitivity CRP',
+      'Serum Calcium & Uric Acid',
+    ],
+  },
+
+  // ================= LAB 2 PACKAGES (lab-6070809010) =================
+  {
+    id: 'pkg-lab2-1',
+    labId: 'lab-6070809010',
+    name: 'Executive Health Screening Package (Lab 2)',
+    testsCount: 78,
+    description: 'Master health audit with 2-hour report turnaround, automated analyzer verification, and digital QR.',
+    priceINR: 1099,
+    mrpINR: 2800,
+    isPopular: true,
+    features: [
+      'Automated Complete Hemogram (CBC + ESR)',
+      'Complete Liver Function Panel (LFT - 12 tests)',
+      'Kidney Function & Electrolytes (KFT - 10 tests)',
+      'Lipid Risk Assessment (Cholesterol, HDL, LDL, VLDL)',
+      'Thyroid Profile (T3, T4, TSH)',
+      'Blood Glucose Fasting (FBS)',
+      'Urine Routine Automated Analysis',
+    ],
+  },
+  {
+    id: 'pkg-lab2-2',
+    labId: 'lab-6070809010',
+    name: 'Cardiac & Lipid Risk Profile',
+    testsCount: 30,
+    description: 'Cardiovascular screening panel assessing lipid markers, cardiac enzymes, and baseline hemogram.',
+    priceINR: 799,
+    mrpINR: 1950,
+    isPopular: false,
+    features: [
+      'High Sensitivity C-Reactive Protein (hs-CRP)',
+      'Lipid Profile Comprehensive',
+      'Fasting Glucose & HbA1c Screen',
+      'Serum Electrolytes (Na, K, Cl)',
+      'Complete Blood Count baseline',
+    ],
+  },
+  {
+    id: 'pkg-lab2-3',
+    labId: 'lab-6070809010',
+    name: 'Women Wellness & Hormone Screen',
+    testsCount: 58,
+    description: 'Holistic screening for women covering thyroid hormones, ferritin, calcium, and hemogram.',
+    priceINR: 1299,
+    mrpINR: 3200,
+    isPopular: false,
+    features: [
+      'Thyroid Profile Total (T3, T4, TSH)',
+      'Serum Ferritin & Iron Deficiency Profile',
+      'Complete Hemogram (Anemia Screen)',
+      'Serum Calcium & Vitamin D3',
+      'Liver & Kidney Baseline Function',
+    ],
+  },
+
   // Apex packages
   {
     id: 'pkg-apex-1',
@@ -686,6 +796,78 @@ export const DEFAULT_ALL_VENDOR_PACKAGES: VendorPackage[] = [
 const DEFAULT_VENDOR_PACKAGES = DEFAULT_ALL_VENDOR_PACKAGES;
 
 export const DEFAULT_ALL_VENDOR_DOCTORS: VendorDoctor[] = [
+  // ================= LAB 1 DOCTORS (lab-1020304050) =================
+  {
+    id: 'doc-lab1-1',
+    labId: 'lab-1020304050',
+    name: 'Dr. Jagdish Chander',
+    degrees: 'MBBS, MD (Pathology)',
+    qualification: 'MD Pathology • Reg No: PMC-38291',
+    designation: 'Chief Consultant Clinical Pathologist',
+    roleCategory: 'Pathologist',
+    specialization: 'Clinical Pathology & Hematology',
+    specialExpertise: 'Hematology, Peripheral Smear & Routine Cytology',
+    experience: '16+ Years Experience',
+    bio: 'Lead pathologist ensuring NABL quality compliance, specimen barcode integrity, and rapid diagnostic turnaround.',
+    avatarEmoji: '👨‍⚕️',
+    referralCommissionPct: 15,
+    monthlyReferrals: 38,
+    totalReferredBilling: 52000,
+  },
+  {
+    id: 'doc-lab1-2',
+    labId: 'lab-1020304050',
+    name: 'Dr. S. K. Bansal',
+    degrees: 'MBBS, MD (General Medicine)',
+    qualification: 'MD Medicine • Senior Physician',
+    designation: 'Consultant Clinical Physician & Diabetologist',
+    roleCategory: 'Biochemist',
+    specialization: 'Internal Medicine & Preventive Care',
+    specialExpertise: 'Diabetes Mellitus, Hypertension & Chronic Lifestyle Disorders',
+    experience: '20+ Years Experience',
+    bio: 'Senior physician advising clinical interpretation of biochemistry profiles and preventive health checkups.',
+    avatarEmoji: '👨‍⚕️',
+    referralCommissionPct: 10,
+    monthlyReferrals: 45,
+    totalReferredBilling: 68000,
+  },
+
+  // ================= LAB 2 DOCTORS (lab-6070809010) =================
+  {
+    id: 'doc-lab2-1',
+    labId: 'lab-6070809010',
+    name: 'Dr. Vikramaditya Sen',
+    degrees: 'MBBS, MD (Pathology)',
+    qualification: 'Chief Pathologist • Reg No: PMC-52194',
+    designation: 'Head of Laboratory Services & Senior Pathologist',
+    roleCategory: 'Pathologist',
+    specialization: 'Molecular Diagnostics & Clinical Biochemistry',
+    specialExpertise: 'Immunoassays, Thyroid & Tumor Markers, Quality Control',
+    experience: '14+ Years Experience',
+    bio: 'Pioneered rapid STAT-track digital pathology reports with QR code digital signature verification.',
+    avatarEmoji: '👨‍⚕️',
+    referralCommissionPct: 15,
+    monthlyReferrals: 52,
+    totalReferredBilling: 84000,
+  },
+  {
+    id: 'doc-lab2-2',
+    labId: 'lab-6070809010',
+    name: 'Dr. Neha Bhasin',
+    degrees: 'MBBS, MD (Endocrinology & Medicine)',
+    qualification: 'Consultant Endocrinologist',
+    designation: 'Endocrine & Metabolic Health Specialist',
+    roleCategory: 'Biochemist',
+    specialization: 'Endocrinology & Metabolic Disorders',
+    specialExpertise: 'Thyroid Dysfunctions, PCOD/PCOS & Lipid Metabolism',
+    experience: '11+ Years Experience',
+    bio: 'Dedicated endocrinologist coordinating advanced hormonal profiling and comprehensive diabetic care.',
+    avatarEmoji: '👩‍⚕️',
+    referralCommissionPct: 12,
+    monthlyReferrals: 48,
+    totalReferredBilling: 72000,
+  },
+
   // Apex Doctors & Diagnostic Clinical Specialists
   {
     id: 'doc-apex-1',
@@ -1042,6 +1224,50 @@ VENDOR_LABS_DIRECTORY.forEach((lab) => {
 });
 
 export const DEFAULT_VENDOR_BRANCHES: VendorBranch[] = [
+  // ================= LAB 1 BRANCHES (lab-1020304050) =================
+  {
+    id: 'branch-lab1-1',
+    labId: 'lab-1020304050',
+    name: 'Counter A — Reception & Billing Desk',
+    badge: 'Main Counter',
+    address: 'SCO 101, Medical Enclave, Civil Road, Ludhiana - 141001',
+    phone: '+91 1020304050',
+    timings: 'Open 24x7 (Round the Clock Testing)',
+    isEmergency: true,
+  },
+  {
+    id: 'branch-lab1-2',
+    labId: 'lab-1020304050',
+    name: 'Testing Counter B — Hematology & Biochemistry Floor',
+    badge: 'Analyzer Station',
+    address: '1st Floor, SCO 101, Medical Enclave, Civil Road, Ludhiana',
+    phone: '+91 1020304050',
+    timings: 'Open 24x7 (STAT-Track)',
+    isEmergency: true,
+  },
+
+  // ================= LAB 2 BRANCHES (lab-6070809010) =================
+  {
+    id: 'branch-lab2-1',
+    labId: 'lab-6070809010',
+    name: 'Counter A — Reception & Fast-Track Token Counter',
+    badge: 'Main Counter',
+    address: 'SCO 202, Sector 70, Healthcare Boulevard, Mohali - 160071',
+    phone: '+91 6070809010',
+    timings: 'Open 24x7 (Fast-Track Service)',
+    isEmergency: true,
+  },
+  {
+    id: 'branch-lab2-2',
+    labId: 'lab-6070809010',
+    name: 'Testing Counter B — Molecular & STAT Analyzer Desk',
+    badge: 'Automated Lab',
+    address: '2nd Floor, SCO 202, Sector 70, Healthcare Boulevard, Mohali',
+    phone: '+91 6070809010',
+    timings: 'Open 24x7 (Live Barcoded Testing)',
+    isEmergency: true,
+  },
+
   {
     id: 'branch-1',
     labId: 'lab-apex',
@@ -2513,7 +2739,15 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetLab = (currentUser && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
       : (selectedVendorLabId || 'lab-apex');
-    return allVendorPackages.filter((p) => isTenantMatch(p, targetLab));
+    const matched = allVendorPackages.filter((p) => isTenantMatch(p, targetLab));
+    if (matched.length > 0) return matched;
+    // Smart Fallback: Provide complete starter medical packages stamped for this lab
+    const basePkgs = allVendorPackages.filter((p) => isTenantMatch(p, 'lab-apex'));
+    return basePkgs.map((p, idx) => ({
+      ...p,
+      id: `pkg-${targetLab}-${idx + 1}`,
+      labId: targetLab,
+    }));
   }, [allVendorPackages, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const vendorDoctors = useMemo(() => {
@@ -2528,7 +2762,14 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetLab = (currentUser && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
       : (selectedVendorLabId || 'lab-apex');
-    return allVendorDoctors.filter((d) => isTenantMatch(d, targetLab));
+    const matched = allVendorDoctors.filter((d) => isTenantMatch(d, targetLab));
+    if (matched.length > 0) return matched;
+    // Smart Fallback: Provide clinical team stamped for this lab
+    return DEFAULT_ALL_VENDOR_DOCTORS.filter((d) => isTenantMatch(d, 'lab-apex')).map((d, idx) => ({
+      ...d,
+      id: `doc-${targetLab}-${idx + 1}`,
+      labId: targetLab,
+    }));
   }, [allVendorDoctors, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   // Real-Time Hostinger Server & MySQL Sync State
@@ -3194,7 +3435,30 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
       : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
-    return allVendorBranches.filter((b) => isTenantMatch(b, targetLab));
+    const matched = allVendorBranches.filter((b) => isTenantMatch(b, targetLab));
+    if (matched.length > 0) return matched;
+    return [
+      {
+        id: `branch-${targetLab}-1`,
+        labId: targetLab,
+        name: 'Counter A — Reception & Billing Desk',
+        badge: 'Counter 1',
+        address: 'Medical Diagnostics Facility',
+        phone: '+91 7087033009',
+        timings: 'Open 24x7 (Round the Clock Testing)',
+        isEmergency: true,
+      },
+      {
+        id: `branch-${targetLab}-2`,
+        labId: targetLab,
+        name: 'Testing Counter B — Hematology & Biochemistry Station',
+        badge: 'Counter 2',
+        address: 'Testing Floor, Diagnostics Facility',
+        phone: '+91 7087033009',
+        timings: 'Open 24x7 (STAT-Track)',
+        isEmergency: true,
+      },
+    ];
   }, [allVendorBranches, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const vendorBookings = useMemo(() => {
@@ -3254,7 +3518,15 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
       : (superAdminTenantScope && superAdminTenantScope !== 'all' ? superAdminTenantScope : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
-    return allVendorTests.filter((t) => isTenantMatch(t, targetLab));
+    const matched = allVendorTests.filter((t) => isTenantMatch(t, targetLab));
+    if (matched.length > 0) return matched;
+    // Smart Fallback: Provide complete starter clinical tests stamped for this lab
+    const baseTests = allVendorTests.filter((t) => isTenantMatch(t, 'lab-apex'));
+    return baseTests.map((t, idx) => ({
+      ...t,
+      id: `test-${targetLab}-${idx + 1}`,
+      labId: targetLab,
+    }));
   }, [allVendorTests, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   // Tenant-Isolated Query Helpers

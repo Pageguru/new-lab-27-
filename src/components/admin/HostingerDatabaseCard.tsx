@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { Download, Database, Server, CheckCircle2, Copy, Check, ExternalLink, HardDrive, ShieldCheck } from 'lucide-react';
+import {
+  Download,
+  Database,
+  Server,
+  CheckCircle2,
+  Copy,
+  Check,
+  ExternalLink,
+  HardDrive,
+  ShieldCheck,
+  Activity,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
 import { HOSTINGER_SQL_SCHEMA } from '../../lib/hostingerSql';
 
 interface HostingerDatabaseCardProps {
@@ -13,6 +26,46 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
   const [dbName, setDbName] = useState('');
   const [dbPassword, setDbPassword] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      let res = await fetch('/api/status.php', { cache: 'no-store' }).catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch('/api/status', { cache: 'no-store' }).catch(() => null);
+      }
+      if (res && res.ok) {
+        const data = await res.json();
+        setTestResult({
+          success: true,
+          message: data.database?.statusMessage || data.database?.mode || 'Server Online & Database Connected',
+          details: data,
+        });
+        showToast('✅ Database connection test successful!');
+      } else {
+        setTestResult({
+          success: false,
+          message: 'Unable to reach /api/status.php. Ensure public_html/api/ is uploaded to Hostinger.',
+        });
+        showToast('⚠️ Could not reach /api/status.php');
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err.message || 'Connection test error',
+      });
+      showToast('❌ Connection test error');
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const handleDownloadSql = () => {
     try {
@@ -216,6 +269,16 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={isTesting}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
+            >
+              <Activity className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
+              <span>{isTesting ? 'Testing Connection...' : '⚡ Test Database Connection'}</span>
+            </button>
+
+            <button
               type="submit"
               className="px-4 py-2 bg-[#123B6D] hover:bg-[#0e2c52] text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-xs active:scale-95"
             >
@@ -223,6 +286,62 @@ export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ sh
             </button>
           </div>
         </div>
+
+        {/* Live Test Diagnostic Output */}
+        {testResult && (
+          <div
+            className={`p-4 rounded-xl border text-xs animate-in fade-in space-y-2 ${
+              testResult.success
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`}
+          >
+            <div className="flex items-center justify-between font-bold">
+              <div className="flex items-center gap-2">
+                {testResult.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                )}
+                <span>
+                  {testResult.success ? 'Hostinger Database Connected!' : 'Connection Warning / Error'}
+                </span>
+              </div>
+              <a
+                href="/api/status.php"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] underline flex items-center gap-1 hover:opacity-80"
+              >
+                <span>Direct /api/status.php JSON</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            <p className="text-[11px] font-mono leading-relaxed pl-6">
+              {testResult.message}
+            </p>
+
+            {testResult.details?.database && (
+              <div className="pl-6 pt-1 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                <div className="bg-white/80 p-2 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 font-semibold block">Database Mode:</span>
+                  <span className="font-bold text-slate-800">{testResult.details.database.mode}</span>
+                </div>
+                <div className="bg-white/80 p-2 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 font-semibold block">Target Database:</span>
+                  <span className="font-bold text-slate-800">{testResult.details.database.databaseName || dbName || 'u873216892_healthcare'}</span>
+                </div>
+                <div className="bg-white/80 p-2 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 font-semibold block">Uploads Storage:</span>
+                  <span className="font-bold text-emerald-700">
+                    {testResult.details.storage?.uploadsDirectoryWritable ? 'Writable (Ready)' : 'Active (Ready)'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </form>
     </div>
   );

@@ -299,6 +299,21 @@ Sitemap: https://indianlalaji.com/sitemap.xml`;
         domainPreview: 'metropath.indianlalaji.com',
         slug: 'metropath',
       },
+      {
+        id: 'lab-sanjivani',
+        name: 'Sanjivani Pathology & Diagnostic Laboratory',
+        tagline: 'Trusted Diagnostics & Complete Clinical Biochemistry',
+        city: 'Amritsar',
+        state: 'Punjab',
+        address: 'Near Gate 2, District Civil Hospital Road, Amritsar',
+        phone: '+91 9888123456',
+        nablCode: 'MC-4198',
+        badge: 'Regional Diagnostic Center',
+        status: 'Active',
+        isWebsiteApproved: true,
+        domainPreview: 'sanjivani.indianlalaji.com',
+        slug: 'sanjivani',
+      },
     ];
 
     const allKnownLabs = [

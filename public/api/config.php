@@ -35,9 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // 1. Hostinger Database Credentials
 // -----------------------------------------------------------------------------
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_USER', getenv('DB_USER') ?: 'u873216892_lalaji'); // Hostinger MySQL Username
-define('DB_PASS', getenv('DB_PASS') ?: 'IndianLalaji@2026');   // Hostinger MySQL Password
-define('DB_NAME', getenv('DB_NAME') ?: 'u873216892_healthcare'); // Hostinger MySQL Database Name
+define('DB_USER', getenv('DB_USER') ?: 'u878081993_newkonhai'); // Hostinger MySQL Username
+define('DB_PASS', getenv('DB_PASS') ?: 'newkonhai');   // Hostinger MySQL Password
+define('DB_NAME', getenv('DB_NAME') ?: 'u878081993_newkonhai'); // Hostinger MySQL Database Name
 
 // Directories
 define('DATA_DIR', __DIR__ . '/data');

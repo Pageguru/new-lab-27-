@@ -15,7 +15,7 @@ $dbConnected = false;
 $mysqlTested = false;
 $dbError = null;
 
-if (defined('DB_USER') && DB_USER && DB_USER !== 'u873216892_lalaji') {
+if (defined('DB_USER') && DB_USER) {
     $mysqlTested = true;
     try {
         $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
