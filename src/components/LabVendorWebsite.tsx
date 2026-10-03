@@ -75,7 +75,7 @@ import { VendorPolicyModal, PolicyTabType } from './vendor/VendorPolicyModal';
 import { DownloadAppModal } from './DownloadAppModal';
 import { VendorAiVoiceBot } from './vendor/VendorAiVoiceBot';
 import { getTenantWebsiteUrl, getTenantSubdomain, getTenantBrowserUrl, SUPER_ADMIN_DOMAIN } from '../constants/domains';
-import { isTenantMatch } from '../utils/tenantSecurity';
+import { isTenantMatch, isReportAccessibleToTenant } from '../utils/tenantSecurity';
 import { optimizeImageFile } from '../utils/imageOptimizer';
 
 interface LabVendorWebsiteProps {
@@ -913,6 +913,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     };
 
     const currentLabId = currentWebsiteLabId || currentLabItem?.id || selectedVendorLabId;
+
+    // Strict Tenant Isolation Guard: Lab 1 (1020304050) cannot search Lab 2 (6070809010) reports
+    if (!isReportAccessibleToTenant(val, currentLabId)) {
+      setQuickReportError(`Access Denied: Report or records for "${val}" belong to another laboratory and cannot be accessed from this portal.`);
+      setInlineSearchNotFound(true);
+      return;
+    }
 
     // Filter reports and reception entries strictly for current lab - NO cross-lab data leakage
     const availableReports = (allReports || []).filter((r) => isTenantMatch(r, currentLabId, false));

@@ -847,7 +847,7 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
     const rptId = entry.reportId;
     let foundReport: LabReport | undefined;
     if (rptId) {
-      foundReport = getReportById(rptId) || reports.find((r) => r.reportId === rptId) || allReports.find((r) => r.reportId === rptId);
+      foundReport = getReportById(rptId) || reports.find((r) => r.reportId === rptId);
     }
     if (!foundReport) {
       foundReport = reports.find(

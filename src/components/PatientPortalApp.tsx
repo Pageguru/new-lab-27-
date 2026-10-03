@@ -38,7 +38,7 @@ import { ReportCopyrightBottomBar } from './ReportCopyrightBottomBar';
 import { generateReportPdf } from '../utils/pdfGenerator';
 import { safePrint } from '../utils/printHelper';
 import { CanonicalPdfViewer } from './CanonicalPdfViewer';
-import { isTenantMatch } from '../utils/tenantSecurity';
+import { isTenantMatch, isReportAccessibleToTenant, normalizeTenantId } from '../utils/tenantSecurity';
 import { getTenantSubdomain } from '../constants/domains';
 
 interface PatientPortalAppProps {
@@ -88,8 +88,12 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
   const activeVendorLab = React.useMemo(() => {
     if (!currentLabIdentifier || currentLabIdentifier === 'all') return null;
     const clean = currentLabIdentifier.toLowerCase().trim();
+    const cleanDigits = clean.replace(/\D/g, '');
     return (
       vendorLabsList.find((l) => l.id.toLowerCase() === clean) ||
+      vendorLabsList.find((l) => normalizeTenantId(l.id) === normalizeTenantId(clean)) ||
+      vendorLabsList.find((l) => cleanDigits.length >= 7 && (l.phone || '').replace(/\D/g, '').endsWith(cleanDigits)) ||
+      vendorLabsList.find((l) => cleanDigits.length >= 7 && (l.id || '').replace(/\D/g, '').endsWith(cleanDigits)) ||
       vendorLabsList.find((l) => getTenantSubdomain(l.domainPreview || l.id).toLowerCase() === clean) ||
       vendorLabsList.find((l) => l.name.toLowerCase().includes(clean)) ||
       null
@@ -407,6 +411,14 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
       return;
     }
 
+    // Strict Tenant Isolation Guard: Lab 1 cannot access Lab 2 reports
+    const targetLab = activeVendorLab?.id || currentLabIdentifier || selectedVendorLabId;
+    if (!isReportAccessibleToTenant(cleanInput10, targetLab)) {
+      setErrorMessage('Access Denied');
+      setErrorDetails(`Reports for mobile number +91 ${cleanInput10} are strictly isolated and not accessible from ${labName}. Under strict data isolation rules, Lab 1 cannot access Lab 2 patient reports.`);
+      return;
+    }
+
     // 1. Find all matching reports strictly by exact 10-digit mobile
     const matchedReports = scopedReports.filter((r) => {
       const rDigits = (r.mobile || '').replace(/\D/g, '');
@@ -503,6 +515,14 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
     }
 
     const cleanDigits = raw.replace(/\D/g, '');
+
+    // Strict Tenant Isolation Guard: Lab 1 cannot access Lab 2 reports
+    const targetLab = activeVendorLab?.id || currentLabIdentifier || selectedVendorLabId;
+    if (!isReportAccessibleToTenant(raw, targetLab)) {
+      setErrorMessage('Access Denied');
+      setErrorDetails(`Patient report or token "${reportIdInput}" is strictly isolated and cannot be accessed from ${labName}. Under strict data isolation rules, Lab 1 has no access to Lab 2 reports.`);
+      return;
+    }
 
     // 1. Direct match in reports - STRICT EXACT MATCH ONLY, NO FUZZY SUBSTRINGS
     const reportMatch = scopedReports.find((r) => {
@@ -727,11 +747,42 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
             <span>Back</span>
           </button>
 
-          {/* Center: Lab Name */}
-          <div className="flex-1 text-center min-w-0 px-2">
-            <h1 className="font-extrabold text-sm sm:text-base text-[#123B6D] truncate">
-              {labName}
-            </h1>
+          {/* Center: Lab Name + Lab Switcher */}
+          <div className="flex-1 text-center min-w-0 px-2 flex flex-col items-center justify-center">
+            <div className="flex items-center justify-center gap-2 max-w-full">
+              <h1 className="font-extrabold text-xs sm:text-sm text-[#123B6D] truncate">
+                {labName}
+              </h1>
+              <span className="text-[10px] font-mono bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-bold shrink-0">
+                ID: {activeVendorLab?.id || selectedVendorLabId || '1020304050'}
+              </span>
+            </div>
+            {/* Quick Lab Switcher to verify strict data isolation */}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">Active Lab:</span>
+              <select
+                value={activeVendorLab?.id || selectedVendorLabId || '1020304050'}
+                onChange={(e) => {
+                  const newId = e.target.value;
+                  if (setSelectedVendorLabId) setSelectedVendorLabId(newId);
+                  if (selectVendorLab) selectVendorLab(newId);
+                  if (onSelectVendorLab) onSelectVendorLab(newId);
+                  setSearchedReport(null);
+                  setMatchedEntry(null);
+                  setMatchedList([]);
+                  setErrorMessage(null);
+                  setErrorDetails(null);
+                }}
+                className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 cursor-pointer max-w-[220px] truncate"
+                title="Select Laboratory to test strict data isolation"
+              >
+                {vendorLabsList.map((lab) => (
+                  <option key={lab.id} value={lab.id}>
+                    {lab.name} ({lab.id})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Right: Visit Website button */}

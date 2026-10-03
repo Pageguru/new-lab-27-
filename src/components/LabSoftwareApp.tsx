@@ -51,6 +51,7 @@ import { TEST_TEMPLATES, checkIsAbnormal } from '../data/testTemplates';
 import { DashboardFooter } from './DashboardFooter';
 import { ErrorBoundary } from './ErrorBoundary';
 import { generateThermalReceiptPdf, buildReceiptInvoicePdf } from '../utils/pdfGenerator';
+import { isReportAccessibleToTenant } from '../utils/tenantSecurity';
 
 interface LabSoftwareAppProps {
   onBackToWebsite: () => void;
@@ -913,6 +914,10 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
       // 2. Search by Token Number or Phone Number (Independent)
       if (searchTokenOrPhone.trim()) {
         const q = searchTokenOrPhone.trim().toLowerCase();
+        // Strict Tenant Isolation: Lab 1 cannot search Lab 2 reports
+        if (!isReportAccessibleToTenant(q, activeTenantId || selectedVendorLabId)) {
+          return false;
+        }
         const qDigits = searchTokenOrPhone.replace(/\D/g, '');
         const matchToken =
           (p.tokenNumber && p.tokenNumber.toLowerCase().includes(q)) ||

@@ -234,6 +234,26 @@ export interface LabOption {
 
 export const LAB_OPTIONS: LabOption[] = [
   {
+    id: '1020304050',
+    name: 'Lab 1 — Diagnostics & Path Care (1020304050)',
+    city: 'New Delhi',
+    nablCode: 'MC-1020',
+    branches: [
+      { id: 'branch-1', name: 'Device A — Reception & Billing Desk (1020304050)', type: 'Device A' },
+      { id: 'branch-2', name: 'Device B — Testing Workstation (1020304050)', type: 'Device B' },
+    ],
+  },
+  {
+    id: '6070809010',
+    name: 'Lab 2 — Clinical & Molecular Diagnostics (6070809010)',
+    city: 'Gurugram',
+    nablCode: 'MC-6070',
+    branches: [
+      { id: 'branch-1', name: 'Device A — Reception & Billing Desk (6070809010)', type: 'Device A' },
+      { id: 'branch-2', name: 'Device B — Molecular Testing Workstation (6070809010)', type: 'Device B' },
+    ],
+  },
+  {
     id: 'lab-apex',
     name: 'Apex Diagnostic & Clinical Pathology Laboratory',
     city: 'Ludhiana, Punjab',
