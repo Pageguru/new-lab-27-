@@ -75,7 +75,6 @@ export interface HostingerErrorInfo {
   operationType: OperationType;
   path: string | null;
 }
-export type FirestoreErrorInfo = HostingerErrorInfo;
 
 export function handleHostingerError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: HostingerErrorInfo = {
@@ -85,7 +84,6 @@ export function handleHostingerError(error: unknown, operationType: OperationTyp
   };
   console.warn('[Hostinger MySQL Sync Info]:', JSON.stringify(errInfo));
 }
-export const handleFirestoreError = handleHostingerError;
 
 export function sanitizeForHostingerDb<T>(data: T): T {
   try {
@@ -96,7 +94,6 @@ export function sanitizeForHostingerDb<T>(data: T): T {
     return data;
   }
 }
-export const sanitizeForFirestore = sanitizeForHostingerDb;
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -896,7 +893,6 @@ export async function testHostingerConnection(): Promise<boolean> {
     return false;
   }
 }
-export const testFirestoreConnection = testHostingerConnection;
 
 /**
  * Universal Image Upload to Hostinger /uploads/ directory
@@ -976,7 +972,7 @@ export async function deleteImageFromHostinger(imageUrl?: string | null): Promis
 // Generic Mutation Helper
 // -----------------------------------------------------------------------------
 async function saveDocumentToHostinger(collection: string, id: string, itemData: any): Promise<void> {
-  const sanitized = sanitizeForFirestore({ ...itemData, id, _updatedAt: new Date().toISOString() });
+  const sanitized = sanitizeForHostingerDb({ ...itemData, id, _updatedAt: new Date().toISOString() });
   
   // 1. Update local cache immediately for 0ms optimistic UI
   const isCurrentlyOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -1205,7 +1201,7 @@ export async function syncLabSettingsToCloud(
       lastServerTimestamp = Date.now();
     }
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.LAB_SETTINGS}/${labId}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.LAB_SETTINGS}/${labId}`);
   }
 }
 
@@ -1252,7 +1248,7 @@ export async function syncTestToCloud(test: TestItem): Promise<void> {
   try {
     await saveDocumentToHostinger(COLLECTIONS.TESTS, test.id, test);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.TESTS}/${test.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.TESTS}/${test.id}`);
   }
 }
 
@@ -1260,7 +1256,7 @@ export async function deleteTestFromCloud(testId: string): Promise<void> {
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.TESTS, testId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.TESTS}/${testId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.TESTS}/${testId}`);
   }
 }
 
@@ -1279,7 +1275,7 @@ export async function syncPackageToCloud(pkg: VendorPackage): Promise<void> {
   try {
     await saveDocumentToHostinger(COLLECTIONS.PACKAGES, pkg.id, pkg);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.PACKAGES}/${pkg.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.PACKAGES}/${pkg.id}`);
   }
 }
 
@@ -1287,7 +1283,7 @@ export async function deletePackageFromCloud(pkgId: string): Promise<void> {
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.PACKAGES, pkgId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.PACKAGES}/${pkgId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.PACKAGES}/${pkgId}`);
   }
 }
 
@@ -1312,7 +1308,7 @@ export async function syncDoctorToCloud(docItem: VendorDoctor): Promise<void> {
     const payload = { ...docItem, imageUrl: cleanImage };
     await saveDocumentToHostinger(COLLECTIONS.DOCTORS, docItem.id, payload);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.DOCTORS}/${docItem.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.DOCTORS}/${docItem.id}`);
   }
 }
 
@@ -1320,7 +1316,7 @@ export async function deleteDoctorFromCloud(docId: string): Promise<void> {
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.DOCTORS, docId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.DOCTORS}/${docId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.DOCTORS}/${docId}`);
   }
 }
 
@@ -1342,7 +1338,7 @@ export async function syncBranchToCloud(branch: VendorBranch): Promise<void> {
   try {
     await saveDocumentToHostinger(COLLECTIONS.BRANCHES, branch.id, branch);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.BRANCHES}/${branch.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.BRANCHES}/${branch.id}`);
   }
 }
 
@@ -1350,7 +1346,7 @@ export async function deleteBranchFromCloud(branchId: string): Promise<void> {
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.BRANCHES, branchId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.BRANCHES}/${branchId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.BRANCHES}/${branchId}`);
   }
 }
 
@@ -1372,7 +1368,7 @@ export async function syncReceptionEntryToCloud(entry: ReceptionPatientEntry): P
   try {
     await saveDocumentToHostinger(COLLECTIONS.RECEPTION_ENTRIES, entry.id, entry);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.RECEPTION_ENTRIES}/${entry.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.RECEPTION_ENTRIES}/${entry.id}`);
   }
 }
 
@@ -1380,7 +1376,7 @@ export async function deleteReceptionEntryFromCloud(entryId: string): Promise<vo
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.RECEPTION_ENTRIES, entryId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.RECEPTION_ENTRIES}/${entryId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.RECEPTION_ENTRIES}/${entryId}`);
   }
 }
 
@@ -1402,7 +1398,7 @@ export async function syncLabReportToCloud(report: LabReport): Promise<void> {
   try {
     await saveDocumentToHostinger(COLLECTIONS.LAB_REPORTS, report.reportId, report);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.LAB_REPORTS}/${report.reportId}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.LAB_REPORTS}/${report.reportId}`);
   }
 }
 
@@ -1410,7 +1406,7 @@ export async function deleteLabReportFromCloud(reportId: string): Promise<void> 
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.LAB_REPORTS, reportId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.LAB_REPORTS}/${reportId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.LAB_REPORTS}/${reportId}`);
   }
 }
 
@@ -1454,7 +1450,7 @@ export async function syncBookingToCloud(booking: HomeCollectionBooking): Promis
   try {
     await saveDocumentToHostinger(COLLECTIONS.BOOKINGS, booking.id, booking);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.BOOKINGS}/${booking.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.BOOKINGS}/${booking.id}`);
   }
 }
 
@@ -1462,7 +1458,7 @@ export async function deleteBookingFromCloud(bookingId: string): Promise<void> {
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.BOOKINGS, bookingId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.BOOKINGS}/${bookingId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.BOOKINGS}/${bookingId}`);
   }
 }
 
@@ -1530,7 +1526,7 @@ export async function syncCompanySettingsToCloud(settings: CompanySettings): Pro
   try {
     await saveDocumentToHostinger(COLLECTIONS.COMPANY_SETTINGS, 'main', settings);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.COMPANY_SETTINGS}/main`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.COMPANY_SETTINGS}/main`);
   }
 }
 
@@ -1557,7 +1553,7 @@ export async function syncPortalSectionsToCloud(sections: PortalWebsiteSections)
   try {
     await saveDocumentToHostinger(COLLECTIONS.PORTAL_SECTIONS, 'main', sections);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.PORTAL_SECTIONS}/main`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.PORTAL_SECTIONS}/main`);
   }
 }
 
@@ -1593,7 +1589,7 @@ export async function syncVendorLabToCloud(lab: VendorLabDirectoryItem): Promise
     const payload = { ...lab, logoUrl: cleanLogo };
     await saveDocumentToHostinger(COLLECTIONS.VENDOR_LABS, lab.id, payload);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.VENDOR_LABS}/${lab.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.VENDOR_LABS}/${lab.id}`);
   }
 }
 
@@ -1601,7 +1597,7 @@ export async function deleteVendorLabFromCloud(labId: string): Promise<void> {
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.VENDOR_LABS, labId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.VENDOR_LABS}/${labId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.VENDOR_LABS}/${labId}`);
   }
 }
 
@@ -1622,7 +1618,7 @@ export async function syncPricingPlanToCloud(plan: PricingPlan): Promise<void> {
   try {
     await saveDocumentToHostinger(COLLECTIONS.PRICING_PLANS, plan.id, plan);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.PRICING_PLANS}/${plan.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.PRICING_PLANS}/${plan.id}`);
   }
 }
 
@@ -1630,7 +1626,7 @@ export async function deletePricingPlanFromCloud(planId: string): Promise<void> 
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.PRICING_PLANS, planId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.PRICING_PLANS}/${planId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.PRICING_PLANS}/${planId}`);
   }
 }
 
@@ -1649,7 +1645,7 @@ export async function syncStaffAccountToCloud(staff: LabStaffAccount): Promise<v
   try {
     await saveDocumentToHostinger(COLLECTIONS.STAFF, staff.id, staff);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.STAFF}/${staff.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.STAFF}/${staff.id}`);
   }
 }
 
@@ -1657,7 +1653,7 @@ export async function deleteStaffAccountFromCloud(staffId: string): Promise<void
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.STAFF, staffId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.STAFF}/${staffId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.STAFF}/${staffId}`);
   }
 }
 
@@ -1678,7 +1674,7 @@ export async function syncContactSubmissionToCloud(submission: ContactSubmission
   try {
     await saveDocumentToHostinger(COLLECTIONS.CONTACT_SUBMISSIONS, submission.id, submission);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.CONTACT_SUBMISSIONS}/${submission.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.CONTACT_SUBMISSIONS}/${submission.id}`);
   }
 }
 
@@ -1686,7 +1682,7 @@ export async function deleteContactSubmissionFromCloud(submissionId: string): Pr
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.CONTACT_SUBMISSIONS, submissionId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.CONTACT_SUBMISSIONS}/${submissionId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.CONTACT_SUBMISSIONS}/${submissionId}`);
   }
 }
 
@@ -1707,7 +1703,7 @@ export async function syncDomainRequestToCloud(req: DomainRequest): Promise<void
   try {
     await saveDocumentToHostinger(COLLECTIONS.DOMAIN_REQUESTS, req.id, req);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.DOMAIN_REQUESTS}/${req.id}`);
+    handleHostingerError(err, OperationType.WRITE, `${COLLECTIONS.DOMAIN_REQUESTS}/${req.id}`);
   }
 }
 
@@ -1715,7 +1711,7 @@ export async function deleteDomainRequestFromCloud(requestId: string): Promise<v
   try {
     await deleteDocumentFromHostinger(COLLECTIONS.DOMAIN_REQUESTS, requestId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.DOMAIN_REQUESTS}/${requestId}`);
+    handleHostingerError(err, OperationType.DELETE, `${COLLECTIONS.DOMAIN_REQUESTS}/${requestId}`);
   }
 }
 

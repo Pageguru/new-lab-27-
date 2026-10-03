@@ -195,17 +195,29 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
     }
   }, [selectedRegistrationPackage, isOpen]);
 
+  const [forceSuperAdmin, setForceSuperAdmin] = useState(false);
+  const effectiveIsVendor = isVendorContext && !forceSuperAdmin && targetLoginRole !== 'admin';
+
   // Sync tab with context when modal opens or target role changes
   useEffect(() => {
-    if (isVendorContext) {
+    if (targetLoginRole === 'admin') {
+      setForceSuperAdmin(true);
+      setActiveTab('login');
+      setMainRole('super_admin');
+    } else if (effectiveIsVendor) {
       setActiveTab('login');
     } else if (authModalTab) {
       setActiveTab(authModalTab);
     }
-  }, [authModalTab, isOpen, isVendorContext]);
+  }, [authModalTab, isOpen, effectiveIsVendor, targetLoginRole]);
 
   useEffect(() => {
-    if (isVendorContext) {
+    if (targetLoginRole === 'admin' || forceSuperAdmin) {
+      setMainRole('super_admin');
+      setLoginError('');
+      return;
+    }
+    if (effectiveIsVendor) {
       if (targetLoginRole === 'reception') setLabRole('reception');
       else if (targetLoginRole === 'technician') setLabRole('technician');
       else setLabRole('vendor');
@@ -215,13 +227,12 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
       setSelectedLabId(defaultLab);
       setSelectedBranchId('branch-1');
     } else {
-      if (targetLoginRole === 'admin') setMainRole('super_admin');
-      else if (targetLoginRole === 'vendor') setMainRole('vendor_owner');
-      else setMainRole('vendor_owner');
+      if (targetLoginRole === 'vendor') setMainRole('vendor_owner');
+      else setMainRole('super_admin');
 
       setLoginError('');
     }
-  }, [targetLoginRole, isVendorContext, isOpen, selectedVendorLabId, vendorLabsList]);
+  }, [targetLoginRole, effectiveIsVendor, forceSuperAdmin, isOpen, selectedVendorLabId, vendorLabsList]);
 
   if (!isOpen) return null;
 
@@ -418,13 +429,52 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
     setIsSubmitting(true);
 
     setTimeout(() => {
-      const targetRole = labRole; // 'vendor' | 'reception' | 'technician'
-
-      // Auto-resolve laboratory if owner or staff credentials belong to a different registered lab
       const cleanInput = emailOrPhone.trim().toLowerCase();
       const cleanDigits = cleanInput.replace(/\D/g, '');
       const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
 
+      // Auto-detect Super Admin credentials entered in Lab login modal
+      const isSuperAdminEmail =
+        cleanInput === 'therkmehra331996@gmail.com' ||
+        cleanInput === 'rkmehra331996@gmail.com' ||
+        cleanInput === 'admin@indianlalaji.com' ||
+        cleanInput === 'superadmin@indianlalaji.com' ||
+        cleanInput === 'admin' ||
+        cleanInput === 'superadmin' ||
+        cleanInput === 'super_admin' ||
+        cleanInput === 'super-admin' ||
+        cleanInput === 'super admin' ||
+        cleanInput === 'therkmehra331996' ||
+        cleanInput === 'rkmehra331996' ||
+        cleanInput === 'mehra' ||
+        cleanInput.includes('rkmehra') ||
+        cleanInput === 'admin@gmail.com' ||
+        cleanInput === 'superadmin@gmail.com' ||
+        cleanInput === 'root';
+
+      if (isSuperAdminEmail) {
+        const result = login(
+          'admin',
+          emailOrPhone.trim(),
+          password.trim(),
+          'all',
+          selectedBranchId,
+          pinCode.trim()
+        );
+        setIsSubmitting(false);
+        if (result.success) {
+          onClose();
+          onNavigateView('admin_dashboard');
+          return;
+        } else {
+          setLoginError(result.error || 'Super Admin authentication failed. Check password.');
+          return;
+        }
+      }
+
+      const targetRole = labRole; // 'vendor' | 'reception' | 'technician'
+
+      // Auto-resolve laboratory if owner or staff credentials belong to a different registered lab
       const matchedLab = vendorLabsList.find((l) => {
         const lDigits = (l.phone || '').replace(/\D/g, '');
         const lLast10 = lDigits.length >= 10 ? lDigits.slice(-10) : lDigits;
@@ -485,17 +535,26 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
       const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
 
       const isSuperAdminEmail =
+        cleanInput === 'therkmehra331996@gmail.com' ||
         cleanInput === 'rkmehra331996@gmail.com' ||
         cleanInput === 'admin@indianlalaji.com' ||
+        cleanInput === 'superadmin@indianlalaji.com' ||
         cleanInput === 'admin' ||
         cleanInput === 'superadmin' ||
         cleanInput === 'super_admin' ||
+        cleanInput === 'super-admin' ||
+        cleanInput === 'super admin' ||
+        cleanInput === 'therkmehra331996' ||
         cleanInput === 'rkmehra331996' ||
-        cleanInput === 'mehra';
+        cleanInput === 'mehra' ||
+        cleanInput.includes('rkmehra') ||
+        cleanInput === 'admin@gmail.com' ||
+        cleanInput === 'superadmin@gmail.com' ||
+        cleanInput === 'root';
 
-      // Auto-detect role: If Super Admin email entered, use 'admin'; otherwise if 10-digit phone or vendor credentials, use 'vendor'
-      let targetRole: 'admin' | 'vendor' = mainRole === 'super_admin' ? 'admin' : 'vendor';
-      if (isSuperAdminEmail) {
+      // If user selected SuperAdmin role card, or entered Super Admin master identifier, strictly use 'admin'
+      let targetRole: 'admin' | 'vendor' = (mainRole === 'super_admin' || forceSuperAdmin) ? 'admin' : 'vendor';
+      if (mainRole === 'super_admin' || forceSuperAdmin || isSuperAdminEmail) {
         targetRole = 'admin';
       } else if (cleanDigits.length >= 7 || !cleanInput.includes('@')) {
         targetRole = 'vendor';
@@ -544,7 +603,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
         <div className="bg-[#123B6D] text-white px-5 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm shadow-md shrink-0">
-              {isVendorContext ? (
+              {effectiveIsVendor ? (
                 <Building className="w-5 h-5 text-slate-950" />
               ) : activeTab === 'register' ? (
                 <Building2 className="w-5 h-5 text-slate-950" />
@@ -554,7 +613,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
             </div>
             <div>
               <h3 className="font-black text-base sm:text-lg tracking-tight leading-tight text-white flex items-center gap-2">
-                {isVendorContext ? (
+                {effectiveIsVendor ? (
                   <>
                     <span>Lab Portal Login</span>
                     <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
@@ -578,7 +637,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                 )}
               </h3>
               <p className="text-[11px] text-slate-300">
-                {isVendorContext
+                {effectiveIsVendor
                   ? 'Role-based access: Lab Admin • Receptionist • Technician'
                   : activeTab === 'register'
                   ? 'Provision diagnostic laboratory, owner credentials & WhatsApp report sync'
@@ -596,8 +655,8 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
           </button>
         </div>
 
-        {/* Modal Navigation Tabs (Only shown on Main Website, not on Lab Website) */}
-        {!isVendorContext && (
+        {/* Modal Navigation Tabs (Only shown on Main Website or when switching to Super Admin) */}
+        {!effectiveIsVendor && (
           <div className="flex border-b border-slate-200 bg-slate-50 shrink-0">
             <button
               type="button"
@@ -654,7 +713,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
           {/*   ▼                                                                       */}
           {/* Role-based Dashboard                                                       */}
           {/* ========================================================================= */}
-          {isVendorContext && (
+          {effectiveIsVendor && (
             <div className="space-y-4">
               {/* Architecture Breadcrumb Banner */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs flex flex-col gap-1.5">
@@ -666,6 +725,23 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                   <span className="text-[10px] bg-[#123B6D] text-white px-2 py-0.5 rounded font-bold">
                     Role-Based Access
                   </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
+                  <span className="text-slate-500 font-medium">Platform Super Admin Login?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForceSuperAdmin(true);
+                      setMainRole('super_admin');
+                      setActiveTab('login');
+                      setEmailOrPhone('therkmehra331996@gmail.com');
+                      setPassword('Asdfzxcv@336699');
+                      setPinCode('331996');
+                    }}
+                    className="text-rose-700 hover:text-rose-900 font-bold underline cursor-pointer"
+                  >
+                    👑 Switch to Super Admin
+                  </button>
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
                   <span>Lab Website</span>
@@ -898,7 +974,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
           {/*    Full      Assigned                                                     */}
           {/*    Access    Permissions                                                  */}
           {/* ========================================================================= */}
-          {!isVendorContext && activeTab === 'login' && (
+          {!effectiveIsVendor && activeTab === 'login' && (
             <div className="space-y-4">
               {/* Architecture Diagram Visualization */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5">
@@ -1068,6 +1144,27 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                   />
                 </div>
 
+                {mainRole === 'super_admin' && (
+                  <div className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200/80 text-[11px] text-slate-700 flex items-center justify-between">
+                    <div className="truncate">
+                      <span className="font-bold text-rose-900">Master Admin: </span>
+                      <span className="font-mono text-slate-800">therkmehra331996@gmail.com</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmailOrPhone('therkmehra331996@gmail.com');
+                        setPassword('Asdfzxcv@336699');
+                        setPinCode('331996');
+                        setLoginError('');
+                      }}
+                      className="text-rose-700 hover:text-rose-900 font-bold underline cursor-pointer shrink-0 ml-2"
+                    >
+                      Fill 1-Click
+                    </button>
+                  </div>
+                )}
+
                 {loginError && (
                   <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -1113,7 +1210,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
           {/*   [ Create Lab ]                                                          */}
           {/*   [ 📲 Share Credentials on WhatsApp ]                                    */}
           {/* ========================================================================= */}
-          {!isVendorContext && activeTab === 'register' && (
+          {!effectiveIsVendor && activeTab === 'register' && (
             <div>
               {/* If newly created, show dedicated confirmation card */}
               {createdLabData ? (

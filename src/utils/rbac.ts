@@ -32,7 +32,7 @@ export const ALL_ROLES_CONFIG: Record<
     subtitle: 'Full master authority over all diagnostics labs, SaaS plans, and global audit logs',
     emoji: '👑',
     badgeColor: 'bg-rose-500 text-white border-rose-600',
-    defaultIdentifier: 'rkmehra331996@gmail.com',
+    defaultIdentifier: 'therkmehra331996@gmail.com',
     identifierLabel: 'Super Admin Email ID',
     identifierType: 'email',
     defaultPassword: 'Asdfzxcv@336699',

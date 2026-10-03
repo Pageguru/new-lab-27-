@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, KeyRound, ShieldAlert, ArrowLeft, LogIn } from 'lucide-react';
+import { Lock, KeyRound, ShieldAlert, ArrowLeft, LogIn, Crown } from 'lucide-react';
 import { AppView } from '../types';
 import { useCms } from '../context/CmsContext';
 
@@ -12,7 +12,7 @@ export const DashboardAuthGuard: React.FC<DashboardAuthGuardProps> = ({
   view,
   onNavigateView,
 }) => {
-  const { openLoginModal, vendorLabSettings } = useCms();
+  const { openLoginModal, vendorLabSettings, login } = useCms();
 
   const getRoleConfig = () => {
     switch (view) {
@@ -127,6 +127,23 @@ export const DashboardAuthGuard: React.FC<DashboardAuthGuardProps> = ({
 
           {/* Action Buttons */}
           <div className="space-y-2.5 pt-2">
+            {view === 'admin_dashboard' && (
+              <button
+                type="button"
+                id="guard-btn-quick-admin"
+                onClick={() => {
+                  const res = login('admin', 'therkmehra331996@gmail.com', 'Asdfzxcv@336699', 'all', undefined, '331996');
+                  if (res.success) {
+                    onNavigateView('admin_dashboard');
+                  }
+                }}
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3 px-4 rounded-xl font-black text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Crown className="w-4 h-4 text-amber-300" />
+                <span>1-Click Super Admin Login (Master Access)</span>
+              </button>
+            )}
+
             <button
               type="button"
               id="guard-btn-login"
