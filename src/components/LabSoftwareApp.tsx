@@ -83,6 +83,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     activeBranchId,
     setActiveBranchId,
     activeTenantId,
+    selectedVendorLabId,
   } = useCms();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'patients' | 'results' | 'reception_orders'>('dashboard');
   const [receptionFilter, setReceptionFilter] = useState<'All' | 'Awaiting' | 'Accepted' | 'Completed'>('All');

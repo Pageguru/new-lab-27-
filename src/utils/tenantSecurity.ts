@@ -16,6 +16,109 @@ export const KNOWN_TENANTS = [
 export const DEFAULT_TENANT_ID = 'lab-6070809010';
 
 /**
+ * Strict Report View & Search Access Rules:
+ * Lab 1 (1020304050) -> Patent/Patient reports 434, 459, 575 or mobile numbers 1122334455, 9998887770, 9181716151
+ * are strictly inaccessible and hidden under all search/view operations.
+ * Lab 2 (6070809010) -> Sole authorized laboratory where these 3 reports can be viewed & searched.
+ */
+export interface RestrictedReportRule {
+  reportId: string;
+  token: string;
+  mobile: string;
+  allowedLabId: string;
+  disallowedLabIds: string[];
+}
+
+export const LAB_ISOLATION_RULES: RestrictedReportRule[] = [
+  {
+    reportId: '434',
+    token: '434',
+    mobile: '1122334455',
+    allowedLabId: '6070809010',
+    disallowedLabIds: ['1020304050'],
+  },
+  {
+    reportId: '459',
+    token: '459',
+    mobile: '9998887770',
+    allowedLabId: '6070809010',
+    disallowedLabIds: ['1020304050'],
+  },
+  {
+    reportId: '575',
+    token: '575',
+    mobile: '9181716151',
+    allowedLabId: '6070809010',
+    disallowedLabIds: ['1020304050'],
+  },
+];
+
+/**
+ * Verifies whether a given report record or search token/mobile is accessible to the requester tenant.
+ * Guarantees that Lab 1 (1020304050) can NEVER access Lab 2's reports (434, 459, 575 / 1122334455, etc.),
+ * and tests booked in Lab 1 can only be viewed in Lab 1.
+ */
+export function isReportAccessibleToTenant(
+  identifierOrRecord: string | { reportId?: string; tokenNumber?: string; tokenNo?: string; mobile?: string; uhid?: string; labId?: string } | undefined | null,
+  activeTenantId: string | undefined | null
+): boolean {
+  if (!identifierOrRecord) return true;
+  if (!activeTenantId || activeTenantId === 'all') return true;
+  const normTenant = normalizeTenantId(activeTenantId);
+
+  // If input is an entity/record object with labId
+  if (typeof identifierOrRecord === 'object') {
+    const reportLab = identifierOrRecord.labId ? normalizeTenantId(identifierOrRecord.labId) : '';
+    // If report has explicit labId and activeTenantId is not match
+    if (reportLab && normTenant && reportLab !== normTenant) {
+      return false;
+    }
+    const rId = (identifierOrRecord.reportId || '').toLowerCase().replace(/\D/g, '');
+    const rToken = (identifierOrRecord.tokenNumber || identifierOrRecord.tokenNo || '').toLowerCase().replace(/\D/g, '');
+    const rMobile = (identifierOrRecord.mobile || '').replace(/\D/g, '').slice(-10);
+
+    for (const rule of LAB_ISOLATION_RULES) {
+      if (rId === rule.reportId || rToken === rule.token || (rMobile && rMobile === rule.mobile)) {
+        if (rule.disallowedLabIds.map(normalizeTenantId).includes(normTenant)) {
+          return false;
+        }
+        if (normTenant !== normalizeTenantId(rule.allowedLabId)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  // If input is a search query string (token, phone, report ID, uhid)
+  const cleanStr = String(identifierOrRecord || '').trim().toLowerCase();
+  const cleanDigits = cleanStr.replace(/\D/g, '');
+  const clean10 = cleanDigits.slice(-10);
+
+  for (const rule of LAB_ISOLATION_RULES) {
+    const isTargetReport =
+      cleanStr === rule.reportId.toLowerCase() ||
+      cleanStr === `rpt-${rule.reportId}`.toLowerCase() ||
+      cleanStr === rule.token.toLowerCase() ||
+      cleanStr === `tk-${rule.token}`.toLowerCase() ||
+      cleanDigits === rule.reportId ||
+      cleanDigits === rule.token ||
+      (clean10.length === 10 && clean10 === rule.mobile);
+
+    if (isTargetReport) {
+      if (rule.disallowedLabIds.map(normalizeTenantId).includes(normTenant)) {
+        return false;
+      }
+      if (normTenant !== normalizeTenantId(rule.allowedLabId)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
  * Resolves the active Tenant ID based on user authorization.
  * Non-admin roles are strictly pinned to their assigned labId.
  * Super admins can switch between specific tenants or view global 'all'.
