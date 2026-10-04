@@ -136,3 +136,47 @@ export function getSuperAdminDashboardUrl(): string {
   return `https://${SUPER_ADMIN_DOMAIN}/admin`;
 }
 
+/**
+ * Normalizes any vendor URL or slug to canonical directory format:
+ * e.g. 'https://baburamlab.indianlalaji.com' -> 'https://indianlalaji.com/shop/baburamlab'
+ * e.g. 'baburamlab' -> 'https://indianlalaji.com/shop/baburamlab'
+ * e.g. 'lab-1020304050' -> 'https://indianlalaji.com/shop/lab-1020304050'
+ * External custom domains (e.g. apexdiag.in) are preserved as https://apexdiag.in
+ */
+export function normalizeToDirectoryUrl(urlOrSlugOrId?: string): string {
+  if (!urlOrSlugOrId) return `https://${SUPER_ADMIN_DOMAIN}/shop/lab-apex`;
+  let str = urlOrSlugOrId.trim();
+  str = str.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+
+  // 1. Independent external custom domain check (e.g. apexdiag.in, baburamlab.com)
+  // Must have dot and NOT contain indianlalaji.com or indianalala.com or localhost
+  if (
+    str.includes('.') &&
+    !str.includes('indianlalaji.com') &&
+    !str.includes('indianalala.com') &&
+    !str.includes('localhost') &&
+    !str.includes('/shop/')
+  ) {
+    return `https://${str.toLowerCase()}`;
+  }
+
+  // 2. Extract clean lab slug/id from directory path or subdomain
+  if (str.includes('/shop/')) {
+    str = str.split('/shop/')[1].split('/')[0].split('?')[0].split('#')[0];
+  } else if (str.includes('/lab/')) {
+    str = str.split('/lab/')[1].split('/')[0].split('?')[0].split('#')[0];
+  } else if (str.toLowerCase().endsWith('.indianlalaji.com') || str.toLowerCase().endsWith('.indianalala.com')) {
+    // e.g. baburamlab.indianlalaji.com -> baburamlab
+    str = str.replace(/\.?(indianlalaji|indianalala)\.com$/i, '');
+    const parts = str.split('.');
+    str = parts[parts.length - 1];
+  } else if (str.toLowerCase().includes('indianlalaji.com') || str.toLowerCase().includes('indianalala.com')) {
+    str = str.replace(/^.*?indianlalaji\.com\/?/i, '').replace(/^.*?indianalala\.com\/?/i, '');
+    if (str.toLowerCase().startsWith('shop/')) str = str.slice(5);
+  }
+
+  // Sanitize slug
+  const cleanSlug = str.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || 'lab-apex';
+  return `https://${SUPER_ADMIN_DOMAIN}/shop/${cleanSlug}`;
+}
+

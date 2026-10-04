@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { AppView, VendorLabDirectoryItem } from '../types';
 import { useCms } from '../context/CmsContext';
+import { VENDOR_LABS_DIRECTORY } from '../data/mockData';
 
 interface VendorWebsitesShowcaseSectionProps {
   onSelectView: (view: AppView) => void;
@@ -37,17 +38,32 @@ export const VendorWebsitesShowcaseSection: React.FC<VendorWebsitesShowcaseSecti
   const [showDraftsToAdmin, setShowDraftsToAdmin] = useState(false);
 
   const isPlatformAdmin = currentUser?.role === 'admin';
-  const draftCount = useMemo(() => {
-    return vendorLabsList.filter((l) => l.status === 'Draft' || l.status === 'Pending').length;
+  
+  // Safe effective list ensuring 6 shops always exist
+  const effectiveLabs = useMemo(() => {
+    if (Array.isArray(vendorLabsList) && vendorLabsList.length > 0) {
+      return vendorLabsList;
+    }
+    return VENDOR_LABS_DIRECTORY;
   }, [vendorLabsList]);
+
+  const draftCount = useMemo(() => {
+    return effectiveLabs.filter((l) => (l.status || '').toLowerCase() === 'draft' || (l.status || '').toLowerCase() === 'pending').length;
+  }, [effectiveLabs]);
 
   // Public visitor sees only Active labs; Admin can toggle to preview Draft labs
   const baseLabs = useMemo(() => {
     if (isPlatformAdmin && showDraftsToAdmin) {
-      return vendorLabsList;
+      return effectiveLabs;
     }
-    return vendorLabsList.filter((l) => l.status === 'Active');
-  }, [vendorLabsList, isPlatformAdmin, showDraftsToAdmin]);
+    // Case-insensitive active check to match both 'Active' and 'active' from MySQL or JSON
+    const activeOnly = effectiveLabs.filter((l) => (l.status || '').toLowerCase() === 'active');
+    // If no active labs matched for any reason, fallback to default 6 active shops
+    if (activeOnly.length === 0) {
+      return VENDOR_LABS_DIRECTORY.filter((l) => (l.status || '').toLowerCase() === 'active');
+    }
+    return activeOnly;
+  }, [effectiveLabs, isPlatformAdmin, showDraftsToAdmin]);
 
   // Distinct cities list from active labs
   const cities = useMemo(() => {

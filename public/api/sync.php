@@ -99,11 +99,54 @@ function fetchCollectionData($collection) {
                 $stmt = $pdo->query("SELECT * FROM `{$tableName}`");
             }
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Auto-seed vendor_labs if table exists but is empty
+            if ($collection === 'vendor_labs' && empty($rows)) {
+                $seedFile = DATA_DIR . '/vendor_labs.json';
+                if (file_exists($seedFile)) {
+                    $seedLabs = json_decode(file_get_contents($seedFile), true);
+                    if (is_array($seedLabs) && count($seedLabs) > 0) {
+                        foreach ($seedLabs as $slab) {
+                            persistDocToMySql('vendor_labs', $slab['id'], $slab);
+                        }
+                        $stmt = $pdo->query("SELECT * FROM `vendor_labs`");
+                        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    }
+                }
+            }
+
+            // Auto-seed lab_settings if table exists but is empty
+            if ($collection === 'lab_settings' && empty($rows)) {
+                $seedFile = DATA_DIR . '/lab_settings.json';
+                if (file_exists($seedFile)) {
+                    $seedSettings = json_decode(file_get_contents($seedFile), true);
+                    if (is_array($seedSettings) && count($seedSettings) > 0) {
+                        foreach ($seedSettings as $sset) {
+                            $lid = $sset['labId'] ?? ($sset['id'] ?? 'lab-apex');
+                            persistDocToMySql('lab_settings', $lid, $sset);
+                        }
+                        $stmt = $pdo->query("SELECT * FROM `lab_settings`");
+                        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    }
+                }
+            }
             
             if (is_array($rows) && count($rows) > 0) {
                 $processed = [];
                 foreach ($rows as $row) {
                     $dbLabId = !empty($row['labId']) ? $row['labId'] : null;
+
+                    // Ensure vendor_labs uses directory URLs and active status
+                    if ($collection === 'vendor_labs') {
+                        $rawSlug = $row['slug'] ?? str_replace('lab-', '', $row['id']);
+                        $cleanSlug = preg_replace('/\.?(indianlalaji|indianalala)\.com$/i', '', $rawSlug);
+                        $cleanSlug = str_replace('indianlalaji.com/shop/', '', $cleanSlug);
+                        $cleanSlug = trim($cleanSlug, '/');
+                        $row['domainPreview'] = 'indianlalaji.com/shop/' . $cleanSlug;
+                        $row['websiteUrl'] = 'https://indianlalaji.com/shop/' . $cleanSlug;
+                        $row['status'] = 'Active';
+                        $row['isWebsiteApproved'] = true;
+                    }
 
                     // Normalize JSON fields - frontend data takes precedence over empty database defaults
                     if (isset($row['settingsJson']) && $row['settingsJson']) {

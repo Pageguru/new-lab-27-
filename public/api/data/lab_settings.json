@@ -18,8 +18,8 @@
     "supportPhone": "+91 1020304050",
     "status": "Active",
     "isWebsiteApproved": true,
-    "domainPreview": "1020304050.indianlalaji.com",
-    "websiteDomain": "1020304050.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/1020304050",
+    "websiteDomain": "",
     "nablCode": "MC-1020",
     "establishedYear": 2018,
     "ownerName": "Dr. Lab 1 Director",
@@ -32,7 +32,8 @@
       "Digital Barcoded Tubes"
     ],
     "autoSendWhatsApp": true,
-    "enableOnlineBooking": true
+    "enableOnlineBooking": true,
+    "websiteUrl": "https://indianlalaji.com/shop/1020304050"
   },
   {
     "id": "lab-6070809010",
@@ -53,8 +54,8 @@
     "supportPhone": "+91 6070809010",
     "status": "Active",
     "isWebsiteApproved": true,
-    "domainPreview": "6070809010.indianlalaji.com",
-    "websiteDomain": "6070809010.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/6070809010",
+    "websiteDomain": "",
     "nablCode": "MC-6070",
     "establishedYear": 2015,
     "ownerName": "Dr. Lab 2 Director",
@@ -67,7 +68,8 @@
       "Online QR Report Verification"
     ],
     "autoSendWhatsApp": true,
-    "enableOnlineBooking": true
+    "enableOnlineBooking": true,
+    "websiteUrl": "https://indianlalaji.com/shop/6070809010"
   },
   {
     "id": "lab-apex",
@@ -88,8 +90,8 @@
     "supportPhone": "+91 7087033009",
     "status": "Active",
     "isWebsiteApproved": true,
-    "domainPreview": "apexdiagnostics.indianlalaji.com",
-    "websiteDomain": "apexdiagnostics.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/apex",
+    "websiteDomain": "",
     "nablCode": "MC-4821",
     "establishedYear": 2012,
     "ownerName": "Dr. Rajesh Sharma",
@@ -103,7 +105,8 @@
       "Barcoded Tubes"
     ],
     "autoSendWhatsApp": true,
-    "enableOnlineBooking": true
+    "enableOnlineBooking": true,
+    "websiteUrl": "https://indianlalaji.com/shop/apex"
   },
   {
     "id": "lab-citycare",
@@ -124,8 +127,8 @@
     "supportPhone": "+91 9815012345",
     "status": "Active",
     "isWebsiteApproved": true,
-    "domainPreview": "citycare.indianlalaji.com",
-    "websiteDomain": "citycare.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/citycare",
+    "websiteDomain": "",
     "nablCode": "MC-3912 (QCI Certified)",
     "establishedYear": 2016,
     "ownerName": "Dr. Meenakshi Sundaram",
@@ -139,7 +142,8 @@
       "Online Portal"
     ],
     "autoSendWhatsApp": true,
-    "enableOnlineBooking": true
+    "enableOnlineBooking": true,
+    "websiteUrl": "https://indianlalaji.com/shop/citycare"
   },
   {
     "id": "lab-metropath",
@@ -160,8 +164,8 @@
     "supportPhone": "+91 9417098765",
     "status": "Active",
     "isWebsiteApproved": true,
-    "domainPreview": "metropath.indianlalaji.com",
-    "websiteDomain": "metropath.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/metropath",
+    "websiteDomain": "",
     "nablCode": "MC-5104 (NABL Accredited)",
     "establishedYear": 2010,
     "ownerName": "Dr. Arunava Ghosh",
@@ -175,7 +179,8 @@
       "Digital QR Reports"
     ],
     "autoSendWhatsApp": true,
-    "enableOnlineBooking": true
+    "enableOnlineBooking": true,
+    "websiteUrl": "https://indianlalaji.com/shop/metropath"
   },
   {
     "id": "lab-sanjivani",
@@ -196,8 +201,8 @@
     "supportPhone": "+91 9888123456",
     "status": "Active",
     "isWebsiteApproved": true,
-    "domainPreview": "sanjivanipath.indianlalaji.com",
-    "websiteDomain": "sanjivanipath.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/sanjivani",
+    "websiteDomain": "",
     "nablCode": "ISO 9001:2015 Compliant",
     "establishedYear": 2018,
     "ownerName": "Dr. Harbhajan Gill",
@@ -211,6 +216,7 @@
       "Senior Citizen Discount"
     ],
     "autoSendWhatsApp": true,
-    "enableOnlineBooking": true
+    "enableOnlineBooking": true,
+    "websiteUrl": "https://indianlalaji.com/shop/sanjivani"
   }
 ]

@@ -1290,7 +1290,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                 <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-3.5 text-xs text-amber-950 space-y-1.5">
                   <div className="font-black text-amber-900 flex items-center gap-1.5">
                     <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>Default IndianLalaji.com Shop URL (indianlalaji.com/?shop={vendorLabSettings.labId || 'SHOP_ID'})</span>
+                    <span>Default IndianLalaji.com Shop Directory (indianlalaji.com/shop/{vendorLabSettings.labId || 'SHOP_ID'})</span>
                   </div>
                   <ul className="list-disc pl-5 text-[11px] text-amber-900 space-y-0.5 leading-relaxed">
                     <li>
@@ -1898,7 +1898,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                   <span>Customer Website Checkout Preview (ग्राहक को क्या दिखेगा)</span>
                 </span>
                 <span className="text-[10px] font-bold text-slate-500">
-                  URL: {formData.isCustomDomainActive ? (vendorLabSettings.websiteDomain || 'yourlab.com') : `indianlalaji.com/?shop=${vendorLabSettings.labId || 'apex'}`}
+                  URL: {formData.isCustomDomainActive ? (vendorLabSettings.websiteDomain || 'yourlab.com') : `indianlalaji.com/shop/${vendorLabSettings.labId || 'apex'}`}
                 </span>
               </div>
 

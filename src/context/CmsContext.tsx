@@ -3259,10 +3259,25 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 11. Subscribe to Vendor Labs Directory (Updates instantly across all devices)
     const unsubscribeVendorLabs = subscribeToVendorLabs((cloudLabs) => {
       if (Array.isArray(cloudLabs) && cloudLabs.length > 0) {
-        setVendorLabsList(cloudLabs);
+        // Case-insensitive active check to verify at least one shop is active
+        const normalizedLabs = cloudLabs.map((l) => ({
+          ...l,
+          status: l.status || 'Active',
+          isWebsiteApproved: l.isWebsiteApproved ?? true,
+          domainPreview: (l.domainPreview && !l.domainPreview.includes('.indianlalaji.com') && !l.domainPreview.includes('.indianalala.com'))
+            ? l.domainPreview
+            : `indianlalaji.com/shop/${l.slug || l.id.replace(/^lab-/, '')}`,
+          websiteUrl: (l.websiteUrl && !l.websiteUrl.includes('.indianlalaji.com') && !l.websiteUrl.includes('.indianalala.com'))
+            ? l.websiteUrl
+            : `https://indianlalaji.com/shop/${l.slug || l.id.replace(/^lab-/, '')}`,
+        }));
+        setVendorLabsList(normalizedLabs);
         try {
-          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(cloudLabs));
+          localStorage.setItem('cms_vendor_labs_list', JSON.stringify(normalizedLabs));
         } catch {}
+      } else {
+        // If server returns empty list, ensure the 6 initial shops are preserved!
+        setVendorLabsList((prev) => (prev && prev.length > 0 ? prev : VENDOR_LABS_DIRECTORY));
       }
     });
 
@@ -5854,16 +5869,27 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updatedReq) {
       syncDomainRequestToCloud(updatedReq);
       const targetLabId = updatedReq.labId;
-      const cleanNewDomain = updatedReq.requestedDomain.toLowerCase().trim().replace(/^https?:\/\//, '');
+      const cleanNewDomain = updatedReq.requestedDomain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const isInternalPlatform = cleanNewDomain.includes('indianlalaji.com') || cleanNewDomain.includes('indianalala.com') || !cleanNewDomain.includes('.');
+
+      const effectiveDomainPreview = isInternalPlatform
+        ? `indianlalaji.com/shop/${targetLabId}`
+        : cleanNewDomain;
+      const effectiveWebsiteUrl = isInternalPlatform
+        ? `https://indianlalaji.com/shop/${targetLabId}`
+        : `https://${cleanNewDomain}`;
+      const effectiveWebsiteDomain = isInternalPlatform
+        ? ''
+        : cleanNewDomain;
 
       // 1. Automatically update vendorLabSettingsMap for that lab so website reflects new domain
       setVendorLabSettingsMap((prev) => {
         const existing = prev[targetLabId] || DEFAULT_VENDOR_SETTINGS_MAP[targetLabId] || DEFAULT_VENDOR_LAB_SETTINGS;
         const updated: VendorLabSettings = {
           ...existing,
-          domainPreview: cleanNewDomain,
-          websiteDomain: cleanNewDomain,
-          websiteUrl: `https://${cleanNewDomain}`,
+          domainPreview: effectiveDomainPreview,
+          websiteDomain: effectiveWebsiteDomain,
+          websiteUrl: effectiveWebsiteUrl,
         };
         syncLabSettingsToCloud(targetLabId, updated);
         return { ...prev, [targetLabId]: updated };
@@ -5875,8 +5901,8 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (lab.id === targetLabId) {
             const updatedLab: VendorLabDirectoryItem = {
               ...lab,
-              domainPreview: cleanNewDomain,
-              websiteUrl: `https://${cleanNewDomain}`,
+              domainPreview: effectiveDomainPreview,
+              websiteUrl: effectiveWebsiteUrl,
             };
             syncVendorLabToCloud(updatedLab);
             return updatedLab;

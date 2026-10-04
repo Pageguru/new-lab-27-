@@ -22,9 +22,9 @@ interface HostingerDatabaseCardProps {
 export const HostingerDatabaseCard: React.FC<HostingerDatabaseCardProps> = ({ showToast }) => {
   const [copiedStep, setCopiedStep] = useState<string | null>(null);
   const [dbHost, setDbHost] = useState('localhost');
-  const [dbUser, setDbUser] = useState('');
-  const [dbName, setDbName] = useState('');
-  const [dbPassword, setDbPassword] = useState('');
+  const [dbUser, setDbUser] = useState('u878081993_newkonhai');
+  const [dbName, setDbName] = useState('u878081993_newkonhai');
+  const [dbPassword, setDbPassword] = useState('newkonhai');
   const [isSaved, setIsSaved] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{

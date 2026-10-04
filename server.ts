@@ -25,13 +25,48 @@ function readDevDb(): Record<string, any> {
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      return JSON.parse(raw);
+      const store = JSON.parse(raw);
+      // Ensure 6 shops are always present
+      if (!store.vendorLabs || store.vendorLabs.length === 0 || !store.vendor_labs || store.vendor_labs.length === 0) {
+        const seedLabsPath = path.join(__dirname, 'public', 'api', 'data', 'vendor_labs.json');
+        if (fs.existsSync(seedLabsPath)) {
+          const labs = JSON.parse(fs.readFileSync(seedLabsPath, 'utf-8'));
+          store.vendorLabs = labs;
+          store.vendor_labs = labs;
+        }
+      }
+      return store;
     }
   } catch (err) {
     console.warn('[Dev Server DB Read Error]:', err);
   }
+
+  // Fallback to initial seed files
+  let seedLabs: any[] = [];
+  const seedLabsPath = path.join(__dirname, 'public', 'api', 'data', 'vendor_labs.json');
+  if (fs.existsSync(seedLabsPath)) {
+    try {
+      seedLabs = JSON.parse(fs.readFileSync(seedLabsPath, 'utf-8'));
+    } catch {}
+  }
+
+  let seedSettings: any = {};
+  const seedSettingsPath = path.join(__dirname, 'public', 'api', 'data', 'lab_settings.json');
+  if (fs.existsSync(seedSettingsPath)) {
+    try {
+      const arr = JSON.parse(fs.readFileSync(seedSettingsPath, 'utf-8'));
+      if (Array.isArray(arr)) {
+        for (const s of arr) {
+          const id = s.labId || s.id;
+          seedSettings[id] = s;
+        }
+      }
+    } catch {}
+  }
+
   return {
-    labSettingsMap: {},
+    labSettingsMap: seedSettings,
+    lab_settings: seedSettings,
     tests: [],
     packages: [],
     doctors: [],
@@ -40,7 +75,8 @@ function readDevDb(): Record<string, any> {
     reports: [],
     bookings: [],
     staff: [],
-    vendorLabs: [],
+    vendorLabs: seedLabs,
+    vendor_labs: seedLabs,
     companySettings: null,
     seoSettings: null,
     portalSections: null,

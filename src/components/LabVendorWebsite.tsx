@@ -76,7 +76,7 @@ import { TermsConditionsModal } from './TermsConditionsModal';
 import { VendorPolicyModal, PolicyTabType } from './vendor/VendorPolicyModal';
 import { HomeScreenShortcutModal, DownloadAppModal } from './DownloadAppModal';
 import { VendorAiVoiceBot } from './vendor/VendorAiVoiceBot';
-import { getTenantWebsiteUrl, getTenantSubdomain, getTenantBrowserUrl, SUPER_ADMIN_DOMAIN } from '../constants/domains';
+import { getTenantWebsiteUrl, getTenantSubdomain, getTenantBrowserUrl, SUPER_ADMIN_DOMAIN, normalizeToDirectoryUrl } from '../constants/domains';
 import { isTenantMatch, isReportAccessibleToTenant } from '../utils/tenantSecurity';
 import { optimizeImageFile } from '../utils/imageOptimizer';
 
@@ -165,7 +165,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         badge: 'Verified Diagnostic Lab',
         status: 'Active',
         isWebsiteApproved: true,
-        domainPreview: vendorLabSettings?.domainPreview || `${cleanSlug}.indianlalaji.com`,
+        domainPreview: (vendorLabSettings?.domainPreview && !vendorLabSettings.domainPreview.endsWith('.indianlalaji.com'))
+          ? vendorLabSettings.domainPreview
+          : `indianlalaji.com/shop/${cleanSlug}`,
         slug: cleanSlug,
       } as any;
     }
@@ -238,8 +240,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     }, 120);
   };
 
-  const dedicatedDomain = currentLabItem?.domainPreview || `${currentLabItem?.id || 'apexdiagnostics'}.${SUPER_ADMIN_DOMAIN}`;
-  const canonicalUrl = getTenantWebsiteUrl(dedicatedDomain);
+  const dedicatedShopPath = currentLabItem?.slug || currentLabItem?.id || effectiveLabId || 'lab-apex';
+  const canonicalUrl = getTenantWebsiteUrl(dedicatedShopPath);
 
   const handleOpenAdmin = () => {
     if (currentUser && currentUser.role === 'admin') {
@@ -286,7 +288,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const labEmergency = vendorLabSettings?.emergencyHours || '24x7 Emergency Services at Central Lab';
   const labAddress = currentLabItem?.address || vendorLabSettings?.address || defaultDirectoryLab?.address || 'Healthcare Complex, India';
   const labDescription = vendorLabSettings?.description || labTagline || `${labName} - Authorized NABL Accredited Diagnostic Center.`;
-  const labWebsiteUrl = vendorLabSettings?.websiteUrl && !vendorLabSettings.websiteUrl.includes('labname.com') ? vendorLabSettings.websiteUrl : canonicalUrl;
+  const labWebsiteUrl =
+    vendorLabSettings?.websiteUrl &&
+    !vendorLabSettings.websiteUrl.includes('labname.com') &&
+    !vendorLabSettings.websiteUrl.includes('.indianlalaji.com') &&
+    !vendorLabSettings.websiteUrl.includes('.indianalala.com')
+      ? vendorLabSettings.websiteUrl
+      : canonicalUrl;
   const labLogoUrl = vendorLabSettings?.logoUrl || '';
   const labOgImageUrl = vendorLabSettings?.ogImageUrl || labLogoUrl || generateDefaultOgImage(labName, labShopId, labNabl);
   const labEstablishedYear = vendorLabSettings?.establishedYear || (currentLabItem as any)?.establishedYear || (vendorLabSettings as any)?.sinceYear || '2012';
@@ -523,58 +531,98 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     setIsPolicyModalOpen(true);
   };
 
-  // Resolves the clean slug for the current vendor laboratory
-  const effectiveVendorId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || defaultDirectoryLab?.id || 'lab';
-  const effectiveSlug = React.useMemo(() => {
-    if (effectiveVendorId && effectiveVendorId !== 'lab') {
-      return effectiveVendorId;
+  // Guaranteed non-null vendor lab ID & clean slug
+  const effectiveVendorId = effectiveLabId || currentLabItem?.id || 'lab-apex';
+  const effectiveSlug = (
+    currentLabItem?.slug ||
+    currentLabItem?.id ||
+    effectiveVendorId ||
+    'lab-apex'
+  )
+    .replace(/^https?:\/\//i, '')
+    .replace(/^indianlalaji\.com\/shop\//i, '')
+    .replace(/\.?(indianlalaji|indianalala)\.com$/i, '')
+    .replace(/^lab-/, '');
+
+  // Clean shop identifier ensuring directory format:
+  // e.g. 'lab-1020304050' or clean slug 'baburamlab'
+  const cleanShopIdentifier = React.useMemo(() => {
+    // If lab has explicit clean slug like 'baburamlab' or 'apex'
+    if (currentLabItem?.slug && !currentLabItem.slug.includes('.') && currentLabItem.slug !== 'shop') {
+      return currentLabItem.slug;
     }
-    if (currentLabItem?.slug) return currentLabItem.slug;
-    return getTenantSubdomain(effectiveVendorId);
+    // Clean any prefix or subdomain string (e.g. 'baburamlab.indianlalaji.com' -> 'baburamlab')
+    const rawTarget = currentLabItem?.id || effectiveVendorId || 'lab-apex';
+    const cleanId = getTenantSubdomain(rawTarget);
+    return cleanId;
   }, [currentLabItem, effectiveVendorId]);
 
   // Canonical live public URL for the vendor's dedicated website
-  // Format: https://indianlalaji.com/shop/lab-baburamlab-6535
+  // Format: https://indianlalaji.com/shop/baburamlab or https://indianlalaji.com/shop/lab-apex
+  // NEVER subdomain like https://baburamlab.indianlalaji.com
   const vendorCanonicalWebsiteUrl = React.useMemo(() => {
-    // 1. If verified external custom domain is active
+    // 1. If verified external 3rd-party custom domain is active (e.g. baburamlab.in or apexdiag.com)
+    // Must NOT contain indianlalaji.com or indianalala.com!
     if (vendorLabSettings?.isCustomDomainActive && vendorLabSettings?.websiteDomain) {
-      const cleanDom = vendorLabSettings.websiteDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
-      if (cleanDom && !cleanDom.includes('indianlalaji.com') && !cleanDom.includes('indianalala.com')) {
+      const cleanDom = vendorLabSettings.websiteDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+      if (
+        cleanDom &&
+        !cleanDom.includes('indianlalaji.com') &&
+        !cleanDom.includes('indianalala.com') &&
+        cleanDom.includes('.') &&
+        !cleanDom.startsWith('localhost')
+      ) {
         return `https://${cleanDom}`;
       }
     }
-    // 2. If explicit external custom domain set in websiteUrl
+    // 2. If explicit external 3rd-party custom domain set in websiteUrl (e.g. https://baburamlab.in)
     if (vendorLabSettings?.websiteUrl && !vendorLabSettings.websiteUrl.includes('labname.com')) {
       const cleanUrl = vendorLabSettings.websiteUrl.trim();
-      if (cleanUrl.startsWith('http') && !cleanUrl.includes('indianlalaji.com') && !cleanUrl.includes('indianalala.com')) {
+      if (
+        cleanUrl.startsWith('http') &&
+        !cleanUrl.includes('indianlalaji.com') &&
+        !cleanUrl.includes('indianalala.com')
+      ) {
         return cleanUrl;
       }
     }
     // 3. Central Official Canonical Shop URL on indianlalaji.com:
-    // Format: https://indianlalaji.com/shop/lab-baburamlab-6535
-    return `https://${SUPER_ADMIN_DOMAIN}/shop/${effectiveVendorId}`;
-  }, [vendorLabSettings, effectiveVendorId]);
+    // ALWAYS Directory format: https://indianlalaji.com/shop/[id] (NEVER subdomain!)
+    return normalizeToDirectoryUrl(
+      currentLabItem?.slug ||
+      currentLabItem?.domainPreview ||
+      vendorLabSettings?.domainPreview ||
+      cleanShopIdentifier ||
+      effectiveSlug ||
+      effectiveVendorId
+    );
+  }, [vendorLabSettings, cleanShopIdentifier, currentLabItem, effectiveSlug, effectiveVendorId]);
 
   // In-browser direct URL (for local preview, in-app navigation, and copy button)
   const websiteDirectUrl = React.useMemo(() => {
     if (typeof window !== 'undefined' && window.location.origin) {
       // If vendor custom domain is configured:
       if (vendorLabSettings?.isCustomDomainActive && vendorLabSettings?.websiteDomain) {
-        const cleanDom = vendorLabSettings.websiteDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
-        if (cleanDom && !cleanDom.includes('indianlalaji.com') && !cleanDom.includes('indianalala.com')) {
+        const cleanDom = vendorLabSettings.websiteDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+        if (cleanDom && !cleanDom.includes('indianlalaji.com') && !cleanDom.includes('indianalala.com') && cleanDom.includes('.')) {
           return `https://${cleanDom}`;
         }
       }
-      return `${window.location.origin}/shop/${effectiveVendorId}`;
+      const rawTarget = currentLabItem?.slug || cleanShopIdentifier || effectiveSlug || 'lab-apex';
+      const cleanSlug = rawTarget
+        .replace(/^https?:\/\//i, '')
+        .replace(/^indianlalaji\.com\/shop\//i, '')
+        .replace(/\.?(indianlalaji|indianalala)\.com$/i, '');
+      return `${window.location.origin}/shop/${cleanSlug}`;
     }
     return vendorCanonicalWebsiteUrl;
-  }, [vendorCanonicalWebsiteUrl, vendorLabSettings, effectiveVendorId]);
+  }, [vendorCanonicalWebsiteUrl, vendorLabSettings, cleanShopIdentifier, currentLabItem, effectiveSlug]);
 
-  // The QR Code URL for "Visit Website": Always routes to the canonical public shop URL
-  // e.g. https://indianlalaji.com/shop/lab-baburamlab-6535
+  // The QR Code URL for "Visit Website": Always routes to the canonical public shop directory URL
+  // e.g. https://indianlalaji.com/shop/baburamlab
   // Ensures any patient scanning from a smartphone in the real world reaches the exact vendor shop!
   const qrWebsiteUrl = React.useMemo(() => {
-    return vendorCanonicalWebsiteUrl;
+    return normalizeToDirectoryUrl(vendorCanonicalWebsiteUrl);
   }, [vendorCanonicalWebsiteUrl]);
 
   // URL for Home Screen Shortcut

@@ -96,7 +96,7 @@ export const VendorDomainRequestTab: React.FC<VendorDomainRequestTabProps> = () 
             : 'subdomain',
         requestedDomain: cleanDomain,
         currentDomain:
-          existingDomain || `${selectedVendorLabId || 'apex'}.indianlalaji.com`,
+          existingDomain || `indianlalaji.com/shop/${selectedVendorLabId || 'lab-apex'}`,
         registrar: 'Direct Submission',
         contactPerson:
           vendorLabSettings?.founderName || currentUser?.name || 'Lab Admin',

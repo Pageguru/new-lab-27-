@@ -3,7 +3,7 @@
     "id": "lab-1020304050",
     "slug": "1020304050",
     "name": "Lab 1 Diagnostic Centre",
-    "tagline": "Accurate Diagnostics & Clinical Pathology \u2014 Lab 1",
+    "tagline": "Accurate Diagnostics & Clinical Pathology — Lab 1",
     "city": "Ludhiana",
     "state": "Punjab",
     "address": "SCO 101, Medical Enclave, Civil Road, Ludhiana - 141001",
@@ -22,24 +22,25 @@
     "email": "contact@lab1diagnostics.com",
     "password": "owner123",
     "pin": "123456",
-    "subscriptionPlan": "Single Laboratory (\u20b91,499/mo)",
+    "subscriptionPlan": "Single Laboratory (₹1,499/mo)",
     "subscriptionAmount": 1499,
     "paymentMode": "UPI (Confirmed)",
     "paymentReference": "UPI-REF-1020304050",
     "joinedDate": "01 Jan 2026",
-    "domainPreview": "1020304050.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/1020304050",
     "establishedYear": 2018,
     "features": [
       "Instant WhatsApp Reports",
       "Home Sample Pickup",
       "Digital Barcoded Tubes"
-    ]
+    ],
+    "websiteUrl": "https://indianlalaji.com/shop/1020304050"
   },
   {
     "id": "lab-6070809010",
     "slug": "6070809010",
     "name": "Lab 2 Diagnostic Centre",
-    "tagline": "Advanced Clinical Pathology & Molecular Testing \u2014 Lab 2",
+    "tagline": "Advanced Clinical Pathology & Molecular Testing — Lab 2",
     "city": "Mohali",
     "state": "Punjab",
     "address": "SCO 202, Sector 70, Healthcare Boulevard, Mohali - 160071",
@@ -58,18 +59,19 @@
     "email": "contact@lab2diagnostics.com",
     "password": "owner123",
     "pin": "123456",
-    "subscriptionPlan": "Enterprise Diagnostic Network (\u20b92,999/mo)",
+    "subscriptionPlan": "Enterprise Diagnostic Network (₹2,999/mo)",
     "subscriptionAmount": 2999,
     "paymentMode": "UPI (Confirmed)",
     "paymentReference": "UPI-REF-6070809010",
     "joinedDate": "15 Jan 2026",
-    "domainPreview": "6070809010.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/6070809010",
     "establishedYear": 2015,
     "features": [
       "Automated Biochemistry",
       "Same-Day Fast Track Reports",
       "Online QR Report Verification"
-    ]
+    ],
+    "websiteUrl": "https://indianlalaji.com/shop/6070809010"
   },
   {
     "id": "lab-apex",
@@ -94,19 +96,20 @@
     "email": "contact@apexdiagnostics.com",
     "password": "owner123",
     "pin": "123456",
-    "subscriptionPlan": "Enterprise Diagnostic Network (\u20b92,999/mo)",
+    "subscriptionPlan": "Enterprise Diagnostic Network (₹2,999/mo)",
     "subscriptionAmount": 2999,
     "paymentMode": "UPI (Confirmed)",
     "paymentReference": "UPI-REF-9021849201",
     "joinedDate": "12 Jan 2026",
-    "domainPreview": "apexdiagnostics.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/apex",
     "establishedYear": 2012,
     "features": [
       "Free Home Sample Pickup",
       "Automated WhatsApp PDF",
       "UPI Dynamic QR",
       "Barcoded Tubes"
-    ]
+    ],
+    "websiteUrl": "https://indianlalaji.com/shop/apex"
   },
   {
     "id": "lab-citycare",
@@ -131,19 +134,20 @@
     "email": "info@citycarediagnostics.com",
     "password": "owner123",
     "pin": "123456",
-    "subscriptionPlan": "Single Laboratory (\u20b91,499/mo)",
+    "subscriptionPlan": "Single Laboratory (₹1,499/mo)",
     "subscriptionAmount": 1499,
     "paymentMode": "Net Banking (Confirmed)",
     "paymentReference": "HDFC-IMPS-8492011",
     "joinedDate": "18 Feb 2026",
-    "domainPreview": "citycare.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/citycare",
     "establishedYear": 2016,
     "features": [
       "3 Collection Desks",
       "Emergency Stat Testing",
       "Same-Day Hormones",
       "Online Portal"
-    ]
+    ],
+    "websiteUrl": "https://indianlalaji.com/shop/citycare"
   },
   {
     "id": "lab-metropath",
@@ -168,19 +172,20 @@
     "email": "care@metropathscans.com",
     "password": "owner123",
     "pin": "123456",
-    "subscriptionPlan": "Enterprise Diagnostic Network (\u20b92,999/mo)",
+    "subscriptionPlan": "Enterprise Diagnostic Network (₹2,999/mo)",
     "subscriptionAmount": 2999,
     "paymentMode": "Card (Confirmed)",
     "paymentReference": "TXN-CARD-482910",
     "joinedDate": "05 Mar 2026",
-    "domainPreview": "metropath.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/metropath",
     "establishedYear": 2010,
     "features": [
       "24x7 Emergency Desk",
       "Bioplex Immunoassay",
       "Doctor Consult Desk",
       "Digital QR Reports"
-    ]
+    ],
+    "websiteUrl": "https://indianlalaji.com/shop/metropath"
   },
   {
     "id": "lab-sanjivani",
@@ -205,18 +210,19 @@
     "email": "sanjivanilab@gmail.com",
     "password": "owner123",
     "pin": "123456",
-    "subscriptionPlan": "Single Laboratory (\u20b91,499/mo)",
+    "subscriptionPlan": "Single Laboratory (₹1,499/mo)",
     "subscriptionAmount": 1499,
     "paymentMode": "UPI (Confirmed)",
     "paymentReference": "UPI-9821049281",
     "joinedDate": "22 Apr 2026",
-    "domainPreview": "sanjivanipath.indianlalaji.com",
+    "domainPreview": "indianlalaji.com/shop/sanjivani",
     "establishedYear": 2018,
     "features": [
       "Affordable Fever Panels",
       "Doorstep Phlebotomy",
       "Instant SMS Alerts",
       "Senior Citizen Discount"
-    ]
+    ],
+    "websiteUrl": "https://indianlalaji.com/shop/sanjivani"
   }
 ]
