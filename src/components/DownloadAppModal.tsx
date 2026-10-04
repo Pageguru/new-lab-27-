@@ -133,7 +133,7 @@ export const HomeScreenShortcutModal: React.FC<HomeScreenShortcutModalProps> = (
         const choiceResult = await deferredPrompt.userChoice;
         if (choiceResult.outcome === 'accepted') {
           setIsInstalled(true);
-          setInstallSuccessToast('✅ शॉर्टकट आपकी होम स्क्रीन पर सफलतापूर्वक जुड़ गया!');
+          setInstallSuccessToast('✅ App successfully added to your device!');
           setTimeout(() => setInstallSuccessToast(null), 4000);
         }
         setDeferredPrompt(null);
@@ -266,15 +266,15 @@ export const HomeScreenShortcutModal: React.FC<HomeScreenShortcutModalProps> = (
 
             <button
               type="button"
-              id="btn-add-to-home-screen"
+              id="btn-add-app"
               onClick={handleAddToHomeScreen}
               className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
               <PlusCircle className="w-4 h-4 text-emerald-200" />
               <span>
                 {isInstalled
-                  ? 'शॉर्टकट पहले से जुड़ा हुआ है (Already Added)'
-                  : 'होम स्क्रीन पर जोड़ें (Add to Home Screen)'}
+                  ? 'App Already Installed'
+                  : 'Add App'}
               </span>
               <ArrowRight className="w-4 h-4 text-emerald-200 ml-1" />
             </button>
