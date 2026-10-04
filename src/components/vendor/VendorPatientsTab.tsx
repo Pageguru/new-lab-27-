@@ -44,6 +44,8 @@ export const VendorPatientsTab: React.FC<VendorPatientsTabProps> = ({ onOpenRepo
     deleteReceptionEntry,
     sendEntryToTechnician,
     vendorTests,
+    activeTenantId,
+    selectedVendorLabId,
   } = useCms();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -153,6 +155,7 @@ export const VendorPatientsTab: React.FC<VendorPatientsTabProps> = ({ onOpenRepo
           verificationHash: `VERIFIED-${Date.now().toString(36).toUpperCase()}`,
           isDraft: false,
           status: 'Verified',
+          labId: entry.labId || activeTenantId || selectedVendorLabId || vendorLabSettings?.labId || 'lab-apex',
         };
       }
 

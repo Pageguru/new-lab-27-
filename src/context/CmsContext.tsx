@@ -2794,7 +2794,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (Array.isArray(parsed) && parsed.length > 0) {
           const existingIds = new Set(parsed.map((r: any) => r.reportId));
           const missingReports = INITIAL_REPORTS.filter((r) => !existingIds.has(r.reportId));
-          return [...parsed.map((r: any) => ({ ...r, labId: r.labId || 'lab-6070809010' })), ...missingReports];
+          return [...parsed.map((r: any) => {
+            const initialMatch = INITIAL_REPORTS.find((ir) => ir.reportId === r.reportId);
+            const resolvedLabId = r.labId || initialMatch?.labId || 'lab-apex';
+            return { ...r, labId: resolvedLabId };
+          }), ...missingReports];
         }
       }
       return INITIAL_REPORTS;
@@ -2813,11 +2817,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       list = [...list, ...missingEntries];
       return list.filter(Boolean).map((e: any, idx: number) => {
         const token = String(e?.tokenNumber || e?.tokenNo || `TK-${101 + idx}`);
+        const initialMatch = INITIAL_RECEPTION_ENTRIES.find((ie) => ie.id === e?.id);
+        const resolvedLabId = e?.labId || initialMatch?.labId || 'lab-apex';
         return {
           ...e,
           tokenNumber: token,
           tokenNo: token,
-          labId: e.labId || 'lab-6070809010',
+          labId: resolvedLabId,
         };
       });
     } catch {

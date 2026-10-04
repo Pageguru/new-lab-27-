@@ -84,6 +84,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
     setActiveBranchId,
     activeTenantId,
     selectedVendorLabId,
+    allReports,
+    allReceptionEntries,
   } = useCms();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'patients' | 'results' | 'reception_orders'>('dashboard');
   const [receptionFilter, setReceptionFilter] = useState<'All' | 'Awaiting' | 'Accepted' | 'Completed'>('All');
@@ -915,8 +917,8 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
       // 2. Search by Token Number or Phone Number (Independent)
       if (searchTokenOrPhone.trim()) {
         const q = searchTokenOrPhone.trim().toLowerCase();
-        // Strict Tenant Isolation: Lab 1 cannot search Lab 2 reports
-        if (!isReportAccessibleToTenant(q, activeTenantId || selectedVendorLabId)) {
+        // Strict Tenant Isolation: Only patients belonging to this lab can be viewed
+        if (!isReportAccessibleToTenant(q, activeTenantId || selectedVendorLabId, allReports, allReceptionEntries)) {
           return false;
         }
         const qDigits = searchTokenOrPhone.replace(/\D/g, '');

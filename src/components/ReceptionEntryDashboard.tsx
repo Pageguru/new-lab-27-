@@ -152,6 +152,8 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
     unpublishReport,
     activeBranchId,
     setActiveBranchId,
+    activeTenantId,
+    selectedVendorLabId,
   } = useCms();
 
   const labName = vendorLabSettings?.labName || 'Apex Diagnostic & Clinical Pathology Laboratory';
@@ -888,6 +890,9 @@ export const ReceptionEntryDashboard: React.FC<ReceptionEntryDashboardProps> = (
         paidAmount: entry.paidAmount,
         totalAmount: entry.totalAmount,
         paymentStatus: entry.paymentStatus,
+        labId: entry.labId || activeTenantId || selectedVendorLabId || 'lab-apex',
+        branchId: entry.branchId || activeBranchId,
+        branchName: entry.branchName || 'Main Diagnostic Facility',
       };
     }
     if (foundReport) {

@@ -961,9 +961,9 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
     const currentLabId = currentWebsiteLabId || currentLabItem?.id || selectedVendorLabId;
 
-    // Strict Tenant Isolation Guard: Lab 1 (1020304050) cannot search Lab 2 (6070809010) reports
-    if (!isReportAccessibleToTenant(val, currentLabId)) {
-      setQuickReportError(`Access Denied: Report or records for "${val}" belong to another laboratory and cannot be accessed from this portal.`);
+    // Strict Tenant Isolation Guard: Cross-lab report search strictly blocked
+    if (!isReportAccessibleToTenant(val, currentLabId, allReports, allReceptionEntries)) {
+      setQuickReportError(`Access Denied: Patient report or record for "${val}" belongs to another diagnostic laboratory. Reports can only be accessed through the laboratory where the patient was tested.`);
       setInlineSearchNotFound(true);
       return;
     }

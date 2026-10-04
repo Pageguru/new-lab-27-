@@ -411,11 +411,11 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
       return;
     }
 
-    // Strict Tenant Isolation Guard: Lab 1 cannot access Lab 2 reports
+    // Strict Tenant Isolation Guard: Multi-tenant report isolation
     const targetLab = activeVendorLab?.id || currentLabIdentifier || selectedVendorLabId;
-    if (!isReportAccessibleToTenant(cleanInput10, targetLab)) {
+    if (!isReportAccessibleToTenant(cleanInput10, targetLab, allReports, allReceptionEntries)) {
       setErrorMessage('Access Denied');
-      setErrorDetails(`Reports for mobile number +91 ${cleanInput10} are strictly isolated and not accessible from ${labName}. Under strict data isolation rules, Lab 1 cannot access Lab 2 patient reports.`);
+      setErrorDetails(`Reports for mobile number +91 ${cleanInput10} belong to another laboratory. Under strict patient data confidentiality, patient reports can only be viewed through the specific laboratory where the patient was tested.`);
       return;
     }
 
@@ -516,11 +516,11 @@ export const PatientPortalApp: React.FC<PatientPortalAppProps> = ({
 
     const cleanDigits = raw.replace(/\D/g, '');
 
-    // Strict Tenant Isolation Guard: Lab 1 cannot access Lab 2 reports
+    // Strict Tenant Isolation Guard: Multi-tenant report isolation
     const targetLab = activeVendorLab?.id || currentLabIdentifier || selectedVendorLabId;
-    if (!isReportAccessibleToTenant(raw, targetLab)) {
+    if (!isReportAccessibleToTenant(raw, targetLab, allReports, allReceptionEntries)) {
       setErrorMessage('Access Denied');
-      setErrorDetails(`Patient report or token "${reportIdInput}" is strictly isolated and cannot be accessed from ${labName}. Under strict data isolation rules, Lab 1 has no access to Lab 2 reports.`);
+      setErrorDetails(`Patient report or token "${reportIdInput}" belongs to another laboratory and cannot be accessed from ${labName}. Under strict multi-tenant isolation rules, patient reports can only be viewed through the specific laboratory where the patient was tested.`);
       return;
     }
 

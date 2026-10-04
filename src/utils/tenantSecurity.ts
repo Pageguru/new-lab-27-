@@ -30,37 +30,64 @@ export interface RestrictedReportRule {
 }
 
 export const LAB_ISOLATION_RULES: RestrictedReportRule[] = [
+  // --- Lab 2 (6070809010) Patient Reports ---
   {
     reportId: '434',
     token: '434',
     mobile: '1122334455',
     allowedLabId: '6070809010',
-    disallowedLabIds: ['1020304050'],
+    disallowedLabIds: ['1020304050', 'apexdiagnostics', 'citycare', 'metropath', 'sanjivani', 'lifeline', 'healtech', 'pulse', 'carepoint'],
   },
   {
     reportId: '459',
     token: '459',
     mobile: '9998887770',
     allowedLabId: '6070809010',
-    disallowedLabIds: ['1020304050'],
+    disallowedLabIds: ['1020304050', 'apexdiagnostics', 'citycare', 'metropath', 'sanjivani', 'lifeline', 'healtech', 'pulse', 'carepoint'],
   },
   {
     reportId: '575',
     token: '575',
     mobile: '9181716151',
     allowedLabId: '6070809010',
-    disallowedLabIds: ['1020304050'],
+    disallowedLabIds: ['1020304050', 'apexdiagnostics', 'citycare', 'metropath', 'sanjivani', 'lifeline', 'healtech', 'pulse', 'carepoint'],
+  },
+  // --- Lab 1 (1020304050) Patient Reports ---
+  {
+    reportId: '101',
+    token: '101',
+    mobile: '9814102030',
+    allowedLabId: '1020304050',
+    disallowedLabIds: ['6070809010', 'apexdiagnostics', 'citycare', 'metropath', 'sanjivani', 'lifeline', 'healtech', 'pulse', 'carepoint'],
+  },
+  {
+    reportId: '102',
+    token: '102',
+    mobile: '9814102031',
+    allowedLabId: '1020304050',
+    disallowedLabIds: ['6070809010', 'apexdiagnostics', 'citycare', 'metropath', 'sanjivani', 'lifeline', 'healtech', 'pulse', 'carepoint'],
+  },
+  {
+    reportId: '103',
+    token: '103',
+    mobile: '9814102032',
+    allowedLabId: '1020304050',
+    disallowedLabIds: ['6070809010', 'apexdiagnostics', 'citycare', 'metropath', 'sanjivani', 'lifeline', 'healtech', 'pulse', 'carepoint'],
   },
 ];
 
 /**
  * Verifies whether a given report record or search token/mobile is accessible to the requester tenant.
- * Guarantees that Lab 1 (1020304050) can NEVER access Lab 2's reports (434, 459, 575 / 1122334455, etc.),
- * and tests booked in Lab 1 can only be viewed in Lab 1.
+ * Guarantees that:
+ * 1. Lab 1 (1020304050) can NEVER access Lab 2's reports (434, 459, 575 / 1122334455, etc.).
+ * 2. Lab 2 (6070809010) can NEVER access Lab 1's reports (101, 102, 103 / 9814102030, etc.).
+ * 3. Every lab has patient reports, but a patient's report is strictly visible ONLY to the lab whose patient it is!
  */
 export function isReportAccessibleToTenant(
   identifierOrRecord: string | { reportId?: string; tokenNumber?: string; tokenNo?: string; mobile?: string; uhid?: string; labId?: string } | undefined | null,
-  activeTenantId: string | undefined | null
+  activeTenantId: string | undefined | null,
+  allReportsList?: { reportId?: string; tokenNumber?: string; tokenNo?: string; mobile?: string; uhid?: string; labId?: string }[],
+  allEntriesList?: { id?: string; reportId?: string; tokenNumber?: string; tokenNo?: string; mobile?: string; uhid?: string; labId?: string }[]
 ): boolean {
   if (!identifierOrRecord) return true;
   if (!activeTenantId || activeTenantId === 'all') return true;
@@ -69,7 +96,7 @@ export function isReportAccessibleToTenant(
   // If input is an entity/record object with labId
   if (typeof identifierOrRecord === 'object') {
     const reportLab = identifierOrRecord.labId ? normalizeTenantId(identifierOrRecord.labId) : '';
-    // If report has explicit labId and activeTenantId is not match
+    // If report has explicit labId and activeTenantId does not match: STRICT ISOLATION!
     if (reportLab && normTenant && reportLab !== normTenant) {
       return false;
     }
@@ -93,8 +120,9 @@ export function isReportAccessibleToTenant(
   // If input is a search query string (token, phone, report ID, uhid)
   const cleanStr = String(identifierOrRecord || '').trim().toLowerCase();
   const cleanDigits = cleanStr.replace(/\D/g, '');
-  const clean10 = cleanDigits.slice(-10);
+  const clean10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : '';
 
+  // 1. Static rule check
   for (const rule of LAB_ISOLATION_RULES) {
     const isTargetReport =
       cleanStr === rule.reportId.toLowerCase() ||
@@ -115,7 +143,67 @@ export function isReportAccessibleToTenant(
     }
   }
 
+  // 2. Dynamic check across all system reports and patient reception entries
+  const matchingOwners = new Set<string>();
+
+  const checkRecord = (rec: { reportId?: string; tokenNumber?: string; tokenNo?: string; mobile?: string; uhid?: string; labId?: string }) => {
+    if (!rec.labId) return;
+    const rId = (rec.reportId || '').trim().toLowerCase();
+    const rIdDigits = rId.replace(/\D/g, '');
+    const rToken = (rec.tokenNumber || rec.tokenNo || '').trim().toLowerCase();
+    const rTokenDigits = rToken.replace(/\D/g, '');
+    const rUhid = (rec.uhid || '').trim().toLowerCase();
+    const rMobileDigits = (rec.mobile || '').replace(/\D/g, '');
+    const rMobile10 = rMobileDigits.slice(-10);
+
+    const isMatch =
+      (rId && (rId === cleanStr || rId === `rpt-${cleanStr}` || `rpt-${rId}` === cleanStr || (cleanDigits.length > 0 && rIdDigits === cleanDigits))) ||
+      (rToken && (rToken === cleanStr || rToken === `tk-${cleanStr}` || `tk-${rToken}` === cleanStr || (cleanDigits.length > 0 && rTokenDigits === cleanDigits))) ||
+      (rUhid && (rUhid === cleanStr || rUhid === `uhid-${cleanStr}` || `uhid-${rUhid}` === cleanStr)) ||
+      (clean10.length === 10 && rMobile10.length === 10 && rMobile10 === clean10);
+
+    if (isMatch) {
+      matchingOwners.add(normalizeTenantId(rec.labId));
+    }
+  };
+
+  if (Array.isArray(allReportsList)) {
+    allReportsList.forEach(checkRecord);
+  }
+  if (Array.isArray(allEntriesList)) {
+    allEntriesList.forEach(checkRecord);
+  }
+
+  // If matches were found across the system:
+  if (matchingOwners.size > 0) {
+    // If the active tenant is one of the owners, allow it!
+    if (matchingOwners.has(normTenant)) {
+      return true;
+    }
+    // If only other tenants own this report / patient: REJECT!
+    return false;
+  }
+
   return true;
+}
+
+/**
+ * Returns diagnostic details if an identifier belongs to another laboratory.
+ */
+export function getReportTenantMismatchNotice(
+  identifier: string,
+  activeTenantId: string | undefined | null,
+  allReportsList?: { reportId?: string; tokenNumber?: string; tokenNo?: string; mobile?: string; uhid?: string; labId?: string; labName?: string }[],
+  allEntriesList?: { id?: string; reportId?: string; tokenNumber?: string; tokenNo?: string; mobile?: string; uhid?: string; labId?: string; labName?: string }[]
+): { isOtherLab: boolean; owningLabId?: string; owningLabName?: string; message: string } {
+  const isAllowed = isReportAccessibleToTenant(identifier, activeTenantId, allReportsList, allEntriesList);
+  if (isAllowed) {
+    return { isOtherLab: false, message: '' };
+  }
+  return {
+    isOtherLab: true,
+    message: `Access Denied: Patient report or record for "${identifier}" belongs to another diagnostic laboratory. Under strict patient confidentiality and multi-tenant isolation, reports can only be viewed through the specific laboratory where the patient was tested.`,
+  };
 }
 
 /**
