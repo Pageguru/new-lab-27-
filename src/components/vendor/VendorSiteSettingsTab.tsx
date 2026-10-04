@@ -979,7 +979,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
             </span>
             <div className="bg-white p-3.5 rounded-lg border border-slate-200 space-y-1">
               <div className="text-[11px] text-emerald-800 flex items-center gap-1 font-mono">
-                <span>https://{vendorLabSettings.domainPreview || 'apexdiagnostics.indianlalaji.com'}</span>
+                <span>https://{(vendorLabSettings.domainPreview || `indianlalaji.com/shop/${currentLabId}`).replace(/^https?:\/\//, '')}</span>
                 <span>›</span>
                 <span>home</span>
               </div>
@@ -2371,7 +2371,7 @@ export const VendorSiteSettingsTab: React.FC<VendorSiteSettingsTabProps> = ({
                       <span className="text-xs text-slate-500 font-bold">/ 365 Days</span>
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Annual package with custom branded subdomain routing, priority support, and 0% commission payment QR.
+                      Annual package with dedicated directory shop routing, priority support, and 0% commission payment QR.
                     </p>
                   </div>
                   <div className="pt-2 border-t border-slate-100 text-[10px] font-bold text-emerald-700">

@@ -2420,7 +2420,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
               <span>Laboratory Custom Domain Requests</span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Review and approve custom domains (e.g. <code>apexdiag.in</code>) or subdomains requested by diagnostic lab vendors. Ensure CNAME points to <code>indianlalaji.com</code> before approving.
+              Review and approve custom domains (e.g. <code>apexdiag.in</code>) requested by diagnostic lab vendors. Ensure CNAME points to <code>indianlalaji.com</code> before approving. Default vendor shops use <code>indianlalaji.com/shop/[lab-id]</code> directory.
             </p>
           </div>
 
@@ -2464,7 +2464,7 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                         {req.status}
                       </span>
                       <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
-                        {req.domainType === 'custom_domain' ? 'Custom Domain' : 'Platform Subdomain'}
+                        {req.domainType === 'custom_domain' ? 'Custom Domain' : 'Platform Directory'}
                       </span>
                     </div>
 

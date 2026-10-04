@@ -311,35 +311,16 @@ export default function App() {
         const cleanPath = url.pathname.startsWith('/shop/') || url.pathname.startsWith('/lab/') ? '/' : url.pathname;
         window.history.replaceState({}, '', cleanPath + (url.search ? url.search : ''));
       } else if (currentView === 'vendor_website') {
-        const hostname = window.location.hostname.toLowerCase();
-        const isSubdomainOfMain =
-          (hostname.endsWith('indianalala.com') &&
-            hostname !== 'indianalala.com' &&
-            hostname !== 'www.indianalala.com') ||
-          (hostname.endsWith('indianlalaji.com') &&
-            hostname !== 'indianlalaji.com' &&
-            hostname !== 'www.indianlalaji.com');
-
-        if (isSubdomainOfMain) {
-          // Dedicated lab subdomain (e.g. apexdiagnostics.indianlalaji.com) - keep clean URL
-          url.searchParams.delete('view');
-          url.searchParams.delete('lab');
-          url.searchParams.delete('shop');
-          url.searchParams.delete('vendor');
-          url.searchParams.delete('subdomain');
-          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
-        } else {
-          const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
-          const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab';
-          const vendorId = currentLab?.slug || currentLab?.id || selectedVendorLabId || defaultActiveLab;
-          url.searchParams.delete('view');
-          url.searchParams.delete('lab');
-          url.searchParams.delete('shop');
-          url.searchParams.delete('vendor');
-          url.searchParams.delete('subdomain');
-          const prefix = window.location.pathname.startsWith('/lab/') ? '/lab/' : '/shop/';
-          window.history.replaceState({}, '', `${prefix}${vendorId}` + (url.search ? url.search : ''));
-        }
+        const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
+        const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab-apex';
+        const vendorId = currentLab?.id || selectedVendorLabId || defaultActiveLab;
+        url.searchParams.delete('view');
+        url.searchParams.delete('lab');
+        url.searchParams.delete('shop');
+        url.searchParams.delete('vendor');
+        url.searchParams.delete('subdomain');
+        const prefix = window.location.pathname.startsWith('/lab/') ? '/lab/' : '/shop/';
+        window.history.replaceState({}, '', `${prefix}${vendorId}` + (url.search ? url.search : ''));
       } else if (currentView === 'patient_portal') {
         url.searchParams.set('view', 'patient_portal');
         if (selectedVendorLabId && selectedVendorLabId !== 'all') {

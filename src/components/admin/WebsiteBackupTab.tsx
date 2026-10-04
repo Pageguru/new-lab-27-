@@ -990,7 +990,7 @@ export const WebsiteBackupTab: React.FC<WebsiteBackupTabProps> = ({
 
                 {matchedCustomer.city && (
                   <div className="text-[11px] text-slate-500 pt-0.5">
-                    Location: <strong>{matchedCustomer.city}</strong> • Subdomain: <code>{(matchedCustomer as any).slug || matchedCustomer.id}.indianlalaji.com</code>
+                    Location: <strong>{matchedCustomer.city}</strong> • Directory URL: <code>indianlalaji.com/shop/{matchedCustomer.id}</code>
                   </div>
                 )}
 

@@ -142,10 +142,11 @@ export const VendorDomainRequestTab: React.FC<VendorDomainRequestTabProps> = () 
         .forEach((r) => deleteDomainRequest(r.id));
     }
 
+    const resetTarget = selectedVendorLabId || 'lab-apex';
     updateVendorLabSettings({
       websiteDomain: '',
-      domainPreview: `${selectedVendorLabId || 'apex'}.indianlalaji.com`,
-      websiteUrl: `https://${selectedVendorLabId || 'apex'}.indianlalaji.com`,
+      domainPreview: `indianlalaji.com/shop/${resetTarget}`,
+      websiteUrl: `https://indianlalaji.com/shop/${resetTarget}`,
     });
 
     setIsDeletingDomain(false);

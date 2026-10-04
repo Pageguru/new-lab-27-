@@ -270,7 +270,7 @@ export const VendorWebsitesShowcaseSection: React.FC<VendorWebsitesShowcaseSecti
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
                       <span className="ml-2 font-mono text-[10px] text-slate-400 truncate max-w-[170px]">
-                        {lab.domainPreview || `${lab.id}.indianlalaji.com`}
+                        {lab.domainPreview?.replace(/^https?:\/\//, '') || `indianlalaji.com/shop/${lab.id}`}
                       </span>
                     </div>
 

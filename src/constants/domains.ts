@@ -11,24 +11,69 @@ export const SUPPORT_PHONE = '7087033009';
 export const SUPPORT_PHONE_FORMATTED = '+91 7087033009';
 
 /**
- * Returns clean vendor slug/ID for a lab (e.g. 'lab-apex', 'apexdiagnostics')
+ * Returns clean vendor slug/ID for a lab (e.g. 'lab-baburamlab-6535', 'lab-apex')
  */
 export function getTenantSubdomain(subdomainOrDomain?: string): string {
   if (!subdomainOrDomain) return 'lab-apex';
-  const clean = subdomainOrDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
+  const clean = subdomainOrDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+  // 1. If it's already a shop URL path: /shop/lab-baburamlab-6535 -> lab-baburamlab-6535
   if (clean.includes('/shop/')) {
-    return clean.split('/shop/')[1].split('/')[0].split('?')[0];
+    return clean.split('/shop/')[1].split('/')[0].split('?')[0].split('#')[0];
   }
+  if (clean.includes('/lab/')) {
+    return clean.split('/lab/')[1].split('/')[0].split('?')[0].split('#')[0];
+  }
+
+  // 2. If it's already a full lab ID (e.g. 'lab-baburamlab-6535' or 'lab-apex'), preserve it completely
+  if (clean.startsWith('lab-') && !clean.includes('.')) {
+    return clean;
+  }
+
+  // 3. If it's a subdomain on indianlalaji.com or indianalala.com (e.g. baburamlab.indianlalaji.com)
+  if (clean.endsWith('indianlalaji.com') || clean.endsWith('indianalala.com')) {
+    const withoutSuffix = clean.replace(/\.?(indianlalaji|indianalala)\.com$/, '');
+    const parts = withoutSuffix.split('.');
+    const sub = parts[parts.length - 1];
+    if (sub && sub !== 'www' && sub !== 'app' && sub !== 'report' && sub !== 'admin') {
+      // Look up full lab ID from directory in localStorage if available
+      try {
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('cms_vendor_labs_directory');
+          if (stored) {
+            const list = JSON.parse(stored);
+            if (Array.isArray(list)) {
+              const matched = list.find((l: any) =>
+                (l.id && l.id.toLowerCase() === sub) ||
+                (l.id && l.id.toLowerCase() === `lab-${sub}`) ||
+                (l.domainPreview && l.domainPreview.toLowerCase().includes(sub)) ||
+                (l.slug && l.slug.toLowerCase() === sub) ||
+                (l.id && l.id.toLowerCase().includes(sub))
+              );
+              if (matched && matched.id) return matched.id;
+            }
+          }
+        }
+      } catch {}
+      return sub.startsWith('lab-') ? sub : `lab-${sub}`;
+    }
+  }
+
+  // 4. Fallback dot splitting
   if (clean.includes('.')) {
     const part = clean.split('.')[0];
-    if (part !== 'indianlalaji' && part !== 'www') return part;
+    if (part !== 'indianlalaji' && part !== 'www') {
+      return part.startsWith('lab-') ? part : `lab-${part}`;
+    }
   }
-  return clean;
+
+  return clean.startsWith('lab-') ? clean : `lab-${clean}`;
 }
 
 /**
  * Returns canonical vendor shop URL on indianlalaji.com:
- * indianlalaji.com/shop/VENDOR_ID
+ * https://indianlalaji.com/shop/VENDOR_ID
+ * e.g. https://indianlalaji.com/shop/lab-baburamlab-6535
  */
 export function getVendorShopUrl(vendorIdOrSlug?: string): string {
   const cleanId = getTenantSubdomain(vendorIdOrSlug);
@@ -58,7 +103,7 @@ export function getTenantDirectUrl(subdomainOrDomain?: string): string {
 
 /**
  * Returns formatted canonical website/shop URL for a vendor
- * e.g., https://indianlalaji.com/shop/VENDOR_ID or custom domain if configured
+ * e.g., https://indianlalaji.com/shop/lab-baburamlab-6535 or custom domain if configured
  */
 export function getTenantWebsiteUrl(subdomainOrDomain?: string): string {
   if (!subdomainOrDomain) return `https://${SUPER_ADMIN_DOMAIN}/shop/lab-apex`;
@@ -90,3 +135,4 @@ export function getTenantBrowserUrl(subdomainOrDomain: string, targetView: strin
 export function getSuperAdminDashboardUrl(): string {
   return `https://${SUPER_ADMIN_DOMAIN}/admin`;
 }
+

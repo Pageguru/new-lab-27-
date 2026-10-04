@@ -327,13 +327,20 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
 
     const isApproved = formState.status === 'Active';
     const autoSlug = formState.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15) || 'newlab';
-    const rawDomain = formState.domainPreview?.trim() || `${autoSlug}.indianlalaji.com`;
-    const finalDomain = rawDomain.includes('.') ? rawDomain : `${rawDomain}.indianlalaji.com`;
+    const cleanId = (formState.domainPreview || '')
+      .trim()
+      .replace(/^https?:\/\//, '')
+      .replace(/^indianlalaji\.com\/shop\//, '')
+      .replace(/\.indianlalaji\.com$/, '')
+      .replace(/[^a-z0-9-]/g, '') || (editingVendor ? editingVendor.id : `lab-${autoSlug}`);
+    const normalizedLabId = cleanId.startsWith('lab-') ? cleanId : `lab-${cleanId}`;
+    const finalDirectoryUrl = `indianlalaji.com/shop/${normalizedLabId}`;
 
     if (editingVendor) {
       updateVendorLab(editingVendor.id, {
         ...formState,
-        domainPreview: finalDomain,
+        domainPreview: finalDirectoryUrl,
+        websiteUrl: `https://${finalDirectoryUrl}`,
         isWebsiteApproved: isApproved,
         password: formState.password,
         pin: formState.pin,
@@ -341,20 +348,21 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
       if (formState.password) {
         updateVendorLabCredentials(editingVendor.id, formState.password, formState.pin);
       }
-      showToast(`Updated laboratory: ${formState.name} (${finalDomain})`);
+      showToast(`Updated laboratory: ${formState.name} (https://${finalDirectoryUrl})`);
       setEditingVendor(null);
     } else {
       // When a new website is created, it ALWAYS starts in DRAFT mode
       // Admin approval is strictly required before the website can be visited/live
       addVendorLab({
         ...formState,
-        domainPreview: finalDomain,
+        domainPreview: finalDirectoryUrl,
+        websiteUrl: `https://${finalDirectoryUrl}`,
         status: 'Draft',
         isWebsiteApproved: false,
         badge: 'Draft - Pending Admin Approval',
       });
       showToast(
-        `Created lab "${formState.name}" in DRAFT mode. Admin approval is required before it can go live.`
+        `Created lab "${formState.name}" in DRAFT mode. Directory URL: https://${finalDirectoryUrl}`
       );
       setIsAddModalOpen(false);
     }
@@ -1054,7 +1062,7 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
                         name: newName,
                         domainPreview:
                           !editingVendor && (!formState.domainPreview || formState.domainPreview.includes('.indianlalaji.com'))
-                            ? (autoSlug ? `${autoSlug}.indianlalaji.com` : '')
+                            ? (autoSlug ? `indianlalaji.com/shop/lab-${autoSlug}` : '')
                             : formState.domainPreview,
                       });
                     }}
@@ -1063,43 +1071,54 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
                   />
                 </div>
 
-                {/* Dedicated Website Subdomain (Har Lab Ka Apna URL) */}
+                {/* Dedicated Website Directory (Har Lab Ka Apna URL - Directory Format) */}
                 <div className="sm:col-span-2 bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-200">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block font-black text-indigo-950 text-xs flex items-center gap-1.5">
                       <Globe className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Dedicated Website Subdomain (Har Lab Ka Apna URL)</span>
+                      <span>Dedicated Website Directory (Har Lab Ka Apna URL)</span>
                     </label>
                     <span className="text-[10px] text-indigo-700 font-bold bg-white px-2 py-0.5 rounded border border-indigo-200">
-                      Unique Tenant URL
+                      Directory / Path (No Subdomain)
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 font-mono font-bold shrink-0">https://</span>
+                  <div className="flex items-center gap-1.5 bg-white p-2 rounded-xl border border-indigo-300">
+                    <span className="text-xs text-indigo-900 font-mono font-bold shrink-0">https://indianlalaji.com/shop/</span>
                     <input
                       type="text"
-                      value={formState.domainPreview?.replace(/\.indianlalaji\.com$/, '') || ''}
+                      value={
+                        (formState.domainPreview || '')
+                          .replace(/^https?:\/\//, '')
+                          .replace(/^indianlalaji\.com\/shop\//, '')
+                          .replace(/\.indianlalaji\.com$/, '')
+                      }
                       onChange={(e) => {
                         const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
                         setFormState({
                           ...formState,
-                          domainPreview: clean ? `${clean}.indianlalaji.com` : '',
+                          domainPreview: clean ? `indianlalaji.com/shop/${clean}` : '',
                         });
                       }}
-                      placeholder="e.g. apexdiagnostics"
-                      className="flex-1 px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-xs font-mono font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      placeholder="e.g. lab-apex"
+                      className="flex-1 px-2 py-1 bg-transparent text-xs font-mono font-bold text-indigo-950 focus:outline-none"
                     />
-                    <span className="text-xs text-slate-500 font-mono font-bold shrink-0">.indianlalaji.com</span>
                   </div>
                   <div className="text-[11px] text-indigo-900 mt-2 space-y-1">
                     <p className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold">Vendor Shop URL:</span>
+                      <span className="font-bold">Live Vendor Directory URL:</span>
                       <strong className="font-mono bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-950">
-                        indianlalaji.com/shop/{formState.domainPreview?.replace(/\.indianlalaji\.com$/, '') || editingVendor?.id || 'VENDOR_ID'}
+                        https://indianlalaji.com/shop/{
+                          (formState.domainPreview || '')
+                            .replace(/^https?:\/\//, '')
+                            .replace(/^indianlalaji\.com\/shop\//, '')
+                            .replace(/\.indianlalaji\.com$/, '') ||
+                          editingVendor?.id ||
+                          'lab-id'
+                        }
                       </strong>
                     </p>
-                    <p className="text-[10px] text-indigo-700">
-                      Subdomain: <span className="font-mono">https://{formState.domainPreview || `${formState.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15) || 'newlab'}.indianlalaji.com`}</span>
+                    <p className="text-[10px] text-slate-600">
+                      Rule: Har vendor ka dedicated website URL <strong>indianlalaji.com/shop/...</strong> directory format mein hota hai (subdomain nahi).
                     </p>
                   </div>
                 </div>

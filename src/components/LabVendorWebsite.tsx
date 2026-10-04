@@ -526,40 +526,36 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   // Resolves the clean slug for the current vendor laboratory
   const effectiveVendorId = currentLabItem?.id || vendorLabSettings?.labId || selectedVendorLabId || defaultDirectoryLab?.id || 'lab';
   const effectiveSlug = React.useMemo(() => {
-    if (currentLabItem?.slug) return currentLabItem.slug;
-    if (currentLabItem?.domainPreview) {
-      const dp = currentLabItem.domainPreview.toLowerCase().replace(/^https?:\/\//, '');
-      const first = dp.split('.')[0];
-      if (first && first !== 'indianlalaji' && first !== 'www') return first;
+    if (effectiveVendorId && effectiveVendorId !== 'lab') {
+      return effectiveVendorId;
     }
+    if (currentLabItem?.slug) return currentLabItem.slug;
     return getTenantSubdomain(effectiveVendorId);
   }, [currentLabItem, effectiveVendorId]);
 
   // Canonical live public URL for the vendor's dedicated website
+  // Format: https://indianlalaji.com/shop/lab-baburamlab-6535
   const vendorCanonicalWebsiteUrl = React.useMemo(() => {
-    // 1. If custom domain is active
+    // 1. If verified external custom domain is active
     if (vendorLabSettings?.isCustomDomainActive && vendorLabSettings?.websiteDomain) {
       const cleanDom = vendorLabSettings.websiteDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
       if (cleanDom && !cleanDom.includes('indianlalaji.com') && !cleanDom.includes('indianalala.com')) {
         return `https://${cleanDom}`;
       }
     }
+    // 2. If explicit external custom domain set in websiteUrl
     if (vendorLabSettings?.websiteUrl && !vendorLabSettings.websiteUrl.includes('labname.com')) {
       const cleanUrl = vendorLabSettings.websiteUrl.trim();
-      if (cleanUrl.startsWith('http')) return cleanUrl;
-    }
-    // 2. If running on a public hostname in browser (including hostinger or preview):
-    if (typeof window !== 'undefined' && window.location.origin) {
-      const hostname = window.location.hostname.toLowerCase();
-      if (!hostname.includes('localhost') && !hostname.includes('127.0.0.1')) {
-        return `${window.location.origin}/shop/${effectiveSlug}`;
+      if (cleanUrl.startsWith('http') && !cleanUrl.includes('indianlalaji.com') && !cleanUrl.includes('indianalala.com')) {
+        return cleanUrl;
       }
     }
-    // 3. Fallback to platform domain
-    return `https://${SUPER_ADMIN_DOMAIN}/shop/${effectiveSlug}`;
-  }, [vendorLabSettings, effectiveSlug]);
+    // 3. Central Official Canonical Shop URL on indianlalaji.com:
+    // Format: https://indianlalaji.com/shop/lab-baburamlab-6535
+    return `https://${SUPER_ADMIN_DOMAIN}/shop/${effectiveVendorId}`;
+  }, [vendorLabSettings, effectiveVendorId]);
 
-  // In-browser direct URL (for local preview, in-app navigation, QR codes, and copy button)
+  // In-browser direct URL (for local preview, in-app navigation, and copy button)
   const websiteDirectUrl = React.useMemo(() => {
     if (typeof window !== 'undefined' && window.location.origin) {
       // If vendor custom domain is configured:
@@ -569,23 +565,17 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
           return `https://${cleanDom}`;
         }
       }
-      return `${window.location.origin}/shop/${effectiveSlug}`;
+      return `${window.location.origin}/shop/${effectiveVendorId}`;
     }
     return vendorCanonicalWebsiteUrl;
-  }, [vendorCanonicalWebsiteUrl, vendorLabSettings, effectiveSlug]);
+  }, [vendorCanonicalWebsiteUrl, vendorLabSettings, effectiveVendorId]);
 
-  // The QR Code URL for "Visit Website": Always routes to the specific vendor's current live website
+  // The QR Code URL for "Visit Website": Always routes to the canonical public shop URL
+  // e.g. https://indianlalaji.com/shop/lab-baburamlab-6535
+  // Ensures any patient scanning from a smartphone in the real world reaches the exact vendor shop!
   const qrWebsiteUrl = React.useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname.toLowerCase();
-      // Only for local machine dev, use canonical if available:
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return vendorCanonicalWebsiteUrl;
-      }
-      return websiteDirectUrl;
-    }
     return vendorCanonicalWebsiteUrl;
-  }, [websiteDirectUrl, vendorCanonicalWebsiteUrl]);
+  }, [vendorCanonicalWebsiteUrl]);
 
   // URL for Home Screen Shortcut
   const homeScreenUrl = React.useMemo(() => {

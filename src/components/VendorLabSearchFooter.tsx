@@ -274,9 +274,9 @@ export const VendorLabSearchFooter: React.FC<VendorLabSearchFooterProps> = ({
 
                     <div className="text-[11px] text-slate-400 flex items-center gap-1.5 font-mono">
                       <Globe className="w-3 h-3 text-teal-400 shrink-0" />
-                      <span>Subdomain: </span>
+                      <span>Shop Path: </span>
                       <span className="text-teal-300">
-                        {searchedLab.domainPreview || `${searchedLab.id}.indianlalaji.com`}
+                        {searchedLab.domainPreview?.replace(/^https?:\/\//, '') || `indianlalaji.com/shop/${searchedLab.id}`}
                       </span>
                     </div>
                   </div>

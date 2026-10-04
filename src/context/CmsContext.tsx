@@ -35,6 +35,7 @@ import { getPermissionsForRole, LAB_OPTIONS } from '../utils/rbac';
 import { isTenantMatch, verifyTenantOwnership, stampTenant } from '../utils/tenantSecurity';
 import { applySeoSettingsToDOM } from '../utils/seoManager';
 import { resolveAppRoute } from '../utils/domainRouting';
+import { getVendorShopUrl } from '../constants/domains';
 import {
   syncReceptionEntryToCloud,
   deleteReceptionEntryFromCloud,
@@ -255,7 +256,7 @@ const DEFAULT_VENDOR_LAB_SETTINGS: VendorLabSettings = {
   tagline: 'Advanced Pathology, Biochemistry & Diagnostic Testing Centre',
   description: 'Advanced Pathology, Biochemistry & Diagnostic Testing Centre. 100% NABL Accredited & Certified. Instant digital WhatsApp PDF reports & doorstep sample collection.',
   logoUrl: '',
-  websiteUrl: 'https://apexdiagnostics.indianlalaji.com',
+  websiteUrl: 'https://indianlalaji.com/shop/lab-apex',
   ogImageUrl: '',
   phone: '7087033009',
   helplinePhone: '+91 7087033009',
@@ -269,7 +270,7 @@ const DEFAULT_VENDOR_LAB_SETTINGS: VendorLabSettings = {
   emergencyHours: '24x7 Emergency Services at Central Lab',
   announcementText: '🌟 Special Notice: Free Blood Glucose and Hemoglobin checkup on Saturday morning!',
   email: 'care@apexdiagnostics.in',
-  domainPreview: 'apexdiagnostics.indianlalaji.com',
+  domainPreview: 'indianlalaji.com/shop/lab-apex',
   merchantName: 'Apex Diagnostic Lab Pvt Ltd',
   upiId1: 'apexlab@icici',
   qrCode1Label: 'Counter Billing QR (Google Pay / PhonePe / Paytm / BHIM)',
@@ -1142,6 +1143,7 @@ const DEFAULT_VENDOR_DOCTORS = DEFAULT_ALL_VENDOR_DOCTORS;
 export function buildDefaultSettingsForLab(dirItem: any): VendorLabSettings {
   const shortId = (dirItem.id || 'lab-unknown').replace('lab-', '');
   const cleanPhone = (dirItem.phone || '9876543210').replace(/\D/g, '').slice(-10);
+  const targetLabId = dirItem.id || `lab-${shortId}`;
   return {
     labId: dirItem.id,
     labShopId: `LSP-${shortId.toUpperCase()}`,
@@ -1150,7 +1152,7 @@ export function buildDefaultSettingsForLab(dirItem: any): VendorLabSettings {
     tagline: dirItem.tagline || 'Advanced Pathology & Clinical Testing',
     description: `${dirItem.name}, located in ${dirItem.city || 'City'}, ${dirItem.state || 'India'}. ${dirItem.tagline || ''}. Authorized NABL accredited pathology services with automated WhatsApp report delivery.`,
     logoUrl: '',
-    websiteUrl: `https://${dirItem.domainPreview || shortId + '.indianlalaji.com'}`,
+    websiteUrl: getVendorShopUrl(targetLabId),
     ogImageUrl: '',
     phone: cleanPhone,
     helplinePhone: dirItem.phone || '+91 ' + cleanPhone,
@@ -1164,7 +1166,7 @@ export function buildDefaultSettingsForLab(dirItem: any): VendorLabSettings {
     emergencyHours: dirItem.emergency ? '24x7 Emergency Services at Central Desk' : 'Emergency Blood Collection Available',
     announcementText: `🌟 Welcome to ${dirItem.name}! Instant online test booking and verified digital WhatsApp reports now active.`,
     email: dirItem.email || `contact@${shortId}lab.in`,
-    domainPreview: dirItem.domainPreview || `${shortId}.indianlalaji.com`,
+    domainPreview: `indianlalaji.com/shop/${targetLabId}`,
     merchantName: `${dirItem.name} Pvt Ltd`,
     upiId1: `${shortId}lab@icici`,
     qrCode1Label: `Counter Billing QR (${dirItem.city || 'Counter'} Desk)`,
@@ -2653,45 +2655,81 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser, selectedVendorLabId, vendorLabsList]);
 
   const vendorLabSettings = useMemo<VendorLabSettings>(() => {
+    let settings: VendorLabSettings;
     if (vendorLabSettingsMap[effectiveSettingsLabId]) {
-      return vendorLabSettingsMap[effectiveSettingsLabId];
+      settings = vendorLabSettingsMap[effectiveSettingsLabId];
+    } else {
+      const dirMatch =
+        vendorLabsList.find((l) => l.id === effectiveSettingsLabId) ||
+        VENDOR_LABS_DIRECTORY.find((l) => l.id === effectiveSettingsLabId);
+      if (dirMatch) {
+        settings = buildDefaultSettingsForLab(dirMatch);
+      } else {
+        // If it's a lab requested directly from the URL or mobile link:
+        const cleanLabSlug = effectiveSettingsLabId.replace(/^lab-/, '');
+        const formattedLabName = cleanLabSlug
+          .split(/[-_]/)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ') + ' Laboratory';
+        settings = {
+          ...DEFAULT_VENDOR_LAB_SETTINGS,
+          labId: effectiveSettingsLabId,
+          labShopId: `LSP-${cleanLabSlug.toUpperCase()}`,
+          labName: formattedLabName,
+          name: formattedLabName,
+          websiteUrl: getVendorShopUrl(effectiveSettingsLabId),
+          domainPreview: `indianlalaji.com/shop/${effectiveSettingsLabId}`,
+        };
+      }
     }
-    const dirMatch =
-      vendorLabsList.find((l) => l.id === effectiveSettingsLabId) ||
-      VENDOR_LABS_DIRECTORY.find((l) => l.id === effectiveSettingsLabId);
-    if (dirMatch) {
-      return buildDefaultSettingsForLab(dirMatch);
+
+    // Auto-normalize legacy/saved websiteUrl and domainPreview:
+    // If websiteUrl contains a subdomain like 'https://baburamlab.indianlalaji.com' or has no /shop/
+    // ensure it is updated to canonical format: https://indianlalaji.com/shop/${effectiveSettingsLabId}
+    if (
+      settings &&
+      (!settings.websiteUrl ||
+        (settings.websiteUrl.includes('indianlalaji.com') && !settings.websiteUrl.includes('/shop/')) ||
+        (settings.websiteUrl.includes('indianalala.com') && !settings.websiteUrl.includes('/shop/')))
+    ) {
+      settings = {
+        ...settings,
+        websiteUrl: getVendorShopUrl(effectiveSettingsLabId),
+        domainPreview: `indianlalaji.com/shop/${effectiveSettingsLabId}`,
+      };
     }
-    // If it's a lab requested directly from the URL or mobile link:
-    const cleanLabSlug = effectiveSettingsLabId.replace(/^lab-/, '');
-    const formattedLabName = cleanLabSlug
-      .split(/[-_]/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ') + ' Laboratory';
-    return {
-      ...DEFAULT_VENDOR_LAB_SETTINGS,
-      labId: effectiveSettingsLabId,
-      labShopId: `LSP-${cleanLabSlug.toUpperCase()}`,
-      labName: formattedLabName,
-      name: formattedLabName,
-      domainPreview: `${cleanLabSlug}.indianlalaji.com`,
-    };
+    return settings;
   }, [vendorLabSettingsMap, effectiveSettingsLabId, vendorLabsList]);
 
   const getLabSettings = useCallback((labId?: string): VendorLabSettings => {
     const targetId = labId || effectiveSettingsLabId;
+    let settings: VendorLabSettings;
     if (vendorLabSettingsMap[targetId]) {
-      return vendorLabSettingsMap[targetId];
+      settings = vendorLabSettingsMap[targetId];
+    } else {
+      const dirMatch = vendorLabsList.find((l) => l.id === targetId);
+      if (dirMatch) {
+        settings = buildDefaultSettingsForLab(dirMatch);
+      } else {
+        const fallbackDirLab = vendorLabsList.find((l) => l.status === 'Active') || vendorLabsList[0];
+        settings = fallbackDirLab
+          ? (vendorLabSettingsMap[fallbackDirLab.id] || buildDefaultSettingsForLab(fallbackDirLab))
+          : DEFAULT_VENDOR_LAB_SETTINGS;
+      }
     }
-    const dirMatch = vendorLabsList.find((l) => l.id === targetId);
-    if (dirMatch) {
-      return buildDefaultSettingsForLab(dirMatch);
+    if (
+      settings &&
+      (!settings.websiteUrl ||
+        (settings.websiteUrl.includes('indianlalaji.com') && !settings.websiteUrl.includes('/shop/')) ||
+        (settings.websiteUrl.includes('indianalala.com') && !settings.websiteUrl.includes('/shop/')))
+    ) {
+      settings = {
+        ...settings,
+        websiteUrl: getVendorShopUrl(targetId),
+        domainPreview: `indianlalaji.com/shop/${targetId}`,
+      };
     }
-    const fallbackDirLab = vendorLabsList.find((l) => l.status === 'Active') || vendorLabsList[0];
-    if (fallbackDirLab) {
-      return vendorLabSettingsMap[fallbackDirLab.id] || buildDefaultSettingsForLab(fallbackDirLab);
-    }
-    return DEFAULT_VENDOR_LAB_SETTINGS;
+    return settings;
   }, [vendorLabSettingsMap, effectiveSettingsLabId, vendorLabsList]);
 
   const [allVendorPackages, setAllVendorPackages] = useState<VendorPackage[]>(() => {
@@ -6346,7 +6384,8 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               labShopId: `LSP-${cleanSlug.toUpperCase()}`,
               labName: formattedName,
               name: formattedName,
-              domainPreview: `${cleanSlug}.indianlalaji.com`,
+              domainPreview: `indianlalaji.com/shop/${targetId}`,
+              websiteUrl: `https://indianlalaji.com/shop/${targetId}`,
             },
           };
         }
@@ -6435,7 +6474,8 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       subscriptionPlan: payload.subscriptionPlan || 'Professional',
       subscriptionAmount: payload.subscriptionPlan === 'Enterprise' ? 3999 : 1499,
       joinedDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      domainPreview: `${cleanSlug}.indianlalaji.com`,
+      domainPreview: `indianlalaji.com/shop/${newLabId}`,
+      websiteUrl: `https://indianlalaji.com/shop/${newLabId}`,
       features: ['WhatsApp PDF Reports', 'Barcode Tracking', 'Staff Role Management', 'Due Billing Desk'],
     };
 
@@ -6921,7 +6961,10 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         tagline: settingsObj.tagline || labDetailsObj.tagline || 'Advanced Diagnostic & Pathology Center',
         description: settingsObj.about || labDetailsObj.description || '',
         logoUrl: settingsObj.logoUrl || labDetailsObj.logoUrl || '',
-        websiteUrl: settingsObj.websiteUrl || labDetailsObj.websiteUrl || `https://${targetLabId}.indianlalaji.com`,
+        websiteUrl: (settingsObj.websiteUrl && !settingsObj.websiteUrl.includes('.indianlalaji.com') && !settingsObj.websiteUrl.includes('.indianalala.com'))
+          ? settingsObj.websiteUrl
+          : `https://indianlalaji.com/shop/${targetLabId}`,
+        domainPreview: `indianlalaji.com/shop/${targetLabId}`,
         city: city,
         state: settingsObj.state || labDetailsObj.state || 'India',
         address: settingsObj.address || labDetailsObj.address || '',
