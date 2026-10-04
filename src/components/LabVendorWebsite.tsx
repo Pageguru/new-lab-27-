@@ -61,7 +61,9 @@ import {
   Download,
   Printer,
   Camera,
+  BookmarkPlus,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { useCms, DEFAULT_ALL_VENDOR_DOCTORS } from '../context/CmsContext';
 import { updateDocumentMetadata, generateDefaultOgImage } from '../utils/seo';
 import { Language, LabReport, ReceptionPatientEntry } from '../types';
@@ -72,7 +74,7 @@ import { HeroBookingForm } from './vendor/HeroBookingForm';
 import { LabWelcomeFirstScreen } from './vendor/LabWelcomeFirstScreen';
 import { TermsConditionsModal } from './TermsConditionsModal';
 import { VendorPolicyModal, PolicyTabType } from './vendor/VendorPolicyModal';
-import { DownloadAppModal } from './DownloadAppModal';
+import { HomeScreenShortcutModal, DownloadAppModal } from './DownloadAppModal';
 import { VendorAiVoiceBot } from './vendor/VendorAiVoiceBot';
 import { getTenantWebsiteUrl, getTenantSubdomain, getTenantBrowserUrl, SUPER_ADMIN_DOMAIN } from '../constants/domains';
 import { isTenantMatch, isReportAccessibleToTenant } from '../utils/tenantSecurity';
@@ -546,45 +548,77 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       const cleanUrl = vendorLabSettings.websiteUrl.trim();
       if (cleanUrl.startsWith('http')) return cleanUrl;
     }
-    // 2. Canonical vendor shop format: https://indianlalaji.com/shop/VENDOR_ID
+    // 2. If running on a public hostname in browser (including hostinger or preview):
+    if (typeof window !== 'undefined' && window.location.origin) {
+      const hostname = window.location.hostname.toLowerCase();
+      if (!hostname.includes('localhost') && !hostname.includes('127.0.0.1')) {
+        return `${window.location.origin}/shop/${effectiveSlug}`;
+      }
+    }
+    // 3. Fallback to platform domain
     return `https://${SUPER_ADMIN_DOMAIN}/shop/${effectiveSlug}`;
   }, [vendorLabSettings, effectiveSlug]);
 
-  // In-browser direct URL (for local preview, in-app navigation, and copy button)
+  // In-browser direct URL (for local preview, in-app navigation, QR codes, and copy button)
   const websiteDirectUrl = React.useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const origin = window.location.origin;
-      // If deployed on indianlalaji.com or production domain:
-      if (origin.includes(SUPER_ADMIN_DOMAIN) || origin.includes('indianalala.com')) {
-        return vendorCanonicalWebsiteUrl;
-      }
+    if (typeof window !== 'undefined' && window.location.origin) {
       // If vendor custom domain is configured:
       if (vendorLabSettings?.isCustomDomainActive && vendorLabSettings?.websiteDomain) {
-        return vendorCanonicalWebsiteUrl;
+        const cleanDom = vendorLabSettings.websiteDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
+        if (cleanDom && !cleanDom.includes('indianlalaji.com') && !cleanDom.includes('indianalala.com')) {
+          return `https://${cleanDom}`;
+        }
       }
-      // In development or preview environment:
-      return `${origin}/shop/${effectiveSlug}`;
+      return `${window.location.origin}/shop/${effectiveSlug}`;
     }
     return vendorCanonicalWebsiteUrl;
   }, [vendorCanonicalWebsiteUrl, vendorLabSettings, effectiveSlug]);
 
-  // The QR Code URL for "Visit Website": Always guaranteed to route to the specific vendor website
+  // The QR Code URL for "Visit Website": Always routes to the specific vendor's current live website
   const qrWebsiteUrl = React.useMemo(() => {
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname.toLowerCase();
-      // If running on public internet domain, websiteDirectUrl is 100% routable
-      if (!hostname.includes('localhost') && !hostname.includes('127.0.0.1') && !hostname.includes('.run.app')) {
-        return websiteDirectUrl;
+      // Only for local machine dev, use canonical if available:
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return vendorCanonicalWebsiteUrl;
       }
+      return websiteDirectUrl;
     }
-    // For local dev / cloud preview, QR scanned by mobile camera routes to live vendor website:
     return vendorCanonicalWebsiteUrl;
   }, [websiteDirectUrl, vendorCanonicalWebsiteUrl]);
 
-  // Direct URL for Download App QR (Directly routes to vendor website and opens Download App modal)
-  const downloadAppUrl = React.useMemo(() => {
-    const base = qrWebsiteUrl;
-    return `${base}${base.includes('?') ? '&' : '?'}page=download-app`;
+  // URL for Home Screen Shortcut
+  const homeScreenUrl = React.useMemo(() => {
+    return qrWebsiteUrl;
+  }, [qrWebsiteUrl]);
+
+  // Direct URL for backward compatibility
+  const downloadAppUrl = homeScreenUrl;
+
+  // Instant client-side QR Code Data URL for Visit Website
+  const [websiteQrDataUrl, setWebsiteQrDataUrl] = useState<string>('');
+  useEffect(() => {
+    let isMounted = true;
+    if (qrWebsiteUrl) {
+      QRCode.toDataURL(qrWebsiteUrl, {
+        width: 280,
+        margin: 1,
+        color: { dark: '#123B6D', light: '#FFFFFF' },
+      })
+        .then((dataUri) => {
+          if (isMounted) setWebsiteQrDataUrl(dataUri);
+        })
+        .catch(() => {
+          if (isMounted) {
+            setWebsiteQrDataUrl(
+              `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrWebsiteUrl)}`
+            );
+          }
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
   }, [qrWebsiteUrl]);
 
   // Auto-update PWA manifest so installing app opens directly to this vendor website
@@ -637,13 +671,19 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     } catch {}
   }, [effectiveSlug, effectiveVendorId, labName, labLogoUrl]);
 
-  // Auto-open Download App Modal if URL contains ?page=download-app or #download-app
+  // Auto-open Home Screen Shortcut Modal if URL contains ?page=home-screen-shortcut, ?page=shortcut or ?page=download-app
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const search = window.location.search;
       const hash = window.location.hash;
       const params = new URLSearchParams(search);
-      if (params.get('page') === 'download-app' || hash === '#download-app') {
+      if (
+        params.get('page') === 'home-screen-shortcut' ||
+        params.get('page') === 'shortcut' ||
+        params.get('page') === 'download-app' ||
+        hash === '#shortcut' ||
+        hash === '#download-app'
+      ) {
         setIsDownloadAppModalOpen(true);
       }
     }
@@ -654,12 +694,19 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     if (typeof window !== 'undefined') {
       try {
         const url = new URL(window.location.href);
-        if (url.searchParams.get('page') === 'download-app') {
-          url.searchParams.delete('page');
-          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        let changed = false;
+        ['download-app', 'shortcut', 'home-screen-shortcut'].forEach((p) => {
+          if (url.searchParams.get('page') === p) {
+            url.searchParams.delete('page');
+            changed = true;
+          }
+        });
+        if (url.hash === '#download-app' || url.hash === '#shortcut') {
+          url.hash = '';
+          changed = true;
         }
-        if (url.hash === '#download-app') {
-          window.history.replaceState({}, '', url.pathname + url.search);
+        if (changed) {
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
         }
       } catch {}
     }
@@ -2631,7 +2678,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     Contact &amp; Location
                   </button>
 
-                  {/* Download App & Visit Website Buttons in Drawer */}
+                  {/* Home Screen Shortcut & Visit Website QR Buttons in Drawer */}
                   <div className="pt-2 space-y-1.5">
                     <button
                       type="button"
@@ -2642,11 +2689,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       className="w-full text-left py-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 transition text-xs font-bold cursor-pointer flex items-center justify-between"
                     >
                       <span className="flex items-center gap-2">
-                        <Smartphone className="w-4 h-4 text-emerald-600" />
-                        <span>Download Mobile App</span>
+                        <BookmarkPlus className="w-4 h-4 text-emerald-600" />
+                        <span>Home Screen Shortcut</span>
                       </span>
                       <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-black">
-                        App QR
+                        1-Tap Add
                       </span>
                     </button>
 
@@ -2659,7 +2706,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       className="w-full text-left py-2.5 px-3.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 transition text-xs font-bold cursor-pointer flex items-center justify-between"
                     >
                       <span className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-indigo-600" />
+                        <QrCode className="w-4 h-4 text-indigo-600" />
                         <span>Visit Website QR</span>
                       </span>
                       <span className="text-[10px] bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded-full font-black">
@@ -4698,14 +4745,14 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 <li>
                   <button
                     type="button"
-                    id="btn-footer-download-app"
+                    id="btn-footer-home-screen-shortcut"
                     onClick={() => setIsDownloadAppModalOpen(true)}
                     className="hover:text-[#123B6D] text-emerald-700 font-bold flex items-center gap-1.5 cursor-pointer text-left transition"
                   >
-                    <Smartphone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Download App</span>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-mono font-bold border border-emerald-200">
-                      QR
+                    <BookmarkPlus className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Home Screen Shortcut</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold border border-emerald-200">
+                      1-Tap Add
                     </span>
                   </button>
                 </li>
@@ -5061,13 +5108,12 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
         customRefund={vendorLabSettings?.refundPolicy}
       />
 
-      {/* Download App Modal (Android & iOS with How to Install Instructions & QR) */}
-      <DownloadAppModal
+      {/* Home Screen Shortcut Modal (Android & iOS with Step-by-Step 1-Tap Add Guide) */}
+      <HomeScreenShortcutModal
         isOpen={isDownloadAppModalOpen}
         onClose={handleCloseDownloadAppModal}
         labName={labName}
         labId={effectiveSlug}
-        downloadAppUrl={downloadAppUrl}
         websiteDirectUrl={websiteDirectUrl}
       />
 
@@ -5105,7 +5151,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-4 shadow-inner flex flex-col items-center">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrWebsiteUrl)}`}
+                src={websiteQrDataUrl || `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrWebsiteUrl)}`}
                 alt={`${labName} Website QR`}
                 className="w-48 h-48 rounded-xl object-contain bg-white p-2 border border-slate-200 shadow-xs"
               />
@@ -5116,7 +5162,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             </div>
 
             <div className="w-full bg-slate-50 rounded-xl p-2.5 border border-slate-200 mb-4 flex items-center justify-between text-xs font-mono text-slate-700">
-              <span className="truncate pr-2 select-all">{qrWebsiteUrl}</span>
+              <span className="truncate pr-2 select-all font-bold text-[#123B6D]">{qrWebsiteUrl}</span>
               <button
                 type="button"
                 onClick={() => {
@@ -5127,13 +5173,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition flex items-center gap-1 cursor-pointer"
               >
                 {copiedWebsiteUrl ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedWebsiteUrl ? 'Copied' : 'Copy'}</span>
+                <span>{copiedWebsiteUrl ? 'Copied' : 'Copy Link'}</span>
               </button>
             </div>
 
             <div className="w-full grid grid-cols-2 gap-2 text-xs">
               <a
-                href={websiteDirectUrl}
+                href={qrWebsiteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-[#123B6D] hover:bg-[#0e2c52] text-white py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition shadow-xs"
@@ -5142,7 +5188,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                 <span>Visit Website</span>
               </a>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`Visit ${labName} Website: ${websiteDirectUrl}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`Visit ${labName} Official Website: ${qrWebsiteUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition"
