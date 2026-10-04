@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // -----------------------------------------------------------------------------
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_USER', getenv('DB_USER') ?: 'u878081993_newkonhai'); // Hostinger MySQL Username
-define('DB_PASS', getenv('DB_PASS') ?: 'newkonhai');   // Hostinger MySQL Password
+define('DB_PASS', getenv('DB_PASS') ?: 'Newkonhai12');   // Hostinger MySQL Password
 define('DB_NAME', getenv('DB_NAME') ?: 'u878081993_newkonhai'); // Hostinger MySQL Database Name
 
 // Directories
