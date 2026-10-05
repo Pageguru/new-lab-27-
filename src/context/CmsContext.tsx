@@ -2741,7 +2741,19 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const existingIds = new Set(parsed.map((p: any) => p.id));
           const existingLabIds = new Set(parsed.map((p: any) => p.labId));
           const missingPkgs = DEFAULT_ALL_VENDOR_PACKAGES.filter((p) => !existingIds.has(p.id) && !existingLabIds.has(p.labId));
-          return [...parsed.map((p: any) => ({ ...p, labId: p.labId || 'lab-apex' })), ...missingPkgs];
+          return [
+            ...parsed.map((p: any) => ({
+              ...p,
+              labId: p.labId || 'lab-apex',
+              features: Array.isArray(p.features)
+                ? p.features
+                : Array.isArray(p.testsIncluded)
+                ? p.testsIncluded
+                : [],
+              testsCount: p.testsCount || p.testCount || (Array.isArray(p.features) ? p.features.length : 0),
+            })),
+            ...missingPkgs,
+          ];
         }
       }
       return DEFAULT_ALL_VENDOR_PACKAGES;
@@ -2778,13 +2790,17 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? currentUser.labId
       : (selectedVendorLabId || 'lab-apex');
     const matched = allVendorPackages.filter((p) => isTenantMatch(p, targetLab));
-    if (matched.length > 0) return matched;
-    // Smart Fallback: Provide complete starter medical packages stamped for this lab
-    const basePkgs = allVendorPackages.filter((p) => isTenantMatch(p, 'lab-apex'));
-    return basePkgs.map((p, idx) => ({
+    const finalPkgs = matched.length > 0
+      ? matched
+      : allVendorPackages.filter((p) => isTenantMatch(p, 'lab-apex')).map((p, idx) => ({
+          ...p,
+          id: `pkg-${targetLab}-${idx + 1}`,
+          labId: targetLab,
+        }));
+    return finalPkgs.map((p) => ({
       ...p,
-      id: `pkg-${targetLab}-${idx + 1}`,
-      labId: targetLab,
+      features: Array.isArray(p.features) ? p.features : [],
+      testsCount: p.testsCount || (Array.isArray(p.features) ? p.features.length : 0),
     }));
   }, [allVendorPackages, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
@@ -3163,9 +3179,19 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribePackages = subscribeToPackages(
       (cloudPackages) => {
         if (Array.isArray(cloudPackages) && cloudPackages.length > 0) {
-          setAllVendorPackages(cloudPackages);
+          const safePkgs = cloudPackages.map((p: any) => ({
+            ...p,
+            labId: p.labId || 'lab-apex',
+            features: Array.isArray(p.features)
+              ? p.features
+              : Array.isArray(p.testsIncluded)
+              ? p.testsIncluded
+              : [],
+            testsCount: p.testsCount || p.testCount || (Array.isArray(p.features) ? p.features.length : 0),
+          }));
+          setAllVendorPackages(safePkgs);
           try {
-            localStorage.setItem('cms_vendor_packages', JSON.stringify(cloudPackages));
+            localStorage.setItem('cms_vendor_packages', JSON.stringify(safePkgs));
           } catch {}
         }
       }

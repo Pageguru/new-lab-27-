@@ -294,7 +294,7 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
 
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://indianlalaji.com';
     const cleanSlug = lab.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'newlab';
-    const labUrl = `${currentOrigin}?view=vendor_website&lab=${cleanSlug}`;
+    const labUrl = `${currentOrigin}/shop/${cleanSlug}`;
     const mainLoginUrl = `${currentOrigin}?view=vendor_dashboard`;
 
     const message = `🏥 *LABORATORY CREDENTIALS*
@@ -387,8 +387,8 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
       });
 
       const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://indianlalaji.com';
-      const cleanSlug = createLabName.trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'newlab';
-      const domainUrl = `${currentOrigin}?view=vendor_website&lab=${cleanSlug}`;
+      const cleanSlug = lab.slug || lab.id.replace(/^lab-/, '') || createLabName.trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'newlab';
+      const domainUrl = `${currentOrigin}/shop/${cleanSlug}`;
 
       setCreatedLabData({
         labName: lab.name,

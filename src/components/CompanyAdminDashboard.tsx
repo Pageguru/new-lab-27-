@@ -1191,21 +1191,21 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                            Included Features ({plan.features.length}):
+                            Included Features ({plan.features?.length || 0}):
                           </span>
                           <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                             Same Features
                           </span>
                         </div>
-                        {plan.features.slice(0, 6).map((f, i) => (
+                        {(Array.isArray(plan.features) ? plan.features : []).slice(0, 6).map((f, i) => (
                           <div key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
                             <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                             <span>{f}</span>
                           </div>
                         ))}
-                        {plan.features.length > 6 && (
+                        {(plan.features?.length || 0) > 6 && (
                           <span className="text-[11px] text-slate-400 italic block pt-0.5">
-                            + {plan.features.length - 6} more standard features
+                            + {(plan.features?.length || 0) - 6} more standard features
                           </span>
                         )}
                       </div>

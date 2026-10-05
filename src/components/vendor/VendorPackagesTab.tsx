@@ -191,15 +191,16 @@ export const VendorPackagesTab: React.FC<VendorPackagesTabProps> = ({
   // Filtered packages for list view
   const filteredPackages = useMemo(() => {
     return vendorPackages.filter((pkg) => {
+      const pkgFeatures = Array.isArray(pkg.features) ? pkg.features : [];
       const matchesSearch =
-        pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pkg.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pkg.features.some((f) => f.toLowerCase().includes(searchTerm.toLowerCase()));
+        (pkg.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (pkg.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pkgFeatures.some((f) => f.toLowerCase().includes(searchTerm.toLowerCase()));
 
       let matchesFilter = true;
       if (filterType === 'popular') matchesFilter = !!pkg.isPopular;
-      if (filterType === 'under999') matchesFilter = pkg.priceINR < 1000;
-      if (filterType === 'above999') matchesFilter = pkg.priceINR >= 1000;
+      if (filterType === 'under999') matchesFilter = (pkg.priceINR || 0) < 1000;
+      if (filterType === 'above999') matchesFilter = (pkg.priceINR || 0) >= 1000;
 
       return matchesSearch && matchesFilter;
     });
@@ -207,14 +208,15 @@ export const VendorPackagesTab: React.FC<VendorPackagesTabProps> = ({
 
   // Open Edit Mode / Modal
   const handleOpenEdit = (pkg: VendorPackage) => {
+    const pkgFeatures = Array.isArray(pkg.features) ? pkg.features : [];
     setEditingPackage(pkg);
     setFormName(pkg.name);
-    setFormDescription(pkg.description);
-    setFormTestsCount(pkg.testsCount);
+    setFormDescription(pkg.description || '');
+    setFormTestsCount(pkg.testsCount || pkgFeatures.length || 0);
     setFormPriceINR(pkg.priceINR);
     setFormMrpINR(pkg.mrpINR);
     setFormIsPopular(!!pkg.isPopular);
-    setFormFeaturesText(pkg.features.join('\n'));
+    setFormFeaturesText(pkgFeatures.join('\n'));
     setIsEditModalOpen(true);
   };
 
@@ -902,7 +904,7 @@ export const VendorPackagesTab: React.FC<VendorPackagesTabProps> = ({
                           Included Tests:
                         </span>
                         <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-                          {pkg.features.map((feat, i) => (
+                          {(Array.isArray(pkg.features) ? pkg.features : []).map((feat, i) => (
                             <div key={i} className="text-xs text-slate-600 flex items-start gap-1.5">
                               <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                               <span className="line-clamp-1">{feat}</span>
@@ -1004,8 +1006,9 @@ export const VendorPackagesTab: React.FC<VendorPackagesTabProps> = ({
                           </td>
                           <td className="py-3 px-4 max-w-xs">
                             <span className="text-[11px] text-slate-600 line-clamp-2">
-                              {pkg.features.slice(0, 3).join(', ')}
-                              {pkg.features.length > 3 && ` +${pkg.features.length - 3} more`}
+                              {(Array.isArray(pkg.features) ? pkg.features : []).slice(0, 3).join(', ')}
+                              {(Array.isArray(pkg.features) ? pkg.features.length : 0) > 3 &&
+                                ` +${(pkg.features?.length || 0) - 3} more`}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">

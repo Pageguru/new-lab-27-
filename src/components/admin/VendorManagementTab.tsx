@@ -378,12 +378,12 @@ export const VendorManagementTab: React.FC<VendorManagementTabProps> = ({
 
   const handleOpenLabWebsite = (vendor: VendorLabDirectoryItem | string) => {
     const labItem = typeof vendor === 'string' ? vendorLabsList.find((l) => l.id === vendor) : vendor;
-    if (labItem && (labItem.status !== 'Active' || !labItem.isWebsiteApproved)) {
-      setDraftVisitVendor(labItem);
-      return;
-    }
     const labId = typeof vendor === 'string' ? vendor : vendor.id;
     selectVendorLab(labId);
+    try {
+      const slug = labItem?.slug || labId.replace(/^lab-/, '');
+      window.history.pushState({}, '', `/shop/${slug}`);
+    } catch {}
     onNavigateView('vendor_website');
   };
 

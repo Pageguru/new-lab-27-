@@ -1061,7 +1061,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
                       Tests on Patient Receipt / Booking Token
                     </h3>
                     <span className="bg-[#123B6D] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      {patientReceiptTests.length} {patientReceiptTests.length === 1 ? 'Test' : 'Tests'} Billed
+                      {(patientReceiptTests || []).length} {(patientReceiptTests || []).length === 1 ? 'Test' : 'Tests'} Billed
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 mt-0.5">
@@ -1091,7 +1091,7 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
 
             {/* Test List from Receipt Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {patientReceiptTests.map((tName, idx) => (
+              {(patientReceiptTests || []).map((tName, idx) => (
                 <div
                   key={`${tName}-${idx}`}
                   className="bg-white border border-blue-200 hover:border-[#123B6D] rounded-lg p-2.5 flex items-center justify-between shadow-2xs transition group"

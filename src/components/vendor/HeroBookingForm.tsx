@@ -212,18 +212,18 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
   // Admin controlled Home Collection Charge (respects waiver threshold if set)
   const homeCollectionCharge =
     collectionType === 'Home'
-      ? (vendorLabSettings.freeHomeCollectionThreshold && vendorLabSettings.freeHomeCollectionThreshold > 0 && testsTotal >= vendorLabSettings.freeHomeCollectionThreshold
+      ? (vendorLabSettings?.freeHomeCollectionThreshold && vendorLabSettings.freeHomeCollectionThreshold > 0 && testsTotal >= vendorLabSettings.freeHomeCollectionThreshold
           ? 0
-          : (vendorLabSettings.homeCollectionCharge ?? 100))
+          : (vendorLabSettings?.homeCollectionCharge ?? 100))
       : 0;
 
   // Grand Total Calculation
   const grandTotal = testsTotal + homeCollectionCharge;
 
   // Lab UPI and QR details from Admin settings
-  const labUpiId = vendorLabSettings.upiId1 || 'apexlab@icici';
-  const labMerchantName = vendorLabSettings.merchantName || vendorLabSettings.labName || 'Apex Diagnostic Laboratory';
-  const qrImage = vendorLabSettings.qrCode1Url;
+  const labUpiId = vendorLabSettings?.upiId1 || 'apexlab@icici';
+  const labMerchantName = vendorLabSettings?.merchantName || vendorLabSettings?.labName || 'Apex Diagnostic Laboratory';
+  const qrImage = vendorLabSettings?.qrCode1Url;
 
   // Quick fallback dynamic UPI QR URL if admin hasn't uploaded a static QR photo
   const dynamicUpiUri = useMemo(() => {
@@ -929,7 +929,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
                     <span>Home Sample</span>
                   </span>
                   <span className="text-[9px] bg-amber-200 text-amber-950 font-black px-1.5 py-0.5 rounded">
-                    +₹{vendorLabSettings.homeCollectionCharge ?? 100}
+                    +₹{vendorLabSettings?.homeCollectionCharge ?? 100}
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500">
@@ -994,7 +994,7 @@ export const HeroBookingForm: React.FC<HeroBookingFormProps> = ({
                     onChange={(e) => setPreferredTimeSlot(e.target.value)}
                     className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-[#123B6D]/30 focus:outline-none bg-white cursor-pointer"
                   >
-                    {(vendorLabSettings.bookingTimeSlots && vendorLabSettings.bookingTimeSlots.length > 0
+                    {(vendorLabSettings?.bookingTimeSlots && vendorLabSettings.bookingTimeSlots.length > 0
                       ? vendorLabSettings.bookingTimeSlots
                       : [
                           'Tomorrow: 6:30 AM - 8:30 AM (Fasting Preferred)',

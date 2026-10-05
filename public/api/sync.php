@@ -193,6 +193,23 @@ function fetchCollectionData($collection) {
                     if (isset($row['testsIncluded']) && is_string($row['testsIncluded'])) {
                         $row['testsIncluded'] = json_decode($row['testsIncluded'], true) ?: $row['testsIncluded'];
                     }
+                    if ($collection === 'lab_packages') {
+                        if (empty($row['name']) && !empty($row['title'])) {
+                            $row['name'] = $row['title'];
+                        }
+                        if (empty($row['priceINR']) && isset($row['price'])) {
+                            $row['priceINR'] = (float)$row['price'];
+                        }
+                        if (empty($row['mrpINR']) && isset($row['originalPrice'])) {
+                            $row['mrpINR'] = (float)$row['originalPrice'];
+                        }
+                        if (!isset($row['testsCount']) && isset($row['testCount'])) {
+                            $row['testsCount'] = (int)$row['testCount'];
+                        }
+                        if (!isset($row['features']) || !is_array($row['features'])) {
+                            $row['features'] = (isset($row['testsIncluded']) && is_array($row['testsIncluded'])) ? $row['testsIncluded'] : [];
+                        }
+                    }
                     $processed[] = $row;
                 }
                 if ($filterLabId && $filterLabId !== 'all') {

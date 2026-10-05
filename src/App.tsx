@@ -36,6 +36,7 @@ import { CmsAuthModal } from './components/CmsAuthModal';
 import { BranchManagerDashboard } from './components/BranchManagerDashboard';
 import { PathologistDashboard } from './components/PathologistDashboard';
 import { RoleContextBanner } from './components/RoleContextBanner';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Building, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { isUserAuthorizedForView } from './utils/rbac';
 import { useCms } from './context/CmsContext';
@@ -518,20 +519,25 @@ export default function App() {
   if (currentView === 'vendor_website') {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-[#172033] flex flex-col font-sans">
-        <LabVendorWebsite
-          targetLabId={selectedVendorLabId}
-          language={language}
-          onSelectLanguage={setLanguage}
-          onOpenReportPortal={handleViewPatientPortal}
-          onOpenLabSoftware={handleLaunchLabApp}
-          onOpenSoftwareWebsite={() => {
-            setCurrentView('website');
-            window.history.pushState({}, '', '/');
-          }}
-          onOpenVendorDashboard={() => setCurrentView('vendor_dashboard')}
-          onOpenReceptionDashboard={() => setCurrentView('reception_dashboard')}
-          onOpenAdminDashboard={() => setCurrentView('admin_dashboard')}
-        />
+        <ErrorBoundary
+          fallbackTitle="Laboratory Website"
+          fallbackMessage="Diagnostic lab website load karte waqt ek problem aayi. Please refresh karein ya dobara koshish karein."
+        >
+          <LabVendorWebsite
+            targetLabId={selectedVendorLabId}
+            language={language}
+            onSelectLanguage={setLanguage}
+            onOpenReportPortal={handleViewPatientPortal}
+            onOpenLabSoftware={handleLaunchLabApp}
+            onOpenSoftwareWebsite={() => {
+              setCurrentView('website');
+              window.history.pushState({}, '', '/');
+            }}
+            onOpenVendorDashboard={() => setCurrentView('vendor_dashboard')}
+            onOpenReceptionDashboard={() => setCurrentView('reception_dashboard')}
+            onOpenAdminDashboard={() => setCurrentView('admin_dashboard')}
+          />
+        </ErrorBoundary>
         <CmsAuthModal
           isOpen={isAuthModalOpen}
           isVendorContext={true}

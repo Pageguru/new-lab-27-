@@ -104,6 +104,10 @@ export const LabSearchSection: React.FC<LabSearchSectionProps> = ({
     if (setSelectedVendorLabId) {
       setSelectedVendorLabId(lab.id);
     }
+    try {
+      const cleanSlug = lab.slug || lab.id.replace(/^lab-/, '');
+      window.history.pushState({}, '', `/shop/${cleanSlug}`);
+    } catch {}
     onSelectView('vendor_website');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -203,6 +207,25 @@ export const LabSearchSection: React.FC<LabSearchSectionProps> = ({
                 <span>Search Lab Website</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </button>
+            </div>
+
+            {/* Quick Direct Lab Website Access */}
+            <div className="pt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                Partner Labs:
+              </span>
+              {(vendorLabsList || []).filter((l) => (l.status || '').toLowerCase() === 'active').slice(0, 6).map((lab) => (
+                <button
+                  key={lab.id}
+                  type="button"
+                  onClick={() => handleVisitWebsite(lab)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-[#123B6D] hover:text-white text-slate-700 text-xs font-bold transition cursor-pointer border border-slate-200 hover:border-[#123B6D] active:scale-95 shadow-2xs"
+                  title={`Open ${lab.name} Website`}
+                >
+                  <Globe className="w-3 h-3 text-teal-600 group-hover:text-amber-300" />
+                  <span>{lab.name.replace(/Laboratory|Diagnostic|Centre|Scans|Scan|Hub/gi, '').trim() || lab.name}</span>
+                </button>
+              ))}
             </div>
           </form>
 

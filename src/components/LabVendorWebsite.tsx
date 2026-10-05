@@ -121,6 +121,35 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
     addContactSubmission,
   } = useCms();
 
+  const safeVendorPackages = React.useMemo(() => {
+    if (!Array.isArray(vendorPackages)) return [];
+    return vendorPackages.map((p) => {
+      const featArr = Array.isArray(p?.features)
+        ? p.features
+        : (typeof (p as any)?.features === 'string'
+            ? [(p as any).features]
+            : (Array.isArray((p as any)?.testsIncluded) ? (p as any).testsIncluded : []));
+      return {
+        ...p,
+        name: p?.name || (p as any)?.title || 'Health Checkup Package',
+        features: featArr,
+        testsCount: p?.testsCount || (p as any)?.testCount || featArr.length || 0,
+        priceINR: p?.priceINR || (p as any)?.price || 999,
+        mrpINR: p?.mrpINR || (p as any)?.originalPrice || Math.round((p?.priceINR || (p as any)?.price || 999) * 1.5),
+      };
+    });
+  }, [vendorPackages]);
+
+  const safeVendorTests = React.useMemo(() => {
+    if (!Array.isArray(vendorTests)) return [];
+    return vendorTests.map((t) => ({
+      ...t,
+      name: t?.name || (t as any)?.testName || 'Diagnostic Test',
+      category: t?.category || 'General',
+      priceINR: t?.priceINR || (t as any)?.price || 350,
+    }));
+  }, [vendorTests]);
+
   const effectiveLabId = targetLabId || selectedVendorLabId || vendorLabSettings?.labId;
 
   const currentLabItem = React.useMemo(() => {
@@ -3107,8 +3136,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
               <div className="max-w-6xl mx-auto">
                 {/* Desktop View: Grid */}
                 <div className="hidden md:grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch justify-center">
-                  {vendorPackages.slice(0, 3).map((pkg, idx) => {
+                  {safeVendorPackages.slice(0, 3).map((pkg, idx) => {
                     const pkgImageUrl = getPackageImg(pkg, idx);
+                    const pkgFeatures = Array.isArray(pkg.features) ? pkg.features : [];
+                    const pkgTestsCount = pkg.testsCount || pkgFeatures.length || 0;
 
                     return (
                       <div
@@ -3126,8 +3157,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 url: pkgImageUrl,
                                 title: pkg.name,
                                 price: pkg.priceINR,
-                                testsCount: pkg.testsCount || pkg.features.length,
-                                features: pkg.features,
+                                testsCount: pkgTestsCount,
+                                features: pkgFeatures,
                               });
                             }}
                             className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-500 cursor-pointer"
@@ -3152,8 +3183,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 url: pkgImageUrl,
                                 title: pkg.name,
                                 price: pkg.priceINR,
-                                testsCount: pkg.testsCount || pkg.features.length,
-                                features: pkg.features,
+                                testsCount: pkgTestsCount,
+                                features: pkgFeatures,
                               });
                             }}
                             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/55 hover:bg-black/85 text-white backdrop-blur-xs flex items-center justify-center transition shadow-md cursor-pointer active:scale-95"
@@ -3172,8 +3203,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 url: pkgImageUrl,
                                 title: pkg.name,
                                 price: pkg.priceINR,
-                                testsCount: pkg.testsCount || pkg.features.length,
-                                features: pkg.features,
+                                testsCount: pkgTestsCount,
+                                features: pkgFeatures,
                               });
                             }}
                             className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 hover:bg-black/85 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 shadow-xs"
@@ -3196,11 +3227,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                 <span>Included Tests:</span>
                                 <span className="text-[10px] font-bold text-slate-400">
-                                  {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
+                                  {pkgTestsCount} Tests
                                 </span>
                               </div>
                               <div className="space-y-1.5 h-44 overflow-y-auto pr-1">
-                                {pkg.features.map((feat, fIdx) => (
+                                {pkgFeatures.map((feat, fIdx) => (
                                   <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
                                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                                     <span className="font-medium text-slate-700">{feat}</span>
@@ -3218,8 +3249,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                   url: pkgImageUrl,
                                   title: pkg.name,
                                   price: pkg.priceINR,
-                                  testsCount: pkg.testsCount || pkg.features.length,
-                                  features: pkg.features,
+                                  testsCount: pkgTestsCount,
+                                  features: pkgFeatures,
                                 });
                               }}
                               className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
@@ -3262,12 +3293,14 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
 
                 {/* Mobile View: 1 Package = 100% width, 2+ Packages = 90% card with 10% peek & swipe */}
                 <div className="block md:hidden">
-                  {vendorPackages.length === 1 ? (
+                  {safeVendorPackages.length === 1 ? (
                     /* 1 Package: Full screen width (100%) */
                     <div className="w-full">
                       {(() => {
-                        const pkg = vendorPackages[0];
+                        const pkg = safeVendorPackages[0];
                         const pkgImageUrl = getPackageImg(pkg, 0);
+                        const pkgFeatures = Array.isArray(pkg.features) ? pkg.features : [];
+                        const pkgTestsCount = pkg.testsCount || pkgFeatures.length || 0;
                         return (
                           <div
                             key={pkg.id || 0}
@@ -3283,8 +3316,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     url: pkgImageUrl,
                                     title: pkg.name,
                                     price: pkg.priceINR,
-                                    testsCount: pkg.testsCount || pkg.features.length,
-                                    features: pkg.features,
+                                    testsCount: pkgTestsCount,
+                                    features: pkgFeatures,
                                   });
                                 }}
                                 className="w-full h-full object-cover cursor-pointer"
@@ -3302,8 +3335,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     url: pkgImageUrl,
                                     title: pkg.name,
                                     price: pkg.priceINR,
-                                    testsCount: pkg.testsCount || pkg.features.length,
-                                    features: pkg.features,
+                                    testsCount: pkgTestsCount,
+                                    features: pkgFeatures,
                                   });
                                 }}
                                 className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -3321,11 +3354,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                   <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                     <span>Included Tests:</span>
                                     <span className="text-[10px] font-bold text-slate-400">
-                                      {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
+                                      {pkgTestsCount} Tests
                                     </span>
                                   </div>
                                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                                    {pkg.features.map((feat, fIdx) => (
+                                    {pkgFeatures.map((feat, fIdx) => (
                                       <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
                                         <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                                         <span className="font-medium text-slate-700">{feat}</span>
@@ -3343,8 +3376,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       url: pkgImageUrl,
                                       title: pkg.name,
                                       price: pkg.priceINR,
-                                      testsCount: pkg.testsCount || pkg.features.length,
-                                      features: pkg.features,
+                                      testsCount: pkgTestsCount,
+                                      features: pkgFeatures,
                                     });
                                   }}
                                   className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
@@ -3381,7 +3414,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         );
                       })()}
                     </div>
-                  ) : vendorPackages.length > 1 ? (
+                  ) : safeVendorPackages.length > 1 ? (
                     /* 2+ Packages: First card 90% width, next card 10% visible on right. Horizontal swipe & click navigation enabled. */
                     <div className="relative">
                       <div
@@ -3398,7 +3431,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           const cardWidth = el.offsetWidth * 0.88;
                           if (cardWidth > 0) {
                             const idx = Math.min(
-                              vendorPackages.length - 1,
+                              safeVendorPackages.length - 1,
                               Math.max(0, Math.round(scrollLeft / cardWidth))
                             );
                             if (idx !== activeMobilePkgIndex) {
@@ -3407,8 +3440,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           }
                         }}
                       >
-                        {vendorPackages.map((pkg, idx) => {
+                        {safeVendorPackages.map((pkg, idx) => {
                           const pkgImageUrl = getPackageImg(pkg, idx);
+                          const pkgFeatures = Array.isArray(pkg.features) ? pkg.features : [];
+                          const pkgTestsCount = pkg.testsCount || pkgFeatures.length || 0;
                           return (
                             <div
                               key={pkg.id || idx}
@@ -3425,8 +3460,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       url: pkgImageUrl,
                                       title: pkg.name,
                                       price: pkg.priceINR,
-                                      testsCount: pkg.testsCount || pkg.features.length,
-                                      features: pkg.features,
+                                      testsCount: pkgTestsCount,
+                                      features: pkgFeatures,
                                     });
                                   }}
                                   className="w-full h-full object-cover cursor-pointer"
@@ -3450,8 +3485,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       url: pkgImageUrl,
                                       title: pkg.name,
                                       price: pkg.priceINR,
-                                      testsCount: pkg.testsCount || pkg.features.length,
-                                      features: pkg.features,
+                                      testsCount: pkgTestsCount,
+                                      features: pkgFeatures,
                                     });
                                   }}
                                   className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -3472,11 +3507,11 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                       <span>Included Tests:</span>
                                       <span className="text-[10px] font-bold text-slate-400">
-                                        {pkg.testsCount ? `${pkg.testsCount} Tests` : `${pkg.features.length} Tests`}
+                                        {pkgTestsCount} Tests
                                       </span>
                                     </div>
                                     <div className="space-y-1.5 h-36 overflow-y-auto pr-1">
-                                      {pkg.features.map((feat, fIdx) => (
+                                      {pkgFeatures.map((feat, fIdx) => (
                                         <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
                                           <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                                           <span className="font-medium text-slate-700">{feat}</span>
@@ -3494,8 +3529,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                         url: pkgImageUrl,
                                         title: pkg.name,
                                         price: pkg.priceINR,
-                                        testsCount: pkg.testsCount || pkg.features.length,
-                                        features: pkg.features,
+                                        testsCount: pkgTestsCount,
+                                        features: pkgFeatures,
                                       });
                                     }}
                                     className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
@@ -3538,7 +3573,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                       {/* Mobile Swipe Pagination Dots & Scroll Controls */}
                       <div className="flex items-center justify-between mt-3 px-1">
                         <div className="flex items-center gap-1.5">
-                          {vendorPackages.map((_, dotIdx) => (
+                          {safeVendorPackages.map((_, dotIdx) => (
                             <button
                               key={dotIdx}
                               type="button"
@@ -5574,8 +5609,8 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
       <VendorAiVoiceBot
         currentLabItem={currentLabItem}
         vendorLabSettings={vendorLabSettings}
-        vendorTests={vendorTests}
-        vendorPackages={vendorPackages}
+        vendorTests={safeVendorTests}
+        vendorPackages={safeVendorPackages}
         vendorDoctors={effectiveTeamDoctors}
         allReports={allReports}
         allReceptionEntries={allReceptionEntries}
