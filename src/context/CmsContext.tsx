@@ -91,6 +91,13 @@ import {
   getPendingOfflineCount,
   subscribeOfflineQueueCount,
 } from '../lib/cloudSync';
+import {
+  getStorageMetrics,
+  cleanSaaSCache,
+  autoPruneOnAppInit,
+  StorageMetrics,
+  CleanCacheResult,
+} from '../utils/cacheManager';
 
 export const DEFAULT_VENDOR_SECTIONS: VendorWebsiteSections = {
   announcementBar: true,
@@ -2268,6 +2275,15 @@ interface CmsContextType {
   refreshCloudData: () => Promise<void>;
   pendingOfflineSyncCount: number;
   triggerManualSync: () => Promise<{ success: boolean; message: string; count: number }>;
+
+  // Cache & Storage Optimization
+  storageMetrics: StorageMetrics | null;
+  refreshStorageMetrics: () => Promise<StorageMetrics>;
+  cleanStorageCache: () => Promise<CleanCacheResult>;
+  isCacheModalOpen: boolean;
+  setIsCacheModalOpen: (open: boolean) => void;
+  openCacheModal: () => void;
+  closeCacheModal: () => void;
 }
 
 const CmsContext = createContext<CmsContextType | null>(null);
@@ -3035,16 +3051,53 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [allVendorDoctors]);
 
+  // Cache & Storage Optimization State & Functions
+  const [storageMetrics, setStorageMetrics] = useState<StorageMetrics | null>(null);
+  const [isCacheModalOpen, setIsCacheModalOpen] = useState(false);
+
+  const refreshStorageMetrics = useCallback(async () => {
+    const metrics = await getStorageMetrics();
+    setStorageMetrics(metrics);
+    return metrics;
+  }, []);
+
+  const cleanStorageCache = useCallback(async () => {
+    const result = await cleanSaaSCache();
+    await refreshStorageMetrics();
+    return result;
+  }, [refreshStorageMetrics]);
+
+  const openCacheModal = useCallback(() => setIsCacheModalOpen(true), []);
+  const closeCacheModal = useCallback(() => setIsCacheModalOpen(false), []);
+
+  // Run auto-prune once on bootstrap to remove duplicate/stale cache
+  useEffect(() => {
+    autoPruneOnAppInit();
+    refreshStorageMetrics();
+  }, [refreshStorageMetrics]);
+
   useEffect(() => {
     try {
-      localStorage.setItem('cms_lab_reports', JSON.stringify(allReports));
-    } catch {}
+      // Keep localStorage cache lightweight and quota-safe (latest 50 items)
+      // Full complete dataset is persisted asynchronously in IndexedDB and Hostinger MySQL
+      const slim = allReports.slice(-50);
+      localStorage.setItem('cms_lab_reports', JSON.stringify(slim));
+    } catch {
+      try {
+        localStorage.setItem('cms_lab_reports', JSON.stringify(allReports.slice(-20)));
+      } catch {}
+    }
   }, [allReports]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('cms_reception_entries', JSON.stringify(allReceptionEntries));
-    } catch {}
+      const slim = allReceptionEntries.slice(-50);
+      localStorage.setItem('cms_reception_entries', JSON.stringify(slim));
+    } catch {
+      try {
+        localStorage.setItem('cms_reception_entries', JSON.stringify(allReceptionEntries.slice(-20)));
+      } catch {}
+    }
   }, [allReceptionEntries]);
 
   useEffect(() => {
@@ -3055,8 +3108,13 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      localStorage.setItem('cms_vendor_bookings', JSON.stringify(allVendorBookings));
-    } catch {}
+      const slim = allVendorBookings.slice(-50);
+      localStorage.setItem('cms_vendor_bookings', JSON.stringify(slim));
+    } catch {
+      try {
+        localStorage.setItem('cms_vendor_bookings', JSON.stringify(allVendorBookings.slice(-20)));
+      } catch {}
+    }
   }, [allVendorBookings]);
 
   useEffect(() => {
@@ -7377,6 +7435,15 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshCloudData,
         pendingOfflineSyncCount,
         triggerManualSync,
+
+        // Cache & Storage Optimization
+        storageMetrics,
+        refreshStorageMetrics,
+        cleanStorageCache,
+        isCacheModalOpen,
+        setIsCacheModalOpen,
+        openCacheModal,
+        closeCacheModal,
       }}
     >
       {children}

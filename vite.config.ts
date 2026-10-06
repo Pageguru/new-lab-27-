@@ -658,9 +658,11 @@ export default defineConfig(() => {
           skipWaiting: true,
           clientsClaim: true,
           cleanupOutdatedCaches: true,
-          maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          navigateFallback: '/index.html',
+          maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+          // CRITICAL: Exclude html from precache so index.html is always fetched fresh from the live server
+          globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+          // Disable navigateFallback so navigation requests hit the network directly and never serve stale cached HTML
+          navigateFallback: null,
           navigateFallbackDenylist: [/^\/api\/.*/, /^\/uploads\/.*/],
           runtimeCaching: [
             {
@@ -697,8 +699,8 @@ export default defineConfig(() => {
               options: {
                 cacheName: 'uploaded-assets-cache',
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 14,
                 },
                 cacheableResponse: {
                   statuses: [0, 200],
@@ -708,8 +710,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: true,
-          type: 'module',
+          enabled: false,
         },
       }),
     ],

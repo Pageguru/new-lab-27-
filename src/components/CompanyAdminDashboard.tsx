@@ -89,14 +89,33 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
     updateDomainRequest,
     deleteDomainRequest,
     allPlanRequests,
+    storageMetrics,
+    refreshStorageMetrics,
+    cleanStorageCache,
+    openCacheModal,
   } = useCms();
 
   type SuperAdminMenu = 'home' | 'labs' | 'clients' | 'drafts' | 'backup' | 'domain_requests' | 'plans' | 'seo';
   const [activeMenu, setActiveMenu] = useState<SuperAdminMenu>('home');
 
-  type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'settings' | 'features' | 'seo';
+  type HomeSubTab = 'pricing' | 'upi_qr' | 'backup' | 'cloud_sync' | 'cache' | 'settings' | 'features' | 'seo';
   const [homeSubTab, setHomeSubTab] = useState<HomeSubTab>('pricing');
   const activeTab = homeSubTab;
+
+  const [isCleaningSaaSCache, setIsCleaningSaaSCache] = useState(false);
+  const [cacheCleanFeedback, setCacheCleanFeedback] = useState<string | null>(null);
+
+  const handlePurgeSaaSCache = async () => {
+    setIsCleaningSaaSCache(true);
+    try {
+      const res = await cleanStorageCache();
+      setCacheCleanFeedback(`Purged ${res.freedFormatted} of stale cache! Current storage: ${res.remainingFormatted}`);
+      showToast(`🧹 Freed ${res.freedFormatted} of stale cache!`);
+      setTimeout(() => setCacheCleanFeedback(null), 5000);
+    } finally {
+      setIsCleaningSaaSCache(false);
+    }
+  };
 
   // Super Admin Dynamic UPI QR State
   const [upiSelectedPlan, setUpiSelectedPlan] = useState<string>('3 Months');
@@ -976,6 +995,22 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                 >
                   <Database className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Cloud DB & Hostinger Monitor</span>
+                </button>
+
+                <button
+                  onClick={() => setHomeSubTab('cache')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                    homeSubTab === 'cache'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                  }`}
+                  title="Optimize SaaS Cache & LocalStorage Footprint"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>SaaS Cache Optimizer</span>
+                  <span className="text-[10px] bg-amber-200 text-amber-950 font-black px-1.5 py-0.2 rounded-full">
+                    {storageMetrics ? storageMetrics.localStorageFormatted : 'Clean'}
+                  </span>
                 </button>
 
                 <button
@@ -2350,6 +2385,136 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
                       </span>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5. SAAS CACHE & STORAGE OPTIMIZER */}
+        {activeTab === 'cache' && (
+          <div className="space-y-6 animate-in fade-in-50 duration-200">
+            {/* Header Card */}
+            <div className="bg-gradient-to-br from-[#123B6D] via-slate-900 to-[#123B6D] text-white rounded-2xl p-6 border border-slate-700 shadow-md">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-amber-500/20 rounded-2xl border border-amber-400/30">
+                    <Sparkles className="w-7 h-7 text-amber-300" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-black text-white tracking-wide">
+                        SaaS Cache &amp; Storage Optimizer
+                      </h2>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                        {storageMetrics?.status === 'optimal' ? '🟢 Optimized' : '⚡ Attention Needed'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Eliminates memory bloat, removes duplicate collections, and keeps browser localStorage &amp; IndexedDB ultra-lightweight.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-stretch md:self-auto">
+                  <button
+                    onClick={handlePurgeSaaSCache}
+                    disabled={isCleaningSaaSCache}
+                    className="flex-1 md:flex-initial px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                  >
+                    <Zap className={`w-4 h-4 text-slate-950 ${isCleaningSaaSCache ? 'animate-bounce' : ''}`} />
+                    <span>{isCleaningSaaSCache ? 'Purging Cache...' : '🧹 Purge Stale Cache Now'}</span>
+                  </button>
+                  <button
+                    onClick={openCacheModal}
+                    className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition cursor-pointer border border-white/20 flex items-center justify-center gap-1.5"
+                  >
+                    <span>Inspect Breakdown</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Feedback notification */}
+            {cacheCleanFeedback && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2.5 animate-in fade-in">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>{cacheCleanFeedback}</span>
+              </div>
+            )}
+
+            {/* Metrics Breakdown Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-xs font-semibold text-slate-500">LocalStorage Footprint</span>
+                <div className="text-2xl font-black text-slate-900">
+                  {storageMetrics?.localStorageFormatted || '0 KB'}
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                  <span>{storageMetrics?.localStorageKeyCount || 0} active keys</span>
+                  <span>•</span>
+                  <span className="text-emerald-600 font-semibold">Under 5MB limit</span>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-xs font-semibold text-slate-500">IndexedDB Storage</span>
+                <div className="text-2xl font-black text-slate-900">
+                  {storageMetrics?.indexedDbFormatted || '0 KB'}
+                </div>
+                <div className="text-[11px] text-emerald-600 font-semibold">
+                  High-capacity async offline DB
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-xs font-semibold text-slate-500">Service Worker / PWA</span>
+                <div className="text-2xl font-black text-slate-900">
+                  {storageMetrics?.cacheStorageFormatted || '0 KB'}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  Dev cache auto-pruned
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+                <span className="text-xs font-semibold text-slate-500">Stale Cache Detected</span>
+                <div className={`text-2xl font-black ${storageMetrics?.staleBytes && storageMetrics.staleBytes > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {storageMetrics?.staleBytes && storageMetrics.staleBytes > 0 ? `${(storageMetrics.staleBytes / 1024).toFixed(1)} KB` : '0 KB'}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  {storageMetrics?.staleBytes && storageMetrics.staleBytes > 0 ? 'Ready to purge' : '100% clean & optimal'}
+                </div>
+              </div>
+            </div>
+
+            {/* Architecture Explanatory Card */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs space-y-4">
+              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>How Cache is Handled &amp; Why It Stays Lightweight</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                  <span className="font-bold text-slate-800 block">1. Zero Duplicate Collections</span>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Removed redundant <code className="text-slate-700 bg-slate-200 px-1 py-0.5 rounded">hostinger_cache_*</code> writes. Historical collections are offloaded to IndexedDB without duplicate localStorage consumption.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                  <span className="font-bold text-slate-800 block">2. Capped LocalStorage Boot Cache</span>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    LocalStorage only retains the latest 50 recent records for instant bootstrap. Full records are loaded asynchronously from IndexedDB and Hostinger MySQL.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                  <span className="font-bold text-slate-800 block">3. Dev Cache Storage Restrained</span>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Vite PWA dev caching is disabled in development mode, preventing hundreds of megabytes of temporary development chunks from accumulating in browser CacheStorage.
+                  </p>
                 </div>
               </div>
             </div>

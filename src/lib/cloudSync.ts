@@ -277,28 +277,26 @@ try {
   }
 } catch {}
 
-// Load initial cache from localStorage and seamlessly load/sync with IndexedDB
+// In-Memory cache of active collections for ultra-fast 0ms local access
+// Heavy collections are persisted in IndexedDB, preventing localStorage 5MB quota blowouts
 function getCachedCollection(collection: string): any {
   if (localCache[collection] !== undefined) {
     return localCache[collection];
   }
-  try {
-    const saved = localStorage.getItem(`hostinger_cache_${collection}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      localCache[collection] = parsed;
-      return parsed;
-    }
-  } catch {}
   return null;
 }
 
 function setCachedCollection(collection: string, data: any) {
   localCache[collection] = data;
+
+  // Clean up any old duplicate hostinger_cache keys from localStorage
   try {
-    localStorage.setItem(`hostinger_cache_${collection}`, JSON.stringify(data));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(`hostinger_cache_${collection}`);
+    }
   } catch {}
-  // Persist to browser IndexedDB for large offline capacity
+
+  // Persist asynchronously to browser IndexedDB for high-capacity, non-blocking offline storage
   idbSaveCollection(collection, data).catch((err) => {
     console.warn('[IndexedDB Save Warning]:', err);
   });

@@ -33,6 +33,7 @@ import { ReceptionEntryDashboard } from './components/ReceptionEntryDashboard';
 import { TechnicianDepartmentDashboard } from './components/technician/TechnicianDepartmentDashboard';
 import { DashboardAuthGuard } from './components/DashboardAuthGuard';
 import { CmsAuthModal } from './components/CmsAuthModal';
+import { CacheManagerModal } from './components/CacheManagerModal';
 import { BranchManagerDashboard } from './components/BranchManagerDashboard';
 import { PathologistDashboard } from './components/PathologistDashboard';
 import { RoleContextBanner } from './components/RoleContextBanner';
@@ -79,6 +80,8 @@ export default function App() {
     vendorLabsList,
     refreshCloudData,
     injectCloudLab,
+    isCacheModalOpen,
+    closeCacheModal,
   } = useCms();
 
   // Fetch and resolve specific lab directly from the current URL
@@ -924,6 +927,7 @@ export default function App() {
 
       {/* Interactive Modals */}
       <BookDemoModal isOpen={isDemoModalOpen} onClose={() => setIsDemoModalOpen(false)} />
+      <CacheManagerModal isOpen={isCacheModalOpen} onClose={closeCacheModal} />
       <CmsAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

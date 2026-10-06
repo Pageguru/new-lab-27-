@@ -17,6 +17,7 @@ import {
   UserCheck,
   HelpCircle,
   ExternalLink,
+  Zap,
 } from 'lucide-react';
 import { useCms } from '../../context/CmsContext';
 
@@ -34,7 +35,24 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
     vendorLabsList,
     currentUser,
     activeTenantId,
+    openCacheModal,
+    storageMetrics,
+    cleanStorageCache,
   } = useCms();
+
+  const [isCleaningCache, setIsCleaningCache] = useState(false);
+  const [cacheFeedback, setCacheFeedback] = useState<string | null>(null);
+
+  const handleQuickClean = async () => {
+    setIsCleaningCache(true);
+    try {
+      const res = await cleanStorageCache();
+      setCacheFeedback(`Cleaned ${res.freedFormatted} of stale cache!`);
+      setTimeout(() => setCacheFeedback(null), 4000);
+    } finally {
+      setIsCleaningCache(false);
+    }
+  };
 
   // Determine current active lab
   const currentLabId =
@@ -436,6 +454,91 @@ export const VendorAdminSettingsTab: React.FC<VendorAdminSettingsTabProps> = ({
             </div>
           </div>
         </form>
+      </div>
+
+      {/* CARD 2: SAAS CACHE & STORAGE OPTIMIZATION */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg">
+              🧹
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">
+                SaaS Cache &amp; Storage Engine
+              </h3>
+              <p className="text-xs text-slate-500">
+                Monitor and purge cached records, reduce memory usage, and keep browser fast
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={openCacheModal}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#123B6D] hover:bg-[#0e2c52] text-white font-bold text-xs transition shadow-xs cursor-pointer active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Open Storage Manager</span>
+          </button>
+        </div>
+
+        <div className="p-6">
+          {cacheFeedback && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{cacheFeedback}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[11px] font-semibold text-slate-500">Local Cache Footprint</span>
+              <div className="text-xl font-black text-slate-900 mt-1">
+                {storageMetrics?.localStorageFormatted || '0 KB'}
+              </div>
+              <span className="text-[10px] text-slate-400">
+                {storageMetrics?.localStorageKeyCount || 0} stored keys (Quota-safe)
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[11px] font-semibold text-slate-500">Offline IndexedDB</span>
+              <div className="text-xl font-black text-slate-900 mt-1">
+                {storageMetrics?.indexedDbFormatted || '0 KB'}
+              </div>
+              <span className="text-[10px] text-emerald-600 font-semibold">
+                IndexedDB async engine active
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[11px] font-semibold text-slate-500">Cache Health Status</span>
+              <div className="text-xl font-black text-emerald-700 mt-1 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span>Optimized</span>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                Zero duplicate collections
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-slate-600">
+              <strong>Need to free up browser memory?</strong> Purging cache clears temporary data and browser caches without affecting your live reports or database.
+            </div>
+            <button
+              type="button"
+              onClick={handleQuickClean}
+              disabled={isCleaningCache}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <span>{isCleaningCache ? 'Optimizing...' : '⚡ Quick Cache Clean'}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

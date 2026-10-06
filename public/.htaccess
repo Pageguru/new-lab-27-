@@ -58,12 +58,18 @@
   ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 
+# Disable LiteSpeed Server Cache for SPA entry point (Hostinger LSCache Bypass)
+<IfModule LiteSpeed>
+  CacheLookup off
+</IfModule>
+
 # Strict Anti-Caching for index.html, API Endpoints, Service Worker, Manifest and Dynamic Scripts (Hostinger LiteSpeed / Apache / hcdn)
 <IfModule mod_headers.c>
-  <FilesMatch "(\.(php|json|html)$|index\.html|sw\.js|registerSW\.js|\.webmanifest)$">
-    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0"
+  <FilesMatch "(\.(php|json|html|htm)$|index\.html|sw\.js|registerSW\.js|\.webmanifest)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, post-check=0, pre-check=0"
     Header set Pragma "no-cache"
     Header set Expires "0"
+    Header set X-LiteSpeed-Cache-Control "no-cache"
   </FilesMatch>
 
   # Specific rule ensuring index.html entry point always revalidates
@@ -71,6 +77,7 @@
     Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
     Header set Pragma "no-cache"
     Header set Expires "0"
+    Header set X-LiteSpeed-Cache-Control "no-cache"
   </Files>
 
   # Uploaded User Images (DP, Logo, Banners): Revalidate cache so replacement is immediate

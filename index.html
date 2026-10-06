@@ -29,6 +29,15 @@
             configurable: true,
             enumerable: true,
           });
+
+          // Check for Service Worker updates immediately on load to prevent serving stale hosted versions
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              for (var i = 0; i < regs.length; i++) {
+                regs[i].update().catch(function() {});
+              }
+            }).catch(function() {});
+          }
         } catch (e) {}
       })();
     </script>
