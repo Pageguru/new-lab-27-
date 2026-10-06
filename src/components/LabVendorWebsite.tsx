@@ -3146,22 +3146,12 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         key={pkg.id || idx}
                         className="bg-white rounded-3xl border border-slate-200/90 hover:border-[#123B6D]/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group relative h-full w-full"
                       >
-                        {/* Package Cover Image with Full Screen View Trigger */}
+                        {/* Package Cover Image */}
                         <div className="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0 group/cover">
                           <img
                             src={pkgImageUrl}
                             alt={pkg.name}
-                            onClick={() => {
-                              setIsImageZoomed(false);
-                              setFullScreenImage({
-                                url: pkgImageUrl,
-                                title: pkg.name,
-                                price: pkg.priceINR,
-                                testsCount: pkgTestsCount,
-                                features: pkgFeatures,
-                              });
-                            }}
-                            className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-500 cursor-pointer"
+                            className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-500"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
@@ -3172,46 +3162,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               Most Popular
                             </div>
                           )}
-
-                          {/* Full Screen View Icon Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsImageZoomed(false);
-                              setFullScreenImage({
-                                url: pkgImageUrl,
-                                title: pkg.name,
-                                price: pkg.priceINR,
-                                testsCount: pkgTestsCount,
-                                features: pkgFeatures,
-                              });
-                            }}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/55 hover:bg-black/85 text-white backdrop-blur-xs flex items-center justify-center transition shadow-md cursor-pointer active:scale-95"
-                            title="View full image screen"
-                            aria-label="View full image screen"
-                          >
-                            <Maximize2 className="w-4 h-4 text-white" />
-                          </button>
-
-                          {/* Click Image Hint */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsImageZoomed(false);
-                              setFullScreenImage({
-                                url: pkgImageUrl,
-                                title: pkg.name,
-                                price: pkg.priceINR,
-                                testsCount: pkgTestsCount,
-                                features: pkgFeatures,
-                              });
-                            }}
-                            className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 hover:bg-black/85 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 shadow-xs"
-                          >
-                            <Maximize2 className="w-3 h-3 text-amber-300" />
-                            <span>Full Image View</span>
-                          </button>
                         </div>
 
                         {/* Card Content with Flex-1 to guarantee uniform equal height */}
@@ -3239,32 +3189,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 ))}
                               </div>
                             </div>
-
-                            {/* Card me > Full image ka view Feature Button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsImageZoomed(false);
-                                setFullScreenImage({
-                                  url: pkgImageUrl,
-                                  title: pkg.name,
-                                  price: pkg.priceINR,
-                                  testsCount: pkgTestsCount,
-                                  features: pkgFeatures,
-                                });
-                              }}
-                              className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
-                              title={`View full promotional image & poster for ${pkg.name}`}
-                            >
-                              <span className="flex items-center gap-1.5 font-bold">
-                                <Eye className="w-4 h-4 text-teal-600 group-hover/viewbtn:scale-110 transition-transform" />
-                                <span>Full Image View</span>
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#0F766E] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200/60 group-hover/viewbtn:translate-x-0.5 transition-transform">
-                                <span>View Poster</span>
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              </span>
-                            </button>
                           </div>
 
                           {/* Uske neeche inline 2 buttons: Price aur Book Test */}
@@ -3310,40 +3234,13 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               <img
                                 src={pkgImageUrl}
                                 alt={pkg.name}
-                                onClick={() => {
-                                  setIsImageZoomed(false);
-                                  setFullScreenImage({
-                                    url: pkgImageUrl,
-                                    title: pkg.name,
-                                    price: pkg.priceINR,
-                                    testsCount: pkgTestsCount,
-                                    features: pkgFeatures,
-                                  });
-                                }}
-                                className="w-full h-full object-cover cursor-pointer"
+                                className="w-full h-full object-cover"
                                 loading="lazy"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
                               <div className="absolute top-3 left-3 bg-[#F59E0B] text-slate-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
                                 Most Popular
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsImageZoomed(false);
-                                  setFullScreenImage({
-                                    url: pkgImageUrl,
-                                    title: pkg.name,
-                                    price: pkg.priceINR,
-                                    testsCount: pkgTestsCount,
-                                    features: pkgFeatures,
-                                  });
-                                }}
-                                className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                              >
-                                <Maximize2 className="w-3 h-3 text-amber-300" />
-                                <span>Full Image View</span>
-                              </button>
                             </div>
                             <div className="p-5 flex flex-col justify-between">
                               <div>
@@ -3366,32 +3263,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     ))}
                                   </div>
                                 </div>
-
-                                {/* Card me > Full image ka view Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setIsImageZoomed(false);
-                                    setFullScreenImage({
-                                      url: pkgImageUrl,
-                                      title: pkg.name,
-                                      price: pkg.priceINR,
-                                      testsCount: pkgTestsCount,
-                                      features: pkgFeatures,
-                                    });
-                                  }}
-                                  className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
-                                  title={`View full promotional image & poster for ${pkg.name}`}
-                                >
-                                  <span className="flex items-center gap-1.5 font-bold">
-                                    <Eye className="w-4 h-4 text-teal-600 group-hover/viewbtn:scale-110 transition-transform" />
-                                    <span>Full Image View</span>
-                                  </span>
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#0F766E] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200/60 group-hover/viewbtn:translate-x-0.5 transition-transform">
-                                    <span>View Poster</span>
-                                    <ChevronRight className="w-3.5 h-3.5" />
-                                  </span>
-                                </button>
                               </div>
                               <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5">
                                 <div className="px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#123B6D] font-black text-base shadow-2xs">
@@ -3454,17 +3325,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 <img
                                   src={pkgImageUrl}
                                   alt={pkg.name}
-                                  onClick={() => {
-                                    setIsImageZoomed(false);
-                                    setFullScreenImage({
-                                      url: pkgImageUrl,
-                                      title: pkg.name,
-                                      price: pkg.priceINR,
-                                      testsCount: pkgTestsCount,
-                                      features: pkgFeatures,
-                                    });
-                                  }}
-                                  className="w-full h-full object-cover cursor-pointer"
+                                  className="w-full h-full object-cover"
                                   loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent pointer-events-none" />
@@ -3475,25 +3336,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                     Most Popular
                                   </div>
                                 )}
-
-                                {/* Click Image Hint */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setIsImageZoomed(false);
-                                    setFullScreenImage({
-                                      url: pkgImageUrl,
-                                      title: pkg.name,
-                                      price: pkg.priceINR,
-                                      testsCount: pkgTestsCount,
-                                      features: pkgFeatures,
-                                    });
-                                  }}
-                                  className="absolute bottom-2.5 right-3 text-[10px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                                >
-                                  <Maximize2 className="w-3 h-3 text-amber-300" />
-                                  <span>Full Image View</span>
-                                </button>
                               </div>
 
                               {/* Card Content */}
@@ -3519,32 +3361,6 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                       ))}
                                     </div>
                                   </div>
-
-                                  {/* Card me > Full image ka view Button */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setIsImageZoomed(false);
-                                      setFullScreenImage({
-                                        url: pkgImageUrl,
-                                        title: pkg.name,
-                                        price: pkg.priceINR,
-                                        testsCount: pkgTestsCount,
-                                        features: pkgFeatures,
-                                      });
-                                    }}
-                                    className="w-full mt-1.5 mb-3 py-2 px-3 rounded-xl bg-slate-50 hover:bg-blue-50/90 text-[#123B6D] hover:text-[#0c294d] border border-slate-200/90 hover:border-blue-300 text-xs font-bold transition flex items-center justify-between group/viewbtn cursor-pointer shadow-2xs active:scale-98"
-                                    title={`View full promotional image & poster for ${pkg.name}`}
-                                  >
-                                    <span className="flex items-center gap-1.5 font-bold">
-                                      <Eye className="w-4 h-4 text-teal-600 group-hover/viewbtn:scale-110 transition-transform" />
-                                      <span>Full Image View</span>
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#0F766E] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200/60 group-hover/viewbtn:translate-x-0.5 transition-transform">
-                                      <span>View Poster</span>
-                                      <ChevronRight className="w-3.5 h-3.5" />
-                                    </span>
-                                  </button>
                                 </div>
 
                                 <div className="pt-3 border-t border-slate-100 flex items-center gap-2 mt-auto shrink-0">
