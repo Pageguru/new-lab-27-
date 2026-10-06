@@ -2212,8 +2212,8 @@ interface CmsContextType {
   deleteLabReport: (reportId: string) => void;
   cancelLabReport: (reportId: string, reason: string, cancelledBy?: string) => void;
   uncancelLabReport: (reportId: string) => void;
-  getReportById: (id: string) => LabReport | undefined;
-  getReportByMobile: (mobile: string) => LabReport | undefined;
+  getReportById: (id: string, requesterLabId?: string) => LabReport | undefined;
+  getReportByMobile: (mobile: string, requesterLabId?: string) => LabReport | undefined;
 
   // Reception Desk Patients Store
   receptionEntries: ReceptionPatientEntry[];
@@ -3223,9 +3223,12 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeReception = subscribeToReceptionEntries(
       (cloudEntries) => {
         if (Array.isArray(cloudEntries)) {
-          setAllReceptionEntries(cloudEntries);
+          const existingIds = new Set(cloudEntries.map((e) => e.id.toLowerCase()));
+          const missingInitial = INITIAL_RECEPTION_ENTRIES.filter((e) => !existingIds.has(e.id.toLowerCase()));
+          const combined = [...cloudEntries, ...missingInitial];
+          setAllReceptionEntries(combined);
           try {
-            localStorage.setItem('cms_reception_entries', JSON.stringify(cloudEntries));
+            localStorage.setItem('cms_reception_entries', JSON.stringify(combined));
           } catch {}
           setIsCloudConnected(true);
           setCloudSyncStatus('synced');
@@ -3242,9 +3245,12 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeReports = subscribeToLabReports(
       (cloudReports) => {
         if (Array.isArray(cloudReports)) {
-          setAllReports(cloudReports);
+          const existingIds = new Set(cloudReports.map((r) => r.reportId.toLowerCase()));
+          const missingInitial = INITIAL_REPORTS.filter((r) => !existingIds.has(r.reportId.toLowerCase()));
+          const combined = [...cloudReports, ...missingInitial];
+          setAllReports(combined);
           try {
-            localStorage.setItem('cms_lab_reports', JSON.stringify(cloudReports));
+            localStorage.setItem('cms_lab_reports', JSON.stringify(combined));
           } catch {}
           setIsCloudConnected(true);
           setCloudSyncStatus('synced');
@@ -3486,30 +3492,35 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Tenant-Scoped Filtered Views (Zero cross-lab data leakage)
   const reports = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
+    // Admin global view is only allowed when superAdmin explicitly views global 'all' AND no specific lab is currently active
+    const isSpecificLabActive = selectedVendorLabId && selectedVendorLabId !== 'all';
+    if (!isSpecificLabActive && currentUser?.role === 'admin' && superAdminTenantScope === 'all') {
       return allReports;
     }
+    const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab-1020304050';
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
       : (selectedVendorLabId && selectedVendorLabId !== 'all'
         ? selectedVendorLabId
         : (superAdminTenantScope && superAdminTenantScope !== 'all'
           ? superAdminTenantScope
-          : (vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || '')));
+          : defaultActiveLab));
     return allReports.filter((r) => isTenantMatch(r, targetLab, false));
   }, [allReports, currentUser, superAdminTenantScope, selectedVendorLabId, vendorLabsList]);
 
   const receptionEntries = useMemo(() => {
-    if (currentUser?.role === 'admin' && superAdminTenantScope === 'all' && (!selectedVendorLabId || selectedVendorLabId === 'all')) {
+    const isSpecificLabActive = selectedVendorLabId && selectedVendorLabId !== 'all';
+    if (!isSpecificLabActive && currentUser?.role === 'admin' && superAdminTenantScope === 'all') {
       return allReceptionEntries;
     }
+    const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab-1020304050';
     const targetLab = (currentUser && currentUser.role !== 'admin' && currentUser.labId && currentUser.labId !== 'all')
       ? currentUser.labId
       : (selectedVendorLabId && selectedVendorLabId !== 'all'
         ? selectedVendorLabId
         : (superAdminTenantScope && superAdminTenantScope !== 'all'
           ? superAdminTenantScope
-          : (vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || '')));
+          : defaultActiveLab));
     return allReceptionEntries.filter((e) => isTenantMatch(e, targetLab, false));
   }, [allReceptionEntries, currentUser, superAdminTenantScope, selectedVendorLabId, vendorLabsList]);
 
@@ -3649,7 +3660,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Secure Mutators - Lab Reports
   const addLabReport = (report: LabReport) => {
-    const defaultActive = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab';
+    const defaultActive = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab-1020304050';
     const effectiveTenant = (report.labId && report.labId !== 'all')
       ? report.labId
       : (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : defaultActive));
@@ -3727,6 +3738,10 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAllReceptionEntries((prev) => {
           let entryToSync: ReceptionPatientEntry | null = null;
           const mapped = prev.map((e) => {
+            // STRICT SECURITY: Do NOT touch or transition another laboratory's patient entry!
+            if (!isTenantMatch(e, completedRpt.labId, false)) {
+              return e;
+            }
             const isIdMatch = e.reportId && e.reportId.toLowerCase() === completedRpt.reportId.toLowerCase();
             const isUhidMatch = e.uhid && completedRpt.uhid && e.uhid.toLowerCase() === completedRpt.uhid.toLowerCase();
             const cleanRptToken = String(completedRpt.tokenNumber || '').replace(/\D/g, '');
@@ -3848,16 +3863,23 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const getReportById = (id: string) => {
-    return reports.find((r) => r.reportId.toLowerCase() === id.toLowerCase());
+  const getReportById = (id: string, requesterLabId?: string) => {
+    const cleanId = id.trim().toLowerCase();
+    const effectiveLab = requesterLabId || (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : null));
+    if (effectiveLab) {
+      return allReports.find((r) => r.reportId.toLowerCase() === cleanId && isTenantMatch(r, effectiveLab, false));
+    }
+    return reports.find((r) => r.reportId.toLowerCase() === cleanId);
   };
 
-  const getReportByMobile = (mobile: string) => {
-    const clean = mobile.replace(/\D/g, '');
+  const getReportByMobile = (mobile: string, requesterLabId?: string) => {
+    const clean = mobile.replace(/\D/g, '').slice(-10);
     if (!clean) return undefined;
-    return reports.find((r) => {
-      const rClean = r.mobile.replace(/\D/g, '');
-      return rClean.includes(clean) || clean.includes(rClean);
+    const effectiveLab = requesterLabId || (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : null));
+    const pool = effectiveLab ? allReports.filter((r) => isTenantMatch(r, effectiveLab, false)) : reports;
+    return pool.find((r) => {
+      const rClean = (r.mobile || '').replace(/\D/g, '').slice(-10);
+      return rClean === clean;
     });
   };
 
@@ -3866,7 +3888,7 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tokenVal = String(entry.tokenNumber || entry.tokenNo || `TK-${Math.floor(100 + Math.random() * 900)}`);
     const effectiveTenant = (entry.labId && entry.labId !== 'all')
       ? entry.labId
-      : (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-apex'));
+      : (activeTenantId !== 'all' ? activeTenantId : (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : 'lab-1020304050'));
     const effectiveBranch = entry.branchId || (activeBranchId !== 'all' ? activeBranchId : 'branch-1');
     const newEntry: ReceptionPatientEntry = {
       ...entry,
