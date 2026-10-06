@@ -3135,7 +3135,15 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
             return (
               <div className="max-w-6xl mx-auto">
                 {/* Desktop View: Grid */}
-                <div className="hidden md:grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch justify-center">
+                <div
+                  className={`hidden md:grid gap-6 lg:gap-8 items-stretch justify-center ${
+                    safeVendorPackages.length === 1
+                      ? 'grid-cols-1 max-w-md mx-auto'
+                      : safeVendorPackages.length === 2
+                      ? 'grid-cols-2 max-w-3xl mx-auto'
+                      : 'grid-cols-3 max-w-6xl mx-auto'
+                  }`}
+                >
                   {safeVendorPackages.slice(0, 3).map((pkg, idx) => {
                     const pkgImageUrl = getPackageImg(pkg, idx);
                     const pkgFeatures = Array.isArray(pkg.features) ? pkg.features : [];
@@ -3144,7 +3152,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     return (
                       <div
                         key={pkg.id || idx}
-                        className="bg-white rounded-3xl border border-slate-200/90 hover:border-[#123B6D]/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group relative h-full w-full"
+                        className="bg-white rounded-3xl border border-slate-200/90 hover:border-[#123B6D]/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden group relative w-full"
                       >
                         {/* Package Cover Image */}
                         <div className="relative w-full h-48 sm:h-52 bg-slate-100 overflow-hidden shrink-0 group/cover">
@@ -3164,30 +3172,33 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           )}
                         </div>
 
-                        {/* Card Content with Flex-1 to guarantee uniform equal height */}
-                        <div className="p-5 sm:p-6 flex flex-col flex-1 justify-between">
-                          <div className="flex-1 flex flex-col">
-                            {/* Sabse upar Package ka naam with equal fixed min-height */}
-                            <h3 className="text-base sm:text-lg font-black text-[#123B6D] leading-snug mb-3 min-h-[3rem] flex items-center">
-                              {pkg.name}
-                            </h3>
+                        {/* Card Content */}
+                        <div className="p-5 sm:p-6 flex flex-col flex-1">
+                          <h3 className="text-base sm:text-lg font-black text-[#123B6D] leading-snug mb-2">
+                            {pkg.name}
+                          </h3>
 
-                            {/* Uske neeche List of Tests with equal fixed height */}
-                            <div className="space-y-2 mb-3 flex-1 flex flex-col">
-                              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                                <span>Included Tests:</span>
-                                <span className="text-[10px] font-bold text-slate-400">
-                                  {pkgTestsCount} Tests
-                                </span>
-                              </div>
-                              <div className="space-y-1.5 h-44 overflow-y-auto pr-1">
-                                {pkgFeatures.map((feat, fIdx) => (
-                                  <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
-                                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                    <span className="font-medium text-slate-700">{feat}</span>
-                                  </div>
-                                ))}
-                              </div>
+                          {Boolean(pkg.description) && (
+                            <p className="text-xs text-slate-500 mb-3 line-clamp-2 leading-relaxed">
+                              {pkg.description}
+                            </p>
+                          )}
+
+                          {/* List of Tests */}
+                          <div className="space-y-2 mb-4">
+                            <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                              <span>Included Tests:</span>
+                              <span className="text-[10px] font-bold text-slate-400">
+                                {pkgTestsCount} Tests
+                              </span>
+                            </div>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                              {pkgFeatures.map((feat, fIdx) => (
+                                <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                  <span className="font-medium text-slate-700">{feat}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
 
@@ -3228,7 +3239,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                         return (
                           <div
                             key={pkg.id || 0}
-                            className="bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative w-full"
+                            className="bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col overflow-hidden relative w-full"
                           >
                             <div className="relative w-full h-48 bg-slate-100 overflow-hidden shrink-0 group/cover">
                               <img
@@ -3242,11 +3253,16 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                 Most Popular
                               </div>
                             </div>
-                            <div className="p-5 flex flex-col justify-between">
+                            <div className="p-5 flex flex-col flex-1">
                               <div>
-                                <h3 className="text-base font-black text-[#123B6D] leading-snug mb-2.5">
+                                <h3 className="text-base font-black text-[#123B6D] leading-snug mb-1.5">
                                   {pkg.name}
                                 </h3>
+                                {Boolean(pkg.description) && (
+                                  <p className="text-xs text-slate-500 mb-2.5 line-clamp-2 leading-relaxed">
+                                    {pkg.description}
+                                  </p>
+                                )}
                                 <div className="space-y-2 mb-3">
                                   <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                     <span>Included Tests:</span>
@@ -3264,7 +3280,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                                   </div>
                                 </div>
                               </div>
-                              <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5">
+                              <div className="pt-3 border-t border-slate-100 flex items-center gap-2.5 mt-auto">
                                 <div className="px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#123B6D] font-black text-base shadow-2xs">
                                   ₹{pkg.priceINR}
                                 </div>
@@ -3318,7 +3334,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                           return (
                             <div
                               key={pkg.id || idx}
-                              className="w-[88vw] shrink-0 snap-start bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col justify-between overflow-hidden relative"
+                              className="w-[88vw] shrink-0 snap-start bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col overflow-hidden relative"
                             >
                               {/* Package Cover Image */}
                               <div className="relative w-full h-44 bg-slate-100 overflow-hidden shrink-0 group/cover">
@@ -3339,27 +3355,31 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                               </div>
 
                               {/* Card Content */}
-                              <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between">
-                                <div className="flex-1 flex flex-col">
-                                  <h3 className="text-base font-black text-[#123B6D] leading-snug mb-2 min-h-[2.5rem] flex items-center">
-                                    {pkg.name}
-                                  </h3>
+                              <div className="p-4 sm:p-5 flex flex-col flex-1">
+                                <h3 className="text-base font-black text-[#123B6D] leading-snug mb-1.5">
+                                  {pkg.name}
+                                </h3>
 
-                                  <div className="space-y-2 mb-3 flex-1 flex flex-col">
-                                    <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                                      <span>Included Tests:</span>
-                                      <span className="text-[10px] font-bold text-slate-400">
-                                        {pkgTestsCount} Tests
-                                      </span>
-                                    </div>
-                                    <div className="space-y-1.5 h-36 overflow-y-auto pr-1">
-                                      {pkgFeatures.map((feat, fIdx) => (
-                                        <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
-                                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                                          <span className="font-medium text-slate-700">{feat}</span>
-                                        </div>
-                                      ))}
-                                    </div>
+                                {Boolean(pkg.description) && (
+                                  <p className="text-xs text-slate-500 mb-2.5 line-clamp-2 leading-relaxed">
+                                    {pkg.description}
+                                  </p>
+                                )}
+
+                                <div className="space-y-2 mb-3">
+                                  <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                    <span>Included Tests:</span>
+                                    <span className="text-[10px] font-bold text-slate-400">
+                                      {pkgTestsCount} Tests
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                                    {pkgFeatures.map((feat, fIdx) => (
+                                      <div key={fIdx} className="flex items-start gap-2 text-xs text-slate-700 leading-snug">
+                                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                        <span className="font-medium text-slate-700">{feat}</span>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
 

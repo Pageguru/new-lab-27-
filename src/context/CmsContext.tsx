@@ -2794,30 +2794,50 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const vendorPackages = useMemo(() => {
+    let targetLab = 'lab-apex';
     if (currentUser?.role === 'admin') {
       if (superAdminTenantScope === 'all') {
-        return selectedVendorLabId
-          ? allVendorPackages.filter((p) => isTenantMatch(p, selectedVendorLabId))
-          : allVendorPackages;
+        if (!selectedVendorLabId || selectedVendorLabId === 'all') {
+          return allVendorPackages.length > 0 ? allVendorPackages : DEFAULT_ALL_VENDOR_PACKAGES;
+        }
+        targetLab = selectedVendorLabId;
+      } else {
+        targetLab = superAdminTenantScope;
       }
-      return allVendorPackages.filter((p) => isTenantMatch(p, superAdminTenantScope));
+    } else {
+      targetLab = (currentUser && currentUser.labId && currentUser.labId !== 'all')
+        ? currentUser.labId
+        : (selectedVendorLabId || 'lab-apex');
     }
-    const targetLab = (currentUser && currentUser.labId && currentUser.labId !== 'all')
-      ? currentUser.labId
-      : (selectedVendorLabId || 'lab-apex');
+
     const matched = allVendorPackages.filter((p) => isTenantMatch(p, targetLab));
     const finalPkgs = matched.length > 0
       ? matched
-      : allVendorPackages.filter((p) => isTenantMatch(p, 'lab-apex')).map((p, idx) => ({
-          ...p,
-          id: `pkg-${targetLab}-${idx + 1}`,
-          labId: targetLab,
-        }));
-    return finalPkgs.map((p) => ({
-      ...p,
-      features: Array.isArray(p.features) ? p.features : [],
-      testsCount: p.testsCount || (Array.isArray(p.features) ? p.features.length : 0),
-    }));
+      : DEFAULT_ALL_VENDOR_PACKAGES.filter((p) => isTenantMatch(p, targetLab)).length > 0
+        ? DEFAULT_ALL_VENDOR_PACKAGES.filter((p) => isTenantMatch(p, targetLab))
+        : DEFAULT_ALL_VENDOR_PACKAGES.slice(0, 4).map((p, idx) => ({
+            ...p,
+            id: `pkg-${targetLab}-${idx + 1}`,
+            labId: targetLab,
+          }));
+
+    return finalPkgs.map((p) => {
+      const featArr = Array.isArray(p.features) && p.features.length > 0
+        ? p.features
+        : (Array.isArray((p as any).testsIncluded) && (p as any).testsIncluded.length > 0
+            ? (p as any).testsIncluded
+            : [
+                'Complete Blood Count (CBC + ESR)',
+                'Liver Function Test (LFT 11 tests)',
+                'Kidney Function Test (KFT 9 tests)',
+                'Lipid Profile & Glucose Screen',
+              ]);
+      return {
+        ...p,
+        features: featArr,
+        testsCount: p.testsCount || featArr.length || 24,
+      };
+    });
   }, [allVendorPackages, selectedVendorLabId, currentUser, superAdminTenantScope]);
 
   const vendorDoctors = useMemo(() => {
