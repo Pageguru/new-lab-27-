@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, X, Building2, KeyRound, Globe, LogOut, UserCheck, LayoutDashboard, FileText, Search, RotateCcw, Sparkles } from 'lucide-react';
+import { Menu, X, Building2, KeyRound, Globe, LogOut, UserCheck, LayoutDashboard, FileText, Search } from 'lucide-react';
 import { AppView, Language, UserRole } from '../types';
 import { useCms } from '../context/CmsContext';
 import { PWAInstallButton } from './PWAInstallButton';
-import { forceFreshReload } from '../utils/cacheManager';
 
 interface NavbarProps {
   onOpenDemo?: () => void;
@@ -29,8 +28,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     companySettings,
     selectVendorLab,
     selectedVendorLabId,
-    openCacheModal,
-    storageMetrics,
   } = useCms();
   const displayBrand = companySettings?.companyName || 'INDIANLALAJI.COM';
 
@@ -173,31 +170,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="hidden lg:flex items-center gap-2.5">
             {/* Install Offline PWA App Button */}
             <PWAInstallButton variant="navbar" />
-
-            {/* Direct Hard Reload Button: Bypasses Service Worker & Host Cache */}
-            <button
-              type="button"
-              onClick={() => forceFreshReload()}
-              id="navbar-hard-reload-btn"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition shadow-2xs cursor-pointer active:scale-95 border border-amber-300"
-              title="Hard Reload: Purges all browser caches, unregisters old Service Worker, and reloads fresh version from server"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-950" />
-              <span>🔄 Hard Reload</span>
-            </button>
-
-            {/* Cache Storage Button */}
-            <button
-              type="button"
-              onClick={openCacheModal}
-              id="navbar-cache-btn"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition border border-slate-200 cursor-pointer"
-              title="SaaS Cache & Storage Manager: View and optimize local storage footprint"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span className="hidden xl:inline">Cache:</span>
-              <span className="font-extrabold text-[#123B6D]">{storageMetrics ? storageMetrics.localStorageFormatted : 'Clean'}</span>
-            </button>
 
             {/* Language Selector */}
             {onSelectLanguage && (
@@ -358,32 +330,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-            {/* Direct Hard Reload & Cache for Mobile */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => forceFreshReload()}
-                className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-2 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 border border-amber-300"
-                title="Hard Reload: Bypass host cache & load fresh version"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-950" />
-                <span>🔄 Hard Reload</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  openCacheModal();
-                }}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-1.5 border border-slate-200 cursor-pointer"
-                title="SaaS Cache & Storage Manager"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Cache ({storageMetrics ? storageMetrics.localStorageFormatted : 'Clean'})</span>
-              </button>
-            </div>
-
             {/* Install Offline App for Mobile/Tablet */}
             <PWAInstallButton variant="banner" />
 

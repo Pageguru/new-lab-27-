@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Phone, Globe, KeyRound, LogOut, UserCheck, LayoutDashboard, Building2, Stethoscope, Wifi, WifiOff, RefreshCw, Sparkles, RotateCcw } from 'lucide-react';
+import { Phone, Globe, KeyRound, LogOut, UserCheck, LayoutDashboard, Building2, Stethoscope, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { AppView, Language, UserRole } from '../types';
 import { useCms } from '../context/CmsContext';
 import { ALL_ROLES_CONFIG } from '../utils/rbac';
-import { forceFreshReload } from '../utils/cacheManager';
 
 interface TopBarProps {
   currentView?: AppView;
@@ -32,8 +31,6 @@ export const TopBar: React.FC<TopBarProps> = ({
     setActiveBranchId,
     selectVendorLab,
     selectedVendorLabId,
-    openCacheModal,
-    storageMetrics,
   } = useCms();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -240,16 +237,19 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <span>Login</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => openRegisterLabModal()}
-                id="topbar-btn-create-lab"
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition shadow-2xs cursor-pointer active:scale-95"
-                title="Register & Create New Diagnostic Laboratory"
-              >
-                <Building2 className="w-3.5 h-3.5 text-slate-950" />
-                <span>+ Create Lab</span>
-              </button>
+              {/* Only show Create Lab on main platform, not on vendor lab website */}
+              {currentView !== 'vendor_website' && (
+                <button
+                  type="button"
+                  onClick={() => openRegisterLabModal()}
+                  id="topbar-btn-create-lab"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition shadow-2xs cursor-pointer active:scale-95"
+                  title="Register & Create New Diagnostic Laboratory"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-slate-950" />
+                  <span>+ Create Lab</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -321,38 +321,6 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <RefreshCw className={`w-3 h-3 text-amber-300 ${isRefreshing ? 'animate-spin' : ''}`} />
               </>
             )}
-          </button>
-
-          {/* Cache & Storage Optimizer Button */}
-          <button
-            type="button"
-            onClick={openCacheModal}
-            id="topbar-cache-optimizer-btn"
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition cursor-pointer active:scale-95 ${
-              storageMetrics?.status === 'heavy'
-                ? 'bg-rose-500/25 hover:bg-rose-500/35 text-rose-200 border-rose-500/40 animate-pulse'
-                : 'bg-white/10 hover:bg-white/20 text-slate-200 border-white/20'
-            }`}
-            title="SaaS Cache & Storage Optimizer: Click to view storage footprint and purge stale cache"
-          >
-            <Sparkles className="w-3 h-3 text-amber-300" />
-            <span className="hidden sm:inline">Cache:</span>
-            <span className="font-bold text-amber-300">
-              {storageMetrics ? storageMetrics.localStorageFormatted : 'Clean'}
-            </span>
-          </button>
-
-          {/* Direct Hard Reload Button: Bypasses Service Worker & Host Cache */}
-          <button
-            type="button"
-            onClick={() => forceFreshReload()}
-            id="topbar-hard-reload-btn"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 border border-amber-300 transition cursor-pointer shadow-xs active:scale-95"
-            title="Hard Reload: Purges all browser caches, unregisters old Service Worker, and reloads fresh version from server"
-          >
-            <RotateCcw className="w-3 h-3 text-slate-950" />
-            <span className="hidden sm:inline">🔄 Hard Reload</span>
-            <span className="sm:hidden">🔄 Reload</span>
           </button>
 
           {/* 3. Language Selector */}

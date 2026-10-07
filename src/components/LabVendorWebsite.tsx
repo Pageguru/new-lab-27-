@@ -273,12 +273,10 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
   const canonicalUrl = getTenantWebsiteUrl(dedicatedShopPath);
 
   const handleOpenAdmin = () => {
-    if (currentUser && currentUser.role === 'admin') {
-      if (onOpenAdminDashboard) onOpenAdminDashboard();
-    } else if (currentUser && currentUser.role === 'vendor') {
+    if (currentUser && (currentUser.role === 'vendor' || currentUser.role === 'admin')) {
       if (onOpenVendorDashboard) onOpenVendorDashboard();
     } else {
-      openLoginModal('admin');
+      openLoginModal('vendor');
     }
   };
 
@@ -4744,7 +4742,7 @@ export const LabVendorWebsite: React.FC<LabVendorWebsiteProps> = ({
                     className="hover:text-[#123B6D] hover:font-bold text-slate-600 flex items-center gap-1.5 cursor-pointer text-left transition"
                   >
                     <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
-                    <span>Admin Login</span>
+                    <span>Lab Admin Login</span>
                   </button>
                 </li>
                 <li>

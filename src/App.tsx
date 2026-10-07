@@ -538,7 +538,7 @@ export default function App() {
             }}
             onOpenVendorDashboard={() => setCurrentView('vendor_dashboard')}
             onOpenReceptionDashboard={() => setCurrentView('reception_dashboard')}
-            onOpenAdminDashboard={() => setCurrentView('admin_dashboard')}
+            onOpenAdminDashboard={() => setCurrentView('vendor_dashboard')}
           />
         </ErrorBoundary>
         <CmsAuthModal
@@ -612,6 +612,7 @@ export default function App() {
           />
           <CmsAuthModal
             isOpen={isAuthModalOpen}
+            isVendorContext={true}
             onClose={() => setIsAuthModalOpen(false)}
             onNavigateView={(v) => {
               setCurrentView(v);
@@ -632,6 +633,7 @@ export default function App() {
         />
         <CmsAuthModal
           isOpen={isAuthModalOpen}
+          isVendorContext={true}
           onClose={() => setIsAuthModalOpen(false)}
           onNavigateView={(v) => {
             setCurrentView(v);
@@ -656,6 +658,7 @@ export default function App() {
           />
           <CmsAuthModal
             isOpen={isAuthModalOpen}
+            isVendorContext={true}
             onClose={() => setIsAuthModalOpen(false)}
             onNavigateView={(v) => {
               setCurrentView(v);
@@ -677,6 +680,7 @@ export default function App() {
         />
         <CmsAuthModal
           isOpen={isAuthModalOpen}
+          isVendorContext={true}
           onClose={() => setIsAuthModalOpen(false)}
           onNavigateView={(v) => {
             setCurrentView(v);
@@ -701,6 +705,7 @@ export default function App() {
           />
           <CmsAuthModal
             isOpen={isAuthModalOpen}
+            isVendorContext={true}
             onClose={() => setIsAuthModalOpen(false)}
             onNavigateView={(v) => {
               setCurrentView(v);
@@ -719,6 +724,7 @@ export default function App() {
         />
         <CmsAuthModal
           isOpen={isAuthModalOpen}
+          isVendorContext={true}
           onClose={() => setIsAuthModalOpen(false)}
           onNavigateView={(v) => {
             setCurrentView(v);
@@ -768,6 +774,7 @@ export default function App() {
         </div>
         <CmsAuthModal
           isOpen={isAuthModalOpen}
+          isVendorContext={true}
           onClose={() => setIsAuthModalOpen(false)}
           onNavigateView={(v) => {
             setCurrentView(v);
@@ -792,6 +799,7 @@ export default function App() {
           />
           <CmsAuthModal
             isOpen={isAuthModalOpen}
+            isVendorContext={true}
             onClose={() => setIsAuthModalOpen(false)}
             onNavigateView={(v) => {
               setCurrentView(v);
@@ -813,6 +821,7 @@ export default function App() {
         />
         <CmsAuthModal
           isOpen={isAuthModalOpen}
+          isVendorContext={true}
           onClose={() => setIsAuthModalOpen(false)}
           onNavigateView={(v) => {
             setCurrentView(v);
@@ -833,6 +842,7 @@ export default function App() {
         />
         <CmsAuthModal
           isOpen={isAuthModalOpen}
+          isVendorContext={true}
           onClose={() => setIsAuthModalOpen(false)}
           onNavigateView={(v) => {
             setCurrentView(v);
@@ -860,6 +870,7 @@ export default function App() {
         />
         <CmsAuthModal
           isOpen={isAuthModalOpen}
+          isVendorContext={true}
           onClose={() => setIsAuthModalOpen(false)}
           onNavigateView={(v) => {
             setCurrentView(v);

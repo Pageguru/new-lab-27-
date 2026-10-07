@@ -195,28 +195,23 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
     }
   }, [selectedRegistrationPackage, isOpen]);
 
-  const [forceSuperAdmin, setForceSuperAdmin] = useState(false);
-  const effectiveIsVendor = isVendorContext && !forceSuperAdmin && targetLoginRole !== 'admin';
+  // Vendor context strictly locks the modal to that laboratory's portal login
+  // (No Superadmin login, No Create Laboratory option inside vendor's lab)
+  const effectiveIsVendor = Boolean(isVendorContext);
 
   // Sync tab with context when modal opens or target role changes
   useEffect(() => {
-    if (targetLoginRole === 'admin') {
-      setForceSuperAdmin(true);
+    if (effectiveIsVendor) {
+      setActiveTab('login');
+    } else if (targetLoginRole === 'admin') {
       setActiveTab('login');
       setMainRole('super_admin');
-    } else if (effectiveIsVendor) {
-      setActiveTab('login');
     } else if (authModalTab) {
       setActiveTab(authModalTab);
     }
   }, [authModalTab, isOpen, effectiveIsVendor, targetLoginRole]);
 
   useEffect(() => {
-    if (targetLoginRole === 'admin' || forceSuperAdmin) {
-      setMainRole('super_admin');
-      setLoginError('');
-      return;
-    }
     if (effectiveIsVendor) {
       if (targetLoginRole === 'reception') setLabRole('reception');
       else if (targetLoginRole === 'technician') setLabRole('technician');
@@ -227,12 +222,13 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
       setSelectedLabId(defaultLab);
       setSelectedBranchId('branch-1');
     } else {
-      if (targetLoginRole === 'vendor') setMainRole('vendor_owner');
+      if (targetLoginRole === 'admin') setMainRole('super_admin');
+      else if (targetLoginRole === 'vendor') setMainRole('vendor_owner');
       else setMainRole('super_admin');
 
       setLoginError('');
     }
-  }, [targetLoginRole, effectiveIsVendor, forceSuperAdmin, isOpen, selectedVendorLabId, vendorLabsList]);
+  }, [targetLoginRole, effectiveIsVendor, isOpen, selectedVendorLabId, vendorLabsList]);
 
   if (!isOpen) return null;
 
@@ -553,8 +549,8 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
         cleanInput === 'root';
 
       // If user selected SuperAdmin role card, or entered Super Admin master identifier, strictly use 'admin'
-      let targetRole: 'admin' | 'vendor' = (mainRole === 'super_admin' || forceSuperAdmin) ? 'admin' : 'vendor';
-      if (mainRole === 'super_admin' || forceSuperAdmin || isSuperAdminEmail) {
+      let targetRole: 'admin' | 'vendor' = mainRole === 'super_admin' ? 'admin' : 'vendor';
+      if (mainRole === 'super_admin' || isSuperAdminEmail) {
         targetRole = 'admin';
       } else if (cleanDigits.length >= 7 || !cleanInput.includes('@')) {
         targetRole = 'vendor';
@@ -725,23 +721,6 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                   <span className="text-[10px] bg-[#123B6D] text-white px-2 py-0.5 rounded font-bold">
                     Role-Based Access
                   </span>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
-                  <span className="text-slate-500 font-medium">Platform Super Admin Login?</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForceSuperAdmin(true);
-                      setMainRole('super_admin');
-                      setActiveTab('login');
-                      setEmailOrPhone('therkmehra331996@gmail.com');
-                      setPassword('Asdfzxcv@336699');
-                      setPinCode('331996');
-                    }}
-                    className="text-rose-700 hover:text-rose-900 font-bold underline cursor-pointer"
-                  >
-                    👑 Switch to Super Admin
-                  </button>
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
                   <span>Lab Website</span>

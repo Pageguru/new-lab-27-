@@ -49,6 +49,7 @@ import { HostingerDatabaseCard } from './admin/HostingerDatabaseCard';
 import { WebsiteBackupTab } from './admin/WebsiteBackupTab';
 import { VendorPlanRenewTab } from './admin/VendorPlanRenewTab';
 import { SeoSettingsTab } from './admin/SeoSettingsTab';
+import { forceFreshReload } from '../utils/cacheManager';
 
 interface CompanyAdminDashboardProps {
   onNavigateView: (view: AppView) => void;
@@ -2749,6 +2750,58 @@ export const CompanyAdminDashboard: React.FC<CompanyAdminDashboardProps> = ({ on
       </div>
     )}
   </div>
+
+  {/* Super Admin Footer with Cache & Hard Reload Controls */}
+  <footer
+    id="super-admin-footer"
+    className="mt-auto border-t border-slate-200 bg-white py-3.5 px-4 sm:px-6 text-xs text-slate-500 shadow-xs"
+  >
+    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+      {/* Left: Super Admin Brand & System Info */}
+      <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+        <span className="font-extrabold text-slate-800 tracking-tight">
+          © {new Date().getFullYear()} {companySettings.companyName || 'INDIANLALAJI.COM'}
+        </span>
+        <span className="text-slate-300 hidden sm:inline">•</span>
+        <span className="text-slate-600 font-semibold">
+          Super Admin Control Center
+        </span>
+        <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+          Hostinger MySQL Active
+        </span>
+      </div>
+
+      {/* Right: Storage Cache & Hard Reload Buttons */}
+      <div className="flex items-center gap-2.5 font-medium justify-center sm:justify-end flex-wrap">
+        {/* Cache Storage Button */}
+        <button
+          type="button"
+          onClick={openCacheModal}
+          id="superadmin-footer-cache-btn"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs transition border border-slate-300 cursor-pointer shadow-2xs"
+          title="SaaS Cache & Storage Manager: View and optimize local storage footprint"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <span>Cache:</span>
+          <span className="font-extrabold text-[#123B6D]">
+            {storageMetrics ? storageMetrics.localStorageFormatted : 'Clean'}
+          </span>
+        </button>
+
+        {/* Direct Hard Reload Button */}
+        <button
+          type="button"
+          onClick={() => forceFreshReload()}
+          id="superadmin-footer-hard-reload-btn"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-xs transition shadow-2xs cursor-pointer border border-amber-300"
+          title="Hard Reload: Purges all browser caches, unregisters old Service Worker, and reloads fresh version from server"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-slate-950" />
+          <span>🔄 Hard Reload</span>
+        </button>
+      </div>
+    </div>
+  </footer>
 
       {/* MODAL: ADD / EDIT PRICING PLAN */}
       {(isNewPlanModal || editingPlan) && (
