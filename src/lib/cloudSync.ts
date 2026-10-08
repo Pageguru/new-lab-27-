@@ -139,13 +139,9 @@ function getPrimaryApiBase(): string {
       return clean;
     }
 
-    // 3. For AI Studio preview environments (run.app, webcontainer, etc.):
-    // Connect to the shared Hostinger production backend so preview devices and mobile phones sync with the live database!
-    if (host.includes('run.app') || host.includes('webcontainer') || host.includes('googleusercontent.com')) {
-      return 'https://indianlalaji.com';
-    }
-
-    // 4. Default to current window origin (localhost or dev proxy)
+    // 3. For preview environments (run.app, webcontainer, etc.) and localhost:
+    // Always use window.location.origin first so the local server endpoints (/api/sync, /api/sync.php)
+    // respond with zero latency and avoid cross-origin aborts/timeouts.
     return window.location.origin;
   }
   return 'https://indianlalaji.com';
@@ -164,12 +160,25 @@ function buildApiUrl(base: string, endpoint: string): string {
   return `${cleanBase}${cleanEndpoint}${sep}${cacheBuster}`;
 }
 
-async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any> {
+async function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs: number = 8000): Promise<any> {
   let controller: AbortController | null = null;
   let timeoutId: any = null;
+
   if (typeof AbortController !== 'undefined') {
-    controller = new AbortController();
-    timeoutId = setTimeout(() => controller?.abort(), 5000);
+    try {
+      controller = new AbortController();
+      timeoutId = setTimeout(() => {
+        try {
+          if (controller && !controller.signal.aborted) {
+            controller.abort();
+          }
+        } catch {
+          // Swallow any abort exception safely
+        }
+      }, timeoutMs);
+    } catch {
+      // Ignore AbortController creation errors
+    }
   }
 
   try {
@@ -188,8 +197,8 @@ async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any
     if (!res.ok) {
       return null;
     }
-    return await res.json();
-  } catch {
+    return await res.json().catch(() => null);
+  } catch (_err) {
     if (timeoutId) clearTimeout(timeoutId);
     return null;
   }
@@ -208,13 +217,15 @@ async function callHostingerApi(endpoint: string, options?: RequestInit): Promis
       return result;
     }
 
-    // Automatic fallback to local origin if primary base was external and failed (e.g. offline/network failure)
-    if (typeof window !== 'undefined' && primaryBase !== window.location.origin) {
-      const fallbackUrl = buildApiUrl(window.location.origin, endpoint);
+    // Automatic fallback: If local origin didn't succeed, attempt production Hostinger (or vice-versa)
+    if (typeof window !== 'undefined') {
+      const fallbackBase = primaryBase === window.location.origin ? 'https://indianlalaji.com' : window.location.origin;
+      const fallbackUrl = buildApiUrl(fallbackBase, endpoint);
       const fallbackResult = await fetchWithTimeout(fallbackUrl, options);
-      if (fallbackResult) {
+      if (fallbackResult && (fallbackResult.status === 'success' || fallbackResult.success === true || fallbackResult.status === 'online')) {
         return fallbackResult;
       }
+      return fallbackResult || result;
     }
 
     return result;
