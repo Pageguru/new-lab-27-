@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import fs from 'fs';
-import { execSync } from 'child_process';
 import { defineConfig, Plugin } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
@@ -163,67 +162,6 @@ function hostingerApiDevPlugin(): Plugin {
         const urlStr = req.url || '';
         const [pathname, searchStr] = urlStr.split('?');
         const searchParams = new URLSearchParams(searchStr || '');
-
-        // 0. API / Download: Hostinger Build Zip (Always fresh latest updated version)
-        if (
-          pathname === '/indianalala_hostinger_build.zip' ||
-          pathname === '/hostinger_public_html.zip' ||
-          pathname === '/api/download-build' ||
-          pathname === '/api/download-hostinger-build'
-        ) {
-          try {
-            const rootDir = __dirname;
-            const distIndex = path.join(rootDir, 'dist', 'index.html');
-            const srcDir = path.join(rootDir, 'src');
-
-            let needsRebuild = false;
-            if (!fs.existsSync(distIndex)) {
-              needsRebuild = true;
-            } else {
-              const distMtime = fs.statSync(distIndex).mtimeMs;
-              const checkDir = (dir: string): boolean => {
-                if (!fs.existsSync(dir)) return false;
-                const entries = fs.readdirSync(dir, { withFileTypes: true });
-                for (const entry of entries) {
-                  const fullPath = path.join(dir, entry.name);
-                  if (entry.isDirectory()) {
-                    if (checkDir(fullPath)) return true;
-                  } else {
-                    const stat = fs.statSync(fullPath);
-                    if (stat.mtimeMs > distMtime) return true;
-                  }
-                }
-                return false;
-              };
-              needsRebuild = checkDir(srcDir);
-            }
-
-            if (needsRebuild) {
-              console.log('[Hostinger Build] Source code updated since last build. Rebuilding latest package...');
-              execSync('npm run build', { cwd: rootDir, stdio: 'inherit' });
-            } else {
-              try {
-                execSync('python3 scripts/package-hostinger.py', { cwd: rootDir, stdio: 'inherit' });
-              } catch {}
-            }
-
-            const targetZip = path.join(rootDir, 'public', 'indianalala_hostinger_build.zip');
-            if (fs.existsSync(targetZip)) {
-              const stat = fs.statSync(targetZip);
-              res.setHeader('Content-Type', 'application/zip');
-              res.setHeader('Content-Disposition', 'attachment; filename="indianalala_hostinger_build.zip"');
-              res.setHeader('Content-Length', stat.size);
-              res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-              res.setHeader('Pragma', 'no-cache');
-              res.setHeader('Expires', '0');
-              const stream = fs.createReadStream(targetZip);
-              stream.pipe(res);
-              return;
-            }
-          } catch (err: any) {
-            console.error('[Hostinger Download Error]:', err);
-          }
-        }
 
         // 1. API: /api/status.php and /api/status
         if (pathname === '/api/status.php' || pathname === '/api/status') {
