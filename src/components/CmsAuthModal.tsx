@@ -26,6 +26,8 @@ import {
   Copy,
   Check,
   RotateCw,
+  FileText,
+  Clock,
 } from 'lucide-react';
 import { useCms } from '../context/CmsContext';
 import { AppView } from '../types';
@@ -298,6 +300,7 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
 *Lab Name:* ${lab}
 *State:* ${st}
 *Selected Package:* ${pkg}
+*Status:* ⏳ Draft (Pending Super Admin Approval)
 
 🔐 *OWNER LOGIN DETAILS:*
 • *Mobile Number / ID:* ${ph}
@@ -307,6 +310,7 @@ export const CmsAuthModal: React.FC<CmsAuthModalProps> = ({
 
 🌐 *DEDICATED LAB WEBSITE:*
 ${labUrl}
+*(Note: Website pehle Draft mode me rahegi. Super Admin ke approval ke baad live publish hogi.)*
 
 🚀 *ADMIN DASHBOARD LOGIN:*
 ${mainLoginUrl}
@@ -1194,16 +1198,37 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
               {/* If newly created, show dedicated confirmation card */}
               {createdLabData ? (
                 <div className="space-y-4 animate-in fade-in">
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-black text-emerald-950 text-base">
-                        Laboratory Created Successfully! (लैब सफलतापूर्वक बन गई)
-                      </h4>
-                      <p className="text-xs text-emerald-800 mt-0.5">
-                        Your laboratory has been registered in the system with full owner credentials, starter test catalog, and dedicated website.
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-black text-emerald-950 text-base">
+                          Laboratory Created Successfully! (लैब सफलतापूर्वक बन गई)
+                        </h4>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 border border-amber-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-950" />
+                          <span>Status: Draft (ड्राफ्ट मोड)</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-800 mt-1">
+                        Your laboratory has been registered and placed in <strong>Draft Status (ड्राफ्ट मोड)</strong>. It will be officially published and live after Super Admin approval.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Draft Workflow Notification Banner */}
+                  <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-xs text-amber-950">
+                    <div className="w-7 h-7 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-4 h-4 text-amber-900" />
+                    </div>
+                    <div className="space-y-0.5 flex-1">
+                      <div className="font-extrabold text-amber-950 text-xs flex items-center gap-1.5">
+                        <span>Workflow: Pehle Draft → Uske Baad Admin Approval → Phir Website Publish</span>
+                      </div>
+                      <p className="text-[11px] text-amber-900 leading-relaxed">
+                        Nayi banayi gayi lab abhi <strong>Draft Mode</strong> me hai. Super Admin ke approve aur publish karne ke baad website live hogi aur patients ke liye booking open hogi.
                       </p>
                     </div>
                   </div>
@@ -1217,7 +1242,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                       <button
                         type="button"
                         onClick={() => {
-                          const text = `Lab: ${createdLabData.labName}\nState: ${createdLabData.state}\nMobile: ${createdLabData.phone}\nPassword: ${createdLabData.password}\nPIN: ${createdLabData.pin}\nWebsite: ${createdLabData.domainUrl}`;
+                          const text = `Lab: ${createdLabData.labName}\nStatus: Draft (Pending Admin Approval)\nState: ${createdLabData.state}\nMobile: ${createdLabData.phone}\nPassword: ${createdLabData.password}\nPIN: ${createdLabData.pin}\nWebsite: ${createdLabData.domainUrl}`;
                           navigator.clipboard?.writeText(text);
                           setCopiedSummary(true);
                           setTimeout(() => setCopiedSummary(false), 2000);
@@ -1235,8 +1260,11 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                         <strong className="text-[#123B6D] text-sm">{createdLabData.labName}</strong>
                       </div>
                       <div className="p-2.5 bg-white rounded-xl border border-slate-200">
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">State</span>
-                        <strong className="text-slate-800 text-sm">{createdLabData.state}</strong>
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Lifecycle Status</span>
+                        <strong className="text-amber-800 text-sm flex items-center gap-1 font-black">
+                          <Clock className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Draft (Pending Admin Approval)</span>
+                        </strong>
                       </div>
                       <div className="p-2.5 bg-white rounded-xl border border-slate-200">
                         <span className="text-[10px] font-bold text-slate-400 block uppercase">Mobile Number (Login ID)</span>
@@ -1265,11 +1293,19 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                       </div>
                     </div>
 
-                    {/* Dedicated Lab Website Link */}
-                    <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between gap-2">
+                    {/* Dedicated Lab Website Link & Draft Notice */}
+                    <div className="p-3 bg-amber-50/70 border border-amber-300 rounded-xl flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-blue-900 uppercase block">Dedicated Lab Website</span>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-bold text-amber-950 uppercase block">Dedicated Lab Website</span>
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-200 text-amber-900">
+                            Draft Mode
+                          </span>
+                        </div>
                         <span className="text-xs text-[#123B6D] font-bold truncate block">{createdLabData.domainUrl}</span>
+                        <span className="text-[10px] text-amber-900/80 block mt-0.5">
+                          Website draft locked. Admin approval ke baad live publish hoga.
+                        </span>
                       </div>
                       <button
                         type="button"
@@ -1279,9 +1315,10 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                           onNavigateView('vendor_website');
                         }}
                         className="px-3 py-1.5 bg-[#123B6D] hover:bg-[#0e2c52] text-white text-xs font-bold rounded-lg shrink-0 flex items-center gap-1 cursor-pointer"
+                        title="Preview Draft Website Notice Screen"
                       >
                         <Globe className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Visit Website</span>
+                        <span>Preview Draft</span>
                       </button>
                     </div>
                   </div>
@@ -1335,9 +1372,15 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                 <form onSubmit={handleCreateLabSubmit} className="space-y-4">
                   {/* Title Header */}
                   <div className="border-b border-slate-200 pb-2">
-                    <h4 className="text-sm font-black text-[#123B6D]">Create Laboratory</h4>
-                    <p className="text-xs text-slate-500">
-                      Enter laboratory information and owner credentials to provision instant database, staff accounts & website.
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-black text-[#123B6D]">Create Laboratory</h4>
+                      <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-amber-700" />
+                        <span>Saves to Draft Mode</span>
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Enter laboratory information and owner credentials. Lab pehle <strong>Draft</strong> me jayegi, uske baad <strong>Admin Approval</strong> ke baad website publish hogi.
                     </p>
                   </div>
 
@@ -1607,7 +1650,7 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                         className="bg-[#123B6D] hover:bg-[#0e2c52] disabled:opacity-50 text-white py-3 px-4 rounded-xl text-xs font-black transition shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                       >
                         <Building2 className="w-4 h-4 text-amber-300" />
-                        <span>{isSubmitting ? 'Creating Laboratory...' : '[ Create Lab ]'}</span>
+                        <span>{isSubmitting ? 'Creating Lab in Draft...' : '[ Create Lab (Draft) ]'}</span>
                       </button>
 
                       {/* Action Button 2: [ 📲 Share Credentials on WhatsApp ] */}
@@ -1620,6 +1663,9 @@ _Powered by indianlalaji.com - India's Premier Pathology Lab Software_`;
                         <MessageSquare className="w-4 h-4 fill-white" />
                         <span>[ 📲 Share Credentials on WhatsApp ]</span>
                       </button>
+                    </div>
+                    <div className="text-[10px] text-slate-500 text-center mt-2 font-medium">
+                      Workflow: Create Lab ➔ Saves to Draft ➔ Admin Approval ➔ Live Publish
                     </div>
                   </div>
                 </form>
