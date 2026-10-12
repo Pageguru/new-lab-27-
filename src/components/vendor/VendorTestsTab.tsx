@@ -395,6 +395,7 @@ export const VendorTestsTab: React.FC<VendorTestsTabProps> = ({
             <span>{toastMessage}</span>
           </div>
           <button
+            type="button"
             onClick={() => setToastMessage('')}
             className="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer"
           >
@@ -1236,6 +1237,7 @@ export const VendorTestsTab: React.FC<VendorTestsTabProps> = ({
                 </span>
               </div>
               <button
+                type="button"
                 onClick={() => setIsEditModalOpen(false)}
                 className="p-1 rounded-lg hover:bg-white/10 text-white cursor-pointer"
               >

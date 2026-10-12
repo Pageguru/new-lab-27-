@@ -523,25 +523,15 @@ export async function buildCanonicalReportPdf(
   // --- 6. CLINIC NOTE SECTION (Replaces Critical / Panic lab area; Positioned strictly ABOVE Signatures Block) ---
   // In the technician dashboard, technicians manually write this Clinic Note.
   const customClinicNote = (report.clinicNote || report.clinicalImpression || '').trim();
+  const noteParagraph = customClinicNote || 'Parameters are within biological reference intervals for age and gender.';
   const footerBarHeight = 12; // mm
   const signaturesHeight = 16; // mm
 
-  // Prepare Clinic Note lines with technician's manual input & clinical validation standards
-  const techManualLines = customClinicNote
-    ? doc.splitTextToSize(`• Clinical / Technician Note: ${customClinicNote}`, contentWidth - 10)
-    : [
-        '• Clinical / Technician Note: Parameters are within biological reference intervals for age and gender.',
-      ];
-
-  const standardValidationLines = [
-    '• Clinical Correlation: Reported findings must be correlated clinically with patient symptoms, physical examination, and other diagnostic data by the attending physician.',
-    '• Specimen & Digital Authentication: Results relate strictly to the tested specimen received. This computerized report is authenticated under NABL accreditation protocols.',
-  ];
-
-  const allClinicNoteLines = [...techManualLines, ...standardValidationLines];
+  // Retain ONLY the phrase/paragraph: "para chahiye" (Clinical Correlation & Specimen/Digital Authentication permanently removed)
+  const noteLines = doc.splitTextToSize(noteParagraph, contentWidth - 10);
   const lineSpacing = 3.2;
-  const clinicNoteH = Math.max(22, 9 + allClinicNoteLines.length * lineSpacing);
-  const totalBottomBlockHeight = clinicNoteH + signaturesHeight + footerBarHeight + 10; // ~60 mm
+  const clinicNoteH = Math.max(14, 7.5 + noteLines.length * lineSpacing);
+  const totalBottomBlockHeight = clinicNoteH + signaturesHeight + footerBarHeight + 8; // ~40-48 mm
 
   if (cursorY > pageHeight - totalBottomBlockHeight) {
     doc.addPage();
@@ -568,21 +558,13 @@ export async function buildCanonicalReportPdf(
   doc.setTextColor(navyBlueRgb[0], navyBlueRgb[1], navyBlueRgb[2]);
   doc.text('CLINIC NOTE', marginX + 5, clinicNoteY + 4.6);
 
-  // Clinic Note Content Lines
+  // Clinic Note Paragraph Content (Retained only the phrase/paragraph)
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.3);
-  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(6.7);
+  doc.setTextColor(30, 41, 59);
 
   let noteLineY = clinicNoteY + 8.2;
-  allClinicNoteLines.forEach((line) => {
-    // If it's the technician's manual note line, make it slightly bolder/prominent
-    if (line.startsWith('• Clinical / Technician Note:')) {
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 41, 59);
-    } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-    }
+  noteLines.forEach((line: string) => {
     doc.text(line, marginX + 5, noteLineY);
     noteLineY += lineSpacing;
   });

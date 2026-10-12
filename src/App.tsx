@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppView, Language } from './types';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -45,16 +45,35 @@ import { getTenantSubdomain } from './constants/domains';
 import { resolveAppRoute } from './utils/domainRouting';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
+export const PROTECTED_OR_DASHBOARD_VIEWS: AppView[] = [
+  'vendor_dashboard',
+  'reception_dashboard',
+  'technician_dashboard',
+  'branch_manager_dashboard',
+  'pathologist_dashboard',
+  'admin_dashboard',
+  'lab_app',
+];
+
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>(() => {
     try {
+      const savedView = typeof window !== 'undefined' ? (localStorage.getItem('cms_current_view') as AppView) : null;
       const resolution = resolveAppRoute(
         typeof window !== 'undefined' ? window.location.hostname : '',
         typeof window !== 'undefined' ? window.location.search : '',
         undefined,
         typeof window !== 'undefined' ? window.location.pathname : ''
       );
-      return resolution.view;
+      if (resolution.view && resolution.view !== 'website') {
+        return resolution.view;
+      }
+      if (savedView && PROTECTED_OR_DASHBOARD_VIEWS.includes(savedView)) {
+        if (!resolution.isExplicitMainPlatform && typeof window !== 'undefined' && !window.location.pathname.startsWith('/shop/')) {
+          return savedView;
+        }
+      }
+      return resolution.view || 'website';
     } catch {
       return 'website';
     }
@@ -184,7 +203,12 @@ export default function App() {
     if (matchAfterSync) {
       selectVendorLab(matchAfterSync.id);
       setSelectedVendorLabId(matchAfterSync.id);
-      setCurrentView('vendor_website');
+      setCurrentView((prev) => {
+        if (PROTECTED_OR_DASHBOARD_VIEWS.includes(prev)) {
+          return prev;
+        }
+        return 'vendor_website';
+      });
       setUrlLabError(null);
     } else {
       // Graceful fallback to first active lab so user never gets blocked by error screen
@@ -192,7 +216,12 @@ export default function App() {
       if (activeFallback) {
         selectVendorLab(activeFallback.id);
         setSelectedVendorLabId(activeFallback.id);
-        setCurrentView('vendor_website');
+        setCurrentView((prev) => {
+          if (PROTECTED_OR_DASHBOARD_VIEWS.includes(prev)) {
+            return prev;
+          }
+          return 'vendor_website';
+        });
         setUrlLabError(null);
       } else {
         setUrlLabError({
@@ -254,7 +283,16 @@ export default function App() {
         if (directMatch) {
           selectVendorLab(directMatch.id);
           setSelectedVendorLabId(directMatch.id);
-          setCurrentView(resolution.view === 'patient_portal' ? 'patient_portal' : 'vendor_website');
+          // CRITICAL: NEVER navigate away if the user is already on a dashboard view!
+          setCurrentView((prev) => {
+            if (PROTECTED_OR_DASHBOARD_VIEWS.includes(prev)) {
+              return prev;
+            }
+            if (resolution.view) {
+              return resolution.view;
+            }
+            return 'vendor_website';
+          });
           setUrlLabError(null);
         } else {
           fetchAndApplyLabFromUrl(resolution.targetLab, vendorLabsList);
@@ -268,13 +306,19 @@ export default function App() {
 
       if (resolution.isExplicitMainPlatform) {
         // When visiting main platform directly:
-        setCurrentView('website');
+        setCurrentView((prev) => {
+          if (PROTECTED_OR_DASHBOARD_VIEWS.includes(prev)) return prev;
+          return 'website';
+        });
         setUrlLabError(null);
         try {
           localStorage.removeItem('cms_current_view');
         } catch {}
       } else if (resolution.view && !resolution.targetLab) {
-        setCurrentView(resolution.view);
+        setCurrentView((prev) => {
+          if (PROTECTED_OR_DASHBOARD_VIEWS.includes(prev)) return prev;
+          return resolution.view;
+        });
       }
     } catch {}
   }, [vendorLabsList]);
@@ -400,9 +444,10 @@ export default function App() {
     }
   }, [currentView, currentUser, selectedVendorLabId, selectVendorLab, setSelectedVendorLabId]);
 
-  // When user logs out while on a protected dashboard, transition back to appropriate website
+  // When user explicitly logs out while on a protected dashboard, transition back to appropriate website
+  const prevUserRef = useRef(currentUser);
   useEffect(() => {
-    if (!currentUser) {
+    if (prevUserRef.current && !currentUser) {
       const protectedViews: AppView[] = [
         'admin_dashboard',
         'vendor_dashboard',
@@ -420,6 +465,7 @@ export default function App() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
+    prevUserRef.current = currentUser;
   }, [currentUser, currentView]);
 
   // Authorization check for protected dashboard workspaces using RBAC

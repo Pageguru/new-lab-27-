@@ -135,7 +135,40 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
 
   const [activeTab, setActiveTab] = useState<
     'website' | 'billing' | 'tests' | 'packages' | 'forms' | 'dashboard' | 'domain' | 'doctors' | 'profile' | 'staff' | 'settings' | 'admin_settings' | 'booking_settings' | 'backup' | 'support'
-  >('website');
+  >(() => {
+    try {
+      const saved = localStorage.getItem('cms_vendor_active_tab');
+      if (
+        saved &&
+        [
+          'website',
+          'billing',
+          'tests',
+          'packages',
+          'forms',
+          'dashboard',
+          'domain',
+          'doctors',
+          'profile',
+          'staff',
+          'settings',
+          'admin_settings',
+          'booking_settings',
+          'backup',
+          'support',
+        ].includes(saved)
+      ) {
+        return saved as any;
+      }
+    } catch {}
+    return 'website';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cms_vendor_active_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
 
   const [websiteSubTab, setWebsiteSubTab] = useState<
     'banners' | 'about' | 'founder' | 'team' | 'contact' | 'social' | 'legal' | 'sections' | 'section_content'
@@ -161,7 +194,15 @@ export const LabVendorDashboard: React.FC<LabVendorDashboardProps> = ({ onNaviga
     | 'booking_settings'
     | 'staff';
 
-  const [openSidebarSection, setOpenSidebarSection] = useState<SidebarSectionKey | null>('website');
+  const [openSidebarSection, setOpenSidebarSection] = useState<SidebarSectionKey | null>(() => {
+    try {
+      const saved = localStorage.getItem('cms_vendor_active_tab');
+      if (saved && ['website', 'tests', 'packages', 'forms', 'dashboard', 'domain', 'settings', 'admin_settings', 'booking_settings', 'staff'].includes(saved)) {
+        return saved as any;
+      }
+    } catch {}
+    return 'website';
+  });
 
   const toggleSidebarSection = (section: SidebarSectionKey) => {
     setOpenSidebarSection((prev) => (prev === section ? null : section));
