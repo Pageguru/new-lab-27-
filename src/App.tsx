@@ -94,7 +94,20 @@ export default function App() {
     setIsFetchingUrlLab(true);
     setUrlLabError(null);
 
-    const targetLower = cleanId.toLowerCase();
+    // If identifier is 'all' or empty, select default active lab immediately
+    if (cleanId === 'all' || cleanId === 'null' || cleanId === 'undefined' || !cleanId) {
+      const activeFallback = currentLabs.find((l) => l.status === 'Active') || currentLabs[0];
+      if (activeFallback) {
+        selectVendorLab(activeFallback.id);
+        setSelectedVendorLabId(activeFallback.id);
+        setCurrentView('vendor_website');
+        setUrlLabError(null);
+      }
+      setIsFetchingUrlLab(false);
+      return;
+    }
+
+    const targetLower = cleanId.toLowerCase().replace(/^shop\//, '').replace(/^lab\//, '');
     const cleanDigits = cleanId.replace(/\D/g, '');
     const clean10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : '';
 
@@ -121,6 +134,7 @@ export default function App() {
       selectVendorLab(existing.id);
       setSelectedVendorLabId(existing.id);
       setCurrentView('vendor_website');
+      setUrlLabError(null);
       setIsFetchingUrlLab(false);
       return;
     }
@@ -135,6 +149,7 @@ export default function App() {
           selectVendorLab(data.lab.id);
           setSelectedVendorLabId(data.lab.id);
           setCurrentView('vendor_website');
+          setUrlLabError(null);
           setIsFetchingUrlLab(false);
           return;
         }
@@ -170,11 +185,21 @@ export default function App() {
       selectVendorLab(matchAfterSync.id);
       setSelectedVendorLabId(matchAfterSync.id);
       setCurrentView('vendor_website');
+      setUrlLabError(null);
     } else {
-      setUrlLabError({
-        identifier: cleanId,
-        message: `Laboratory '${cleanId}' could not be located in our directory.`,
-      });
+      // Graceful fallback to first active lab so user never gets blocked by error screen
+      const activeFallback = currentLabs.find((l) => l.status === 'Active') || currentLabs[0];
+      if (activeFallback) {
+        selectVendorLab(activeFallback.id);
+        setSelectedVendorLabId(activeFallback.id);
+        setCurrentView('vendor_website');
+        setUrlLabError(null);
+      } else {
+        setUrlLabError({
+          identifier: cleanId,
+          message: `Laboratory '${cleanId}' could not be located in our directory.`,
+        });
+      }
     }
 
     setIsFetchingUrlLab(false);
@@ -317,7 +342,7 @@ export default function App() {
       } else if (currentView === 'vendor_website') {
         const currentLab = vendorLabsList.find((l) => l.id === selectedVendorLabId);
         const defaultActiveLab = vendorLabsList.find((l) => l.status === 'Active')?.id || vendorLabsList[0]?.id || 'lab-apex';
-        const vendorId = currentLab?.id || selectedVendorLabId || defaultActiveLab;
+        const vendorId = (currentLab && currentLab.id !== 'all' ? currentLab.id : null) || (selectedVendorLabId && selectedVendorLabId !== 'all' ? selectedVendorLabId : null) || defaultActiveLab;
         url.searchParams.delete('view');
         url.searchParams.delete('lab');
         url.searchParams.delete('shop');
@@ -459,7 +484,8 @@ export default function App() {
   }
 
   // Fallback Experience if the specific lab requested in the URL could not be found
-  if (urlLabError && currentView === 'vendor_website') {
+  const hasValidSelectedLab = selectedVendorLabId && selectedVendorLabId !== 'all' && vendorLabsList.some((l) => l.id === selectedVendorLabId);
+  if (urlLabError && !hasValidSelectedLab && currentView === 'vendor_website') {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center font-sans">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-5">

@@ -39,7 +39,7 @@ export function getTenantSubdomain(subdomainOrDomain?: string): string {
       // Look up full lab ID from directory in localStorage if available
       try {
         if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem('cms_vendor_labs_directory');
+          const stored = localStorage.getItem('cms_vendor_labs_list') || localStorage.getItem('cms_vendor_labs_directory');
           if (stored) {
             const list = JSON.parse(stored);
             if (Array.isArray(list)) {
@@ -66,6 +66,26 @@ export function getTenantSubdomain(subdomainOrDomain?: string): string {
       return part.startsWith('lab-') ? part : `lab-${part}`;
     }
   }
+
+  // 5. Look up clean name or slug in localStorage
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('cms_vendor_labs_list') || localStorage.getItem('cms_vendor_labs_directory');
+      if (stored) {
+        const list = JSON.parse(stored);
+        if (Array.isArray(list)) {
+          const matched = list.find((l: any) =>
+            (l.id && l.id.toLowerCase() === clean) ||
+            (l.id && l.id.toLowerCase() === `lab-${clean}`) ||
+            (l.slug && l.slug.toLowerCase() === clean) ||
+            (l.domainPreview && l.domainPreview.toLowerCase().includes(clean)) ||
+            (l.id && l.id.toLowerCase().includes(clean))
+          );
+          if (matched && matched.id) return matched.id;
+        }
+      }
+    }
+  } catch {}
 
   return clean.startsWith('lab-') ? clean : `lab-${clean}`;
 }

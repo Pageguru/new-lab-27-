@@ -556,8 +556,8 @@ export const VendorBackupReportsTab: React.FC<VendorBackupReportsTabProps> = ({
           stage: `Generating PDF (${i + 1}/${matchingReportsForZip.length}): ${rpt.patientName} (${rpt.reportId})...`,
         });
 
-        // Build Canonical A4 Portrait PDF Doc
-        const doc = await buildCanonicalReportPdf(rpt);
+        // Build Canonical A4 Portrait PDF Doc with live vendor settings
+        const doc = await buildCanonicalReportPdf(rpt, vendorLabSettings);
         const safePatientName = (rpt.patientName || 'Patient').replace(/[^a-zA-Z0-9]/g, '_');
         const filename = `${rpt.reportId}_${safePatientName}_Report.pdf`;
         const arrayBuffer = doc.output('arraybuffer');

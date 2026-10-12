@@ -1,28 +1,154 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { LabReport } from '../types';
+import { LabReport, VendorLabSettings } from '../types';
 import { determineParameterStatus, EvaluatedParameterResult } from './statusLogic';
 import {
   generateQrDataUrl,
   generateLaboratoryLogoWatermark,
 } from './reportAssets';
 
+export interface DynamicVendorReportMeta {
+  labName: string;
+  address: string;
+  phone: string;
+  email: string;
+  domain: string;
+  openingHours: string;
+  emergencyHours: string;
+  nablNumber: string;
+}
+
+/**
+ * Dynamically resolves vendor details for the report to ensure time, domain, phone,
+ * and email address match the vendor's dashboard details in real time.
+ */
+export function resolveDynamicVendorReportMeta(
+  report: LabReport,
+  customSettings?: Partial<VendorLabSettings>
+): DynamicVendorReportMeta {
+  let vendorSettings: Partial<VendorLabSettings> | null = customSettings ? { ...customSettings } : null;
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const mapRaw = localStorage.getItem('cms_vendor_lab_settings_map');
+      if (mapRaw) {
+        const settingsMap: Record<string, VendorLabSettings> = JSON.parse(mapRaw);
+        if (report.labId && settingsMap[report.labId]) {
+          vendorSettings = { ...settingsMap[report.labId], ...vendorSettings };
+        } else {
+          const activeTenantId = localStorage.getItem('active_tenant_id');
+          if (activeTenantId && activeTenantId !== 'all' && settingsMap[activeTenantId]) {
+            vendorSettings = { ...settingsMap[activeTenantId], ...vendorSettings };
+          } else {
+            const matchKey = Object.keys(settingsMap).find((k) => {
+              const s = settingsMap[k];
+              return (
+                (s.labName && report.labName && s.labName.toLowerCase() === report.labName.toLowerCase()) ||
+                (s.name && report.labName && s.name.toLowerCase() === report.labName.toLowerCase())
+              );
+            });
+            if (matchKey && settingsMap[matchKey]) {
+              vendorSettings = { ...settingsMap[matchKey], ...vendorSettings };
+            } else if (settingsMap['lab-apex']) {
+              vendorSettings = { ...settingsMap['lab-apex'], ...vendorSettings };
+            }
+          }
+        }
+      }
+
+      if (!vendorSettings) {
+        const singleRaw = localStorage.getItem('cms_vendor_lab_settings');
+        if (singleRaw) {
+          const parsed = JSON.parse(singleRaw);
+          vendorSettings = { ...parsed, ...vendorSettings };
+        }
+      }
+    } catch (err) {
+      console.warn('Could not read dynamic vendor lab settings from localStorage:', err);
+    }
+  }
+
+  // 1. Dynamic Lab Name (from vendor dashboard, report, or fallback)
+  const labName = (
+    vendorSettings?.labName ||
+    vendorSettings?.name ||
+    report.labName ||
+    'LAB 1 DIAGNOSTIC CENTRE'
+  ).toUpperCase();
+
+  // 2. Dynamic Physical Address
+  const address =
+    vendorSettings?.address ||
+    report.labAddress ||
+    'SCO 101, Medical Enclave, Civil Road, Ludhiana - 141001';
+
+  // 3. Dynamic Phone Number
+  const rawPhone =
+    vendorSettings?.phone ||
+    vendorSettings?.helplinePhone ||
+    vendorSettings?.whatsapp ||
+    report.labPhone ||
+    '7087033009';
+  const cleanPhoneDigits = (rawPhone || '').replace(/\D/g, '');
+  const phone =
+    cleanPhoneDigits.length >= 10
+      ? `+91 ${cleanPhoneDigits.slice(-10)}`
+      : rawPhone.startsWith('+') ? rawPhone : `+91 ${rawPhone}`;
+
+  // 4. Dynamic Email Address
+  const email =
+    vendorSettings?.email ||
+    report.labEmail ||
+    'care@lab1diagnostics.com';
+
+  // 5. Dynamic Domain Name / Website URL
+  let rawDomain =
+    vendorSettings?.websiteDomain ||
+    vendorSettings?.domainPreview ||
+    vendorSettings?.websiteUrl ||
+    report.labWebsite ||
+    'www.lab1diagnostics.com';
+  // Strip protocol and trailing slashes for clean presentation on report
+  const domain = rawDomain.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+
+  // 6. Dynamic Laboratory Operating Timings
+  const openingHours =
+    vendorSettings?.openingHours ||
+    report.labTimings ||
+    'Mon – Sat: 07:00 AM – 09:00 PM | Sunday: 07:00 AM – 02:00 PM';
+
+  // 7. Dynamic Emergency Services
+  const emergencyHours =
+    vendorSettings?.emergencyHours ||
+    'Emergency: 24x7 Support';
+
+  // 8. Dynamic NABL / License Number
+  const nablNumber =
+    vendorSettings?.nablAccreditationNo ||
+    vendorSettings?.nablNumber ||
+    report.nablAccreditationNo ||
+    'MC-1020';
+
+  return {
+    labName,
+    address,
+    phone,
+    email,
+    domain,
+    openingHours,
+    emergencyHours,
+    nablNumber,
+  };
+}
+
 /**
  * Builds the canonical A4 Portrait medical diagnostic lab report PDF document
- * in strict accordance with the Labname.com Diagnostic Report A4 Portrait specification:
- *
- * 1. Top Header (15–17% Height) with Lab details, Official Booking Receipt number, and ONE QR Code ONLY.
- * 2. Clean bordered Patient Information Box (Patient Details + Report Details).
- * 3. Department / Test Sections (e.g. DEPARTMENT OF BIOCHEMISTRY & PATHOLOGY • COMPLETE BLOOD COUNT).
- * 4. Main Test Table (Investigation/Parameter, Observed Value, Unit, Bio Reference Interval, Status).
- *    - Automatic Status Logic: NORMAL, LOW, HIGH, CRITICAL, ABNORMAL, PENDING.
- * 5. Critical / Panic Lab Value Alert Box (when configured panic values occur).
- * 6. Report End Separator: — END OF REPORT —
- * 7. Signature Section (Prepared/Verified By on Left, Authorized Signatory on Right).
- * 8. Dynamic Laboratory Logo Watermark (center-aligned, very light/faded, zero impact on readability).
- * 9. Fixed Clinical Center-Aligned Footer with Lab Name and dynamic Page X of Y.
+ * in strict accordance with the Diagnostic Report specification with dynamic vendor dashboard details.
  */
-export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF> {
+export async function buildCanonicalReportPdf(
+  report: LabReport,
+  customSettings?: Partial<VendorLabSettings>
+): Promise<jsPDF> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -33,6 +159,10 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
   const pageHeight = doc.internal.pageSize.getHeight(); // 297 mm
   const marginX = 12;
   const contentWidth = pageWidth - marginX * 2; // 186 mm
+
+  // Dynamically resolve vendor details from live vendor dashboard
+  const meta = resolveDynamicVendorReportMeta(report, customSettings);
+  const labDisplayName = meta.labName;
 
   // 1. Prepare Verification URL (Single Canonical QR Code destination)
   const currentOrigin =
@@ -45,17 +175,20 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
     (report.verificationHash || 'VERIFIED').slice(0, 16)
   )}`;
 
-  // 2. Official Booking Receipt Number: e.g. "Official Booking Receipt LAB-2026-824476"
+  // 2. Official Booking Receipt Number
   const rawIdDigits = (report.reportId || '').replace(/\D/g, '');
   const receiptNumberSuffix = rawIdDigits ? rawIdDigits.slice(-6) : '824476';
   const bookingReceiptText = `Official Booking Receipt LAB-2026-${receiptNumberSuffix}`;
+
+  // Solid Navy Blue / Dark Blue Theme for Header and Footer Bars
+  const navyBlueRgb: [number, number, number] = [15, 39, 68]; // #0F2744
 
   // 3. Generate Assets in Parallel:
   // - ONE QR Code ONLY (top header)
   // - Dynamic Diagonal Laboratory Watermark (center of page, 45° rotation, light/faded opacity)
   const [headerQrDataUrl, watermarkDataUrl] = await Promise.all([
     generateQrDataUrl(verifyUrl, { size: 320, darkColor: '#0F2744' }),
-    generateLaboratoryLogoWatermark(report.labName, report.labPhone),
+    generateLaboratoryLogoWatermark(labDisplayName, meta.phone),
   ]);
 
   // 4. Automatically Evaluate Parameters & Determine Exact Statuses
@@ -127,111 +260,80 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
   // (Repeated on Every Page for Multi-page Reports)
   // ==========================================
   const drawCanonicalReportHeader = (targetDoc: jsPDF): number => {
-    // --- 1. TOP HEADER (70% Left Area | 30% Right Area - Clean Letterhead - No Top Bar / No Header Logo) ---
-    const headerY = 8;
-    const leftAreaWidth = contentWidth * 0.70; // 130.2 mm
-    const rightAreaWidth = contentWidth * 0.30; // 55.8 mm
-    const rightRightEdge = pageWidth - marginX;
+    // --- 1. TOP HEADER BAR (Solid Navy Blue / Dark Blue with Clean White Text) ---
+    const headerBarHeight = 35; // mm
+    const rightRightEdge = pageWidth - marginX; // 198 mm
 
-    // Left 70% Area (Starts directly at marginX - logo removed from header):
-    let leftY = headerY;
+    // Solid Navy Blue Top Bar across full page width
+    targetDoc.setFillColor(navyBlueRgb[0], navyBlueRgb[1], navyBlueRgb[2]);
+    targetDoc.rect(0, 0, pageWidth, headerBarHeight, 'F');
 
-    // Lab Name Title (Bold, Multi-line wrapping if name is long)
-    targetDoc.setTextColor(18, 59, 109);
+    // === LEFT SIDE: Lab Name ("LAB 1 DIAGNOSTIC CENTRE"), Address, Contact Details, Email ===
+    let leftY = 8.5;
+
+    // Lab Name (Clean White, Bold)
+    targetDoc.setTextColor(255, 255, 255);
     targetDoc.setFont('helvetica', 'bold');
-    targetDoc.setFontSize(12.5);
-    const labDisplayName = (report.labName || 'APEX DIAGNOSTIC & CLINICAL PATHOLOGY LABORATORY').toUpperCase();
-    const labTitleLines = targetDoc.splitTextToSize(labDisplayName, leftAreaWidth - 4);
+    targetDoc.setFontSize(13);
+    const labTitleLines = targetDoc.splitTextToSize(labDisplayName, 115);
     targetDoc.text(labTitleLines, marginX, leftY);
-    leftY += labTitleLines.length * 4.8 + 1.2;
+    leftY += labTitleLines.length * 5.0 + 1.2;
 
-    // Address (Wrapped cleanly within left 70% area)
+    // Address (Clean White text)
     targetDoc.setFont('helvetica', 'normal');
-    targetDoc.setFontSize(7.5);
-    targetDoc.setTextColor(51, 65, 85);
-    const addressText = report.labAddress || 'SCF 42-43, Sector 18-C, Central Healthcare Complex, Ludhiana';
-    const addressLines = targetDoc.splitTextToSize(addressText, leftAreaWidth - 4);
+    targetDoc.setFontSize(7.4);
+    targetDoc.setTextColor(245, 250, 255);
+    const addressLines = targetDoc.splitTextToSize(meta.address, 115);
     targetDoc.text(addressLines, marginX, leftY);
-    leftY += addressLines.length * 3.6 + 0.8;
+    leftY += addressLines.length * 3.5 + 0.6;
 
-    // Phone & WhatsApp
-    targetDoc.text(`Phone: +91 ${report.labPhone || '7087033009'} | WhatsApp: +91 7087033009`, marginX, leftY);
-    leftY += 3.8;
+    // Contact Details (Clean White text)
+    targetDoc.text(`Contact: ${meta.phone}  |  ${meta.emergencyHours}`, marginX, leftY);
+    leftY += 3.7;
 
-    // Email & Website
-    targetDoc.text('Email: care@apexdiagnostics.in | Website: www.apexdiagnostics.in', marginX, leftY);
-    leftY += 3.8;
+    // Email (Clean White text)
+    targetDoc.text(`Email: ${meta.email}`, marginX, leftY);
 
-    // Registration / License details (NABL / ISO / Reg)
-    targetDoc.setTextColor(15, 118, 110); // Medical Teal
-    targetDoc.setFont('helvetica', 'bold');
-    targetDoc.setFontSize(7.2);
-
-    const rawNabl = (report.nablAccreditationNo || 'MC-4821').trim();
-    const cleanedNabl = rawNabl
-      .replace(/\s*\([^)]*iso[^)]*\)/gi, '')
-      .replace(/\s*\([^)]*nabl[^)]*\)/gi, '')
-      .replace(/\s*-\s*iso.*$/i, '')
-      .trim() || 'MC-4821';
-
-    const licenseText = `NABL Accredited: ${cleanedNabl} • ISO 15189:2022 Certified • Reg No: LAB-2026-PB84`;
-    const licenseLines = targetDoc.splitTextToSize(licenseText, leftAreaWidth - 4);
-    targetDoc.text(licenseLines, marginX, leftY);
-    leftY += licenseLines.length * 3.5;
-
-    // Right 30% Area:
-    // Official Booking Receipt Number + ONE QR CODE ONLY + Verification caption
-    let rightY = headerY;
-
-    // Official Booking Receipt Number (Prominent & bold)
-    targetDoc.setTextColor(18, 59, 109);
-    targetDoc.setFont('helvetica', 'bold');
-    targetDoc.setFontSize(7.5);
-    targetDoc.text(bookingReceiptText, rightRightEdge, rightY, { align: 'right' });
-    rightY += 4.2;
-
-    // Report ID & UHID
-    targetDoc.setFont('helvetica', 'normal');
-    targetDoc.setFontSize(6.8);
-    targetDoc.setTextColor(100, 116, 139);
-    targetDoc.text(`Report ID: ${report.reportId}`, rightRightEdge, rightY, { align: 'right' });
-    rightY += 3.6;
-    targetDoc.text(`UHID: ${report.uhid || 'UHID-824476'}`, rightRightEdge, rightY, { align: 'right' });
-    rightY += 3.6;
-
-    // ONE QR Code ONLY in entire report (Right side)
-    const qrSize = 20;
+    // === RIGHT SIDE: Report ID, UHID, and QR Code only ===
+    const qrSize = 22; // mm
     const qrX = rightRightEdge - qrSize;
-    const qrY = rightY + 1;
+    const qrY = 6.5;
 
+    // QR Code Container with crisp white background for high camera contrast
+    targetDoc.setFillColor(255, 255, 255);
+    targetDoc.roundedRect(qrX - 1.5, qrY - 1.5, qrSize + 3, qrSize + 3, 1.5, 1.5, 'F');
     if (headerQrDataUrl) {
       try {
-        targetDoc.setFillColor(255, 255, 255);
-        targetDoc.setDrawColor(203, 213, 225);
-        targetDoc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 5.5, 1.5, 1.5, 'FD');
         targetDoc.addImage(headerQrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize, undefined, 'FAST');
-
-        // Caption below QR: Verification prompt
-        targetDoc.setFontSize(4.6);
-        targetDoc.setFont('helvetica', 'bold');
-        targetDoc.setTextColor(15, 118, 110);
-        targetDoc.text('SCAN TO VERIFY REPORT', qrX + qrSize / 2, qrY + qrSize + 3, { align: 'center' });
       } catch (err) {
         console.warn('Could not render header QR code:', err);
       }
     }
 
-    const rightBottomY = qrY + qrSize + 6;
+    // Report ID & UHID strictly to the left of QR Code (Clean White text, right-aligned)
+    const rightTextX = qrX - 5; // 171 mm
 
-    // Dynamic header bottom dividing line that accommodates whatever height is required
-    const headerBottomY = Math.max(leftY, rightBottomY) + 2.5;
-    targetDoc.setDrawColor(203, 213, 225);
-    targetDoc.setLineWidth(0.4);
-    targetDoc.line(marginX, headerBottomY, pageWidth - marginX, headerBottomY);
+    targetDoc.setFont('helvetica', 'normal');
+    targetDoc.setFontSize(7.2);
+    targetDoc.setTextColor(220, 235, 255);
+    targetDoc.text('REPORT ID:', rightTextX, 13, { align: 'right' });
+    targetDoc.setFont('helvetica', 'bold');
+    targetDoc.setFontSize(8.5);
+    targetDoc.setTextColor(255, 255, 255);
+    targetDoc.text(report.reportId, rightTextX, 17.5, { align: 'right' });
 
-    // --- 2. PATIENT INFORMATION BOX ---
+    targetDoc.setFont('helvetica', 'normal');
+    targetDoc.setFontSize(7.2);
+    targetDoc.setTextColor(220, 235, 255);
+    targetDoc.text('UHID:', rightTextX, 23.5, { align: 'right' });
+    targetDoc.setFont('helvetica', 'bold');
+    targetDoc.setFontSize(8.5);
+    targetDoc.setTextColor(255, 255, 255);
+    targetDoc.text(report.uhid || 'UHID-101', rightTextX, 28, { align: 'right' });
+
+    // --- 2. PATIENT INFORMATION BOX (Unchanged) ---
     // Clean bordered box with two columns (Patient Details | Report Details)
-    const pBoxY = headerBottomY + 3.8;
+    const pBoxY = headerBarHeight + 3.5;
     const pBoxH = 26;
     const pBoxW = contentWidth;
 
@@ -449,13 +551,59 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
 
   cursorY += 8;
 
-  // --- 7. SIGNATURE SECTION (REPORT BODY - Lower Portion of Final Page) ---
-  const requiredSignHeight = 35;
-  if (cursorY > pageHeight - requiredSignHeight - 12) {
+  // --- 8. CLINIC NOTE SECTION (Dedicated section ABOVE the Signatures Block) ---
+  const footerBarHeight = 12; // mm
+  const clinicNoteH = 22; // mm
+  const signaturesHeight = 16; // mm
+  const totalBottomBlockHeight = clinicNoteH + signaturesHeight + footerBarHeight + 12; // ~62 mm
+
+  if (cursorY > pageHeight - totalBottomBlockHeight) {
     doc.addPage();
-    cursorY = headerTotalHeight + 2;
+    cursorY = headerTotalHeight + 4;
   }
-  const signatureY = Math.max(cursorY, pageHeight - 42);
+
+  // Clinic Note positioned strictly ABOVE the signatures block
+  const clinicNoteY = Math.max(cursorY + 2, pageHeight - footerBarHeight - signaturesHeight - clinicNoteH - 8);
+  const clinicNoteW = contentWidth;
+
+  // Background box with clean subtle border
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(marginX, clinicNoteY, clinicNoteW, clinicNoteH, 1.5, 1.5, 'FD');
+
+  // Solid Navy Blue Accent bar on the left
+  doc.setFillColor(navyBlueRgb[0], navyBlueRgb[1], navyBlueRgb[2]);
+  doc.roundedRect(marginX, clinicNoteY, 2.5, clinicNoteH, 1, 1, 'F');
+
+  // Clinic Note Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(navyBlueRgb[0], navyBlueRgb[1], navyBlueRgb[2]);
+  doc.text('CLINIC NOTE', marginX + 5, clinicNoteY + 4.5);
+
+  // Clinic Note Content Lines
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.3);
+  doc.setTextColor(71, 85, 105);
+
+  const clinicNoteLines = [
+    '• Clinical Correlation: Reported findings must be correlated clinically with patient symptoms, physical examination, and other diagnostic data by the attending physician.',
+    '• Specimen Findings: Results relate strictly to the tested specimen received at the laboratory. Unexpected or discordant results warrant immediate clinical re-evaluation.',
+    '• Digital Authentication: This computerized report is authenticated under NABL accreditation protocols. Physical ink signature is not required.',
+    report.clinicalImpression
+      ? `• Impression: ${report.clinicalImpression}`
+      : '• Quality Assurance: All analyzers and reagents are calibrated under daily internal QC and external quality assessment schemes (ISO 15189).',
+  ];
+
+  let noteLineY = clinicNoteY + 8.2;
+  clinicNoteLines.forEach((line) => {
+    doc.text(line, marginX + 5, noteLineY);
+    noteLineY += 3.3;
+  });
+
+  // --- 7. SIGNATURE SECTION (Positioned BELOW Clinic Note and ABOVE Footer) ---
+  const signatureY = clinicNoteY + clinicNoteH + 5;
 
   // Left Signature: Prepared / Verified By
   const leftSignX = marginX + 6;
@@ -514,13 +662,13 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
   doc.setTextColor(71, 85, 105);
   doc.text(report.pathologistDegrees || 'Consultant Pathologist & Lab Director (Reg No: MCI-PB-48192)', rightSignX, signatureY + 10, { align: 'right' });
 
-  // --- 8 & 9. MULTI-PAGE SYNCHRONIZATION: REPEAT HEADER, WATERMARK & FOOTER ON EVERY PAGE ---
+  // --- 7 & 9. MULTI-PAGE SYNCHRONIZATION: REPEAT HEADER, WATERMARK & FOOTER ON EVERY PAGE ---
   const totalPages = doc.getNumberOfPages();
 
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     doc.setPage(pageNum);
 
-    // Apply Diagonal Watermark on every page
+    // Apply Diagonal Watermark on every page (Unchanged)
     if (watermarkDataUrl) {
       try {
         const wmSize = 160;
@@ -535,21 +683,35 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
       drawCanonicalReportHeader(doc);
     }
 
-    // Repeat Exact Footer on EVERY Page
-    const footerLineY = pageHeight - 9;
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.3);
-    doc.line(marginX, footerLineY, pageWidth - marginX, footerLineY);
+    // --- 7. FOOTER SECTION (Solid Blue Bottom Bar with Clean White Text) ---
+    const footerBarY = pageHeight - footerBarHeight;
 
-    // Footer Text: Electronic Generation Notice (Center-Aligned with Page X of Y)
+    // Solid Navy Blue Footer Bar
+    doc.setFillColor(navyBlueRgb[0], navyBlueRgb[1], navyBlueRgb[2]);
+    doc.rect(0, footerBarY, pageWidth, footerBarHeight, 'F');
+
+    // Clean White text inside footer bar
+    doc.setTextColor(255, 255, 255);
+
+    // Line 1: Lab Operating Timings (Left) & Lab Domain Name / Website URL (Right)
+    // Line 1: Dynamic Lab Operating Timings (Left) & Dynamic Lab Domain Name / Website URL (Right)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    const timingsText = `LAB OPERATING TIMINGS: ${meta.openingHours.toUpperCase()}`;
+    doc.text(timingsText, marginX, footerBarY + 4.8);
+
+    doc.text(`WEBSITE: ${meta.domain.toUpperCase()}`, pageWidth - marginX, footerBarY + 4.8, { align: 'right' });
+
+    // Line 2: Diagnostic Record Notice (Left) & Dynamic Page X of Y (Right)
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.8);
-    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(6.5);
+    doc.setTextColor(225, 238, 255);
 
-    const footerCenterText = totalPages > 1
-      ? `Report electronically generated by ${report.labName || 'Apex Diagnostic Laboratory'} (Page ${pageNum} of ${totalPages})`
-      : `Report electronically generated by ${report.labName || 'Apex Diagnostic Laboratory'}`;
-    doc.text(footerCenterText, pageWidth / 2, pageHeight - 4.5, { align: 'center' });
+    const footerNotice = `Certified Diagnostic Record • ${labDisplayName} • Emergency Support 24x7`;
+    doc.text(footerNotice, marginX, footerBarY + 9.2);
+
+    const pageText = totalPages > 1 ? `Page ${pageNum} of ${totalPages}` : 'Page 1 of 1';
+    doc.text(pageText, pageWidth - marginX, footerBarY + 9.2, { align: 'right' });
   }
 
   return doc;
@@ -557,9 +719,12 @@ export async function buildCanonicalReportPdf(report: LabReport): Promise<jsPDF>
 
 /**
  * Returns the exact canonical PDF Blob, Object URL, Data URI, ArrayBuffer, and filename
- * for rendering in the canonical preview or embedding.
+ * for rendering in the canonical preview or embedding with live vendor dashboard details.
  */
-export async function getCanonicalReportPdfBlob(report: LabReport): Promise<{
+export async function getCanonicalReportPdfBlob(
+  report: LabReport,
+  customSettings?: Partial<VendorLabSettings>
+): Promise<{
   blob: Blob;
   blobUrl: string;
   dataUri: string;
@@ -567,7 +732,7 @@ export async function getCanonicalReportPdfBlob(report: LabReport): Promise<{
   filename: string;
   doc: jsPDF;
 }> {
-  const doc = await buildCanonicalReportPdf(report);
+  const doc = await buildCanonicalReportPdf(report, customSettings);
   const safePatientName = (report.patientName || 'Patient').replace(/[^a-zA-Z0-9]/g, '_');
   const filename = `${report.reportId}_${safePatientName}_Report.pdf`;
   const blob = doc.output('blob');
@@ -580,7 +745,11 @@ export async function getCanonicalReportPdfBlob(report: LabReport): Promise<{
 /**
  * Downloads the exact same canonical PDF file (conditioned on complete payment)
  */
-export async function downloadReportPdf(report: LabReport, prebuiltDoc?: jsPDF): Promise<boolean> {
+export async function downloadReportPdf(
+  report: LabReport,
+  prebuiltDoc?: jsPDF,
+  customSettings?: Partial<VendorLabSettings>
+): Promise<boolean> {
   try {
     const statusLower = (report.paymentStatus || '').toLowerCase();
     const isDuePending = Boolean(
@@ -600,7 +769,7 @@ export async function downloadReportPdf(report: LabReport, prebuiltDoc?: jsPDF):
       return false;
     }
 
-    const doc = prebuiltDoc || (await buildCanonicalReportPdf(report));
+    const doc = prebuiltDoc || (await buildCanonicalReportPdf(report, customSettings));
     const safePatientName = (report.patientName || 'Patient').replace(/[^a-zA-Z0-9]/g, '_');
     const filename = `${report.reportId}_${safePatientName}_Report.pdf`;
     doc.save(filename);
@@ -619,7 +788,11 @@ export const generateReportPdf = downloadReportPdf;
 /**
  * Prints the exact canonical PDF document directly using browser iframe (conditioned on complete payment)
  */
-export async function printCanonicalReportPdf(report: LabReport, existingBlobUrl?: string): Promise<boolean> {
+export async function printCanonicalReportPdf(
+  report: LabReport,
+  existingBlobUrl?: string,
+  customSettings?: Partial<VendorLabSettings>
+): Promise<boolean> {
   try {
     const statusLower = (report.paymentStatus || '').toLowerCase();
     const isDuePending = Boolean(
@@ -642,7 +815,7 @@ export async function printCanonicalReportPdf(report: LabReport, existingBlobUrl
     let url = existingBlobUrl;
     let cleanup = false;
     if (!url) {
-      const res = await getCanonicalReportPdfBlob(report);
+      const res = await getCanonicalReportPdfBlob(report, customSettings);
       url = res.blobUrl;
       cleanup = true;
     }

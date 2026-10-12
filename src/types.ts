@@ -555,6 +555,9 @@ export interface LabReport {
   labName: string;
   labAddress: string;
   labPhone: string;
+  labEmail?: string;
+  labWebsite?: string;
+  labTimings?: string;
   nablAccreditationNo: string;
   pathologist: string;
   pathologistDegrees: string;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Lock, CreditCard } from 'lucide-react';
 import { LabReport } from '../types';
+import { useCms } from '../context/CmsContext';
 import { getCanonicalReportPdfBlob } from '../utils/pdfGenerator';
 import { renderPdfPages, RenderedPdfPage } from '../utils/canonicalPdfRenderer';
 
@@ -22,6 +23,9 @@ export const CanonicalPdfViewer: React.FC<CanonicalPdfViewerProps> = ({
   onPayOnline,
   className = '',
 }) => {
+  const { vendorLabSettings, getLabSettings } = useCms();
+  const currentLabSettings = getLabSettings ? getLabSettings(report.labId) : vendorLabSettings;
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [renderedPages, setRenderedPages] = useState<RenderedPdfPage[]>([]);
@@ -57,7 +61,7 @@ export const CanonicalPdfViewer: React.FC<CanonicalPdfViewerProps> = ({
 
     async function loadPdf() {
       try {
-        const canonical = await getCanonicalReportPdfBlob(report);
+        const canonical = await getCanonicalReportPdfBlob(report, currentLabSettings);
         if (!isMounted) return;
 
         // Render PDF pages using pdfjs-dist at high retina resolution
@@ -84,7 +88,25 @@ export const CanonicalPdfViewer: React.FC<CanonicalPdfViewerProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [report.reportId, report.reportedAt, isDuePaymentPending, report.paymentStatus, report.dueAmount, activeDueAmount]);
+  }, [
+    report.reportId,
+    report.reportedAt,
+    isDuePaymentPending,
+    report.paymentStatus,
+    report.dueAmount,
+    activeDueAmount,
+    currentLabSettings?.openingHours,
+    currentLabSettings?.websiteUrl,
+    currentLabSettings?.websiteDomain,
+    currentLabSettings?.domainPreview,
+    currentLabSettings?.phone,
+    currentLabSettings?.helplinePhone,
+    currentLabSettings?.whatsapp,
+    currentLabSettings?.email,
+    currentLabSettings?.address,
+    currentLabSettings?.labName,
+    currentLabSettings?.emergencyHours,
+  ]);
 
   return (
     <div

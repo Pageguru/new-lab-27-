@@ -396,7 +396,7 @@ export async function generateLaboratoryLogoWatermark(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const displayName = (labName || 'APEX DIAGNOSTIC & CLINICAL PATHOLOGY LABORATORY').toUpperCase();
+  const displayName = (labName || 'LAB 1 DIAGNOSTIC CENTRE').toUpperCase();
   const rawDigits = (labPhone || '').replace(/\D/g, '');
   const cleanPhone = rawDigits.length >= 10 ? `+91 ${rawDigits.slice(-10)}` : `+91 ${labPhone || '7087033009'}`;
 

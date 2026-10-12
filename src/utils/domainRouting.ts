@@ -51,9 +51,15 @@ function findMatchingLabId(
   vendorLabsList?: Array<{ id: string; domainPreview?: string; phone?: string; slug?: string; name?: string }>
 ): string {
   if (!rawTarget) return '';
-  const cleanTarget = rawTarget.toLowerCase().trim().replace(/^https?:\/\//, '');
+  const cleanTarget = rawTarget.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/^shop\//, '').replace(/^lab\//, '');
   if (!vendorLabsList || vendorLabsList.length === 0) {
     return cleanTarget;
+  }
+
+  // If target is 'all', 'null', or empty, fall back to the first active lab
+  if (cleanTarget === 'all' || cleanTarget === 'null' || cleanTarget === 'undefined' || !cleanTarget) {
+    const defaultLab = vendorLabsList.find((l) => (l as any).status === 'Active') || vendorLabsList[0];
+    return defaultLab ? defaultLab.id : 'lab-apex';
   }
 
   const targetDigits = cleanTarget.replace(/\D/g, '');

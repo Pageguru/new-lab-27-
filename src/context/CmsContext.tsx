@@ -6469,7 +6469,23 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const selectVendorLab = (labIdOrSubdomain: string) => {
     if (!labIdOrSubdomain) return;
     const query = labIdOrSubdomain.toLowerCase().trim().replace(/^https?:\/\//, '');
-    const cleanSub = query.split('.')[0].replace(/^lab-/, '');
+
+    // If query is 'all', 'null', or empty, set to active default lab
+    if (query === 'all' || query === 'null' || query === 'undefined' || !query) {
+      const defaultActive = vendorLabsList.find((l) => l.status === 'Active') || vendorLabsList[0] || VENDOR_LABS_DIRECTORY[0];
+      const targetId = defaultActive ? defaultActive.id : 'lab-apex';
+      setSelectedVendorLabId(targetId);
+      if (currentUser?.role === 'admin') {
+        setSuperAdminTenantScope(targetId);
+      }
+      try {
+        localStorage.setItem('cms_selected_vendor_lab_id', targetId);
+      } catch {}
+      return;
+    }
+
+    const cleanPath = query.replace(/^shop\//, '').replace(/^lab\//, '').replace(/^labs\//, '');
+    const cleanSub = cleanPath.split('.')[0].replace(/^lab-/, '');
 
     const lab =
       vendorLabsList.find((l) => {
@@ -6477,11 +6493,11 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const labSubClean = (l.domainPreview || '').toLowerCase().split('.')[0];
         const labNameSlug = l.name.toLowerCase().replace(/[^a-z0-9]/g, '');
         return (
-          labIdClean === query ||
-          labIdClean === `lab-${query}` ||
+          labIdClean === cleanPath ||
+          labIdClean === `lab-${cleanPath}` ||
           labIdClean.replace(/^lab-/, '') === cleanSub ||
           labSubClean === cleanSub ||
-          (l.domainPreview && l.domainPreview.toLowerCase() === query) ||
+          (l.domainPreview && l.domainPreview.toLowerCase().includes(cleanPath)) ||
           labNameSlug.includes(cleanSub)
         );
       }) ||
@@ -6490,16 +6506,16 @@ export const CmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const labSubClean = (l.domainPreview || '').toLowerCase().split('.')[0];
         const labNameSlug = l.name.toLowerCase().replace(/[^a-z0-9]/g, '');
         return (
-          labIdClean === query ||
-          labIdClean === `lab-${query}` ||
+          labIdClean === cleanPath ||
+          labIdClean === `lab-${cleanPath}` ||
           labIdClean.replace(/^lab-/, '') === cleanSub ||
           labSubClean === cleanSub ||
-          (l.domainPreview && l.domainPreview.toLowerCase() === query) ||
+          (l.domainPreview && l.domainPreview.toLowerCase().includes(cleanPath)) ||
           labNameSlug.includes(cleanSub)
         );
       });
 
-    const targetId = lab ? lab.id : (query.startsWith('lab-') ? query : `lab-${query}`);
+    const targetId = lab ? lab.id : (cleanPath.startsWith('lab-') ? cleanPath : `lab-${cleanPath}`);
     setSelectedVendorLabId(targetId);
     if (currentUser?.role === 'admin') {
       setSuperAdminTenantScope(targetId);
