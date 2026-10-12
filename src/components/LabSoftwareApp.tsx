@@ -2863,7 +2863,7 @@ export const LabSoftwareApp: React.FC<LabSoftwareAppProps> = ({
           report={previewReport}
           isOpen={isPreviewModalOpen}
           onClose={() => setIsPreviewModalOpen(false)}
-          onEditReport={undefined}
+          onEditReport={handleEditReport}
           onDeleteReport={undefined}
           onOpenPatientPortal={(rptId, mob) => onViewReport(rptId, mob)}
         />

@@ -570,6 +570,7 @@ export interface LabReport {
   verificationHash: string;
   isDraft?: boolean;
   clinicalImpression?: string;
+  clinicNote?: string;
   status?: 'Normal' | 'Verified' | 'Cancelled';
   cancelled?: boolean;
   cancelReason?: string;

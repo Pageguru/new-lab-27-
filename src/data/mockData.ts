@@ -1113,6 +1113,7 @@ export const SAMPLE_REPORT: LabReport = {
   labEmail: 'care@lab1diagnostics.com',
   labWebsite: 'www.lab1diagnostics.com',
   clinicalImpression: 'Complete blood count parameters are within normal physiological reference limits.',
+  clinicNote: 'Complete blood count parameters are within normal physiological reference limits. Clinical correlation advised with patient symptoms.',
   nablAccreditationNo: 'MC-1020',
   pathologist: 'Dr. Rohit Sharma, MD (Pathology)',
   pathologistDegrees: 'Consultant Pathologist • Reg No: PMC-48192',

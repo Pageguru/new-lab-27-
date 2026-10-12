@@ -151,8 +151,11 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
   // Parameters list
   const [params, setParams] = useState<EditableParam[]>([]);
 
-  // Clinical Impression / Pathologist
+  // Clinical Impression / Clinic Note / Pathologist
   const [clinicalImpression, setClinicalImpression] = useState(
+    'Parameters are within biological reference intervals for age and gender.'
+  );
+  const [clinicNote, setClinicNote] = useState(
     'Parameters are within biological reference intervals for age and gender.'
   );
   const [pathologistName, setPathologistName] = useState('Dr. Rohit Sharma, MD (Pathology)');
@@ -397,8 +400,10 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       setReportedAt(targetReport.reportedAt || 'Today, Just Now');
       setPathologistName(targetReport.pathologist || 'Dr. Rohit Sharma, MD (Pathology)');
       setPathologistDegrees(targetReport.pathologistDegrees || 'Consultant Pathologist • Reg No: PMC-48192');
-      if (targetReport.clinicalImpression) {
-        setClinicalImpression(targetReport.clinicalImpression);
+      if (targetReport.clinicNote || targetReport.clinicalImpression) {
+        const loadedNote = targetReport.clinicNote || targetReport.clinicalImpression || '';
+        setClinicNote(loadedNote);
+        setClinicalImpression(loadedNote);
       }
 
       // Populate parameters directly from the existing report items
@@ -697,7 +702,8 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
       verified: !isDraft,
       verificationHash: `SHA256: ${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`,
       items: reportItems,
-      clinicalImpression,
+      clinicalImpression: clinicNote || clinicalImpression,
+      clinicNote: clinicNote || clinicalImpression,
       isDraft,
       status: isDraft ? 'Normal' : 'Verified',
       receptionId:
@@ -1296,6 +1302,75 @@ export const CreateReportModal: React.FC<CreateReportModalProps> = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* CLINIC NOTE: Technician Manual Note Entry (Printed on Final Report above Signatures) */}
+            <div className="bg-slate-50 border-t border-slate-200 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#0F2744]"></span>
+                  <label htmlFor="clinic-note-input" className="text-xs font-extrabold text-[#0F2744] uppercase tracking-wide">
+                    CLINIC NOTE (Printed on Final Report above Signatures)
+                  </label>
+                  <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">
+                    Technician Manual Entry
+                  </span>
+                </div>
+
+                {/* Preset Fast-Pick Buttons for Technician */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-500 font-medium hidden md:inline">Quick Notes:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const note = 'Parameters are within biological reference intervals for age and gender.';
+                      setClinicNote(note);
+                      setClinicalImpression(note);
+                    }}
+                    className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 transition cursor-pointer"
+                  >
+                    Normal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const note = 'Observed values correlated with clinical findings. Advised clinical re-evaluation and review with attending physician.';
+                      setClinicNote(note);
+                      setClinicalImpression(note);
+                    }}
+                    className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-amber-50 border border-amber-300 rounded text-amber-800 transition cursor-pointer"
+                  >
+                    Correlate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const note = 'Critical / abnormal parameter detected. Notified immediately to ordering doctor; advised repeat sample verification.';
+                      setClinicNote(note);
+                      setClinicalImpression(note);
+                    }}
+                    className="px-2 py-0.5 text-[10px] font-semibold bg-white hover:bg-rose-50 border border-rose-300 rounded text-rose-800 transition cursor-pointer"
+                  >
+                    Critical / Repeat
+                  </button>
+                </div>
+              </div>
+
+              <textarea
+                id="clinic-note-input"
+                rows={2}
+                value={clinicNote}
+                onChange={(e) => {
+                  setClinicNote(e.target.value);
+                  setClinicalImpression(e.target.value);
+                }}
+                placeholder="Technician manual clinic note for this report (e.g. Clinical findings, specimen observations, or doctor recommendations)..."
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F2744]/20 focus:border-[#0F2744] transition resize-y font-medium"
+              />
+              <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                <span>Technicians can manually type any clinic note here; it will be displayed in the CLINIC NOTE section right above the authorized signatures.</span>
+                <span>{clinicNote.length} characters</span>
+              </div>
             </div>
           </div>
         </div>

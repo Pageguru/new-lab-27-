@@ -502,39 +502,8 @@ export async function buildCanonicalReportPdf(
     cursorY = (doc.lastAutoTable?.finalY || cursorY + 20) + 4;
   });
 
-  // --- 5. CRITICAL / ABNORMAL ALERT BOX (REPORT BODY) ---
-  if (criticalItems.length > 0) {
-    if (cursorY > pageHeight - 65) {
-      doc.addPage();
-      cursorY = headerTotalHeight + 2;
-    }
-
-    const alertH = 15;
-    doc.setFillColor(255, 241, 242); // Rose-50
-    doc.setDrawColor(225, 29, 72); // Rose-600
-    doc.setLineWidth(0.4);
-    doc.roundedRect(marginX, cursorY, contentWidth, alertH, 1.5, 1.5, 'FD');
-
-    // Warning Header
-    doc.setTextColor(190, 18, 60);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('CRITICAL / PANIC LAB VALUE ALERT:', marginX + 4, cursorY + 5);
-
-    // Standard clinical wording
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.8);
-    doc.setTextColor(136, 19, 55);
-    const alertMsg =
-      'One or more reported values require immediate clinical attention. Please correlate with clinical findings and contact the laboratory/ordering clinician as appropriate.';
-    const splitAlert = doc.splitTextToSize(alertMsg, contentWidth - 8);
-    doc.text(splitAlert, marginX + 4, cursorY + 9.5);
-
-    cursorY += alertH + 4;
-  }
-
-  // --- 6. REPORT END SEPARATOR (REPORT BODY) ---
-  if (cursorY > pageHeight - 50) {
+  // --- 5. REPORT END SEPARATOR (REPORT BODY) ---
+  if (cursorY > pageHeight - 55) {
     doc.addPage();
     cursorY = headerTotalHeight + 2;
   }
@@ -549,13 +518,30 @@ export async function buildCanonicalReportPdf(
   doc.setFontSize(7.2);
   doc.text('— END OF REPORT —', pageWidth / 2, cursorY + 2.5, { align: 'center' });
 
-  cursorY += 8;
+  cursorY += 7;
 
-  // --- 8. CLINIC NOTE SECTION (Dedicated section ABOVE the Signatures Block) ---
+  // --- 6. CLINIC NOTE SECTION (Replaces Critical / Panic lab area; Positioned strictly ABOVE Signatures Block) ---
+  // In the technician dashboard, technicians manually write this Clinic Note.
+  const customClinicNote = (report.clinicNote || report.clinicalImpression || '').trim();
   const footerBarHeight = 12; // mm
-  const clinicNoteH = 22; // mm
   const signaturesHeight = 16; // mm
-  const totalBottomBlockHeight = clinicNoteH + signaturesHeight + footerBarHeight + 12; // ~62 mm
+
+  // Prepare Clinic Note lines with technician's manual input & clinical validation standards
+  const techManualLines = customClinicNote
+    ? doc.splitTextToSize(`• Clinical / Technician Note: ${customClinicNote}`, contentWidth - 10)
+    : [
+        '• Clinical / Technician Note: Parameters are within biological reference intervals for age and gender.',
+      ];
+
+  const standardValidationLines = [
+    '• Clinical Correlation: Reported findings must be correlated clinically with patient symptoms, physical examination, and other diagnostic data by the attending physician.',
+    '• Specimen & Digital Authentication: Results relate strictly to the tested specimen received. This computerized report is authenticated under NABL accreditation protocols.',
+  ];
+
+  const allClinicNoteLines = [...techManualLines, ...standardValidationLines];
+  const lineSpacing = 3.2;
+  const clinicNoteH = Math.max(22, 9 + allClinicNoteLines.length * lineSpacing);
+  const totalBottomBlockHeight = clinicNoteH + signaturesHeight + footerBarHeight + 10; // ~60 mm
 
   if (cursorY > pageHeight - totalBottomBlockHeight) {
     doc.addPage();
@@ -563,10 +549,10 @@ export async function buildCanonicalReportPdf(
   }
 
   // Clinic Note positioned strictly ABOVE the signatures block
-  const clinicNoteY = Math.max(cursorY + 2, pageHeight - footerBarHeight - signaturesHeight - clinicNoteH - 8);
+  const clinicNoteY = Math.max(cursorY + 2, pageHeight - footerBarHeight - signaturesHeight - clinicNoteH - 6);
   const clinicNoteW = contentWidth;
 
-  // Background box with clean subtle border
+  // Background box with clean subtle clinical styling
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.3);
@@ -578,28 +564,27 @@ export async function buildCanonicalReportPdf(
 
   // Clinic Note Header
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.6);
   doc.setTextColor(navyBlueRgb[0], navyBlueRgb[1], navyBlueRgb[2]);
-  doc.text('CLINIC NOTE', marginX + 5, clinicNoteY + 4.5);
+  doc.text('CLINIC NOTE', marginX + 5, clinicNoteY + 4.6);
 
   // Clinic Note Content Lines
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.3);
-  doc.setTextColor(71, 85, 105);
-
-  const clinicNoteLines = [
-    '• Clinical Correlation: Reported findings must be correlated clinically with patient symptoms, physical examination, and other diagnostic data by the attending physician.',
-    '• Specimen Findings: Results relate strictly to the tested specimen received at the laboratory. Unexpected or discordant results warrant immediate clinical re-evaluation.',
-    '• Digital Authentication: This computerized report is authenticated under NABL accreditation protocols. Physical ink signature is not required.',
-    report.clinicalImpression
-      ? `• Impression: ${report.clinicalImpression}`
-      : '• Quality Assurance: All analyzers and reagents are calibrated under daily internal QC and external quality assessment schemes (ISO 15189).',
-  ];
+  doc.setTextColor(51, 65, 85);
 
   let noteLineY = clinicNoteY + 8.2;
-  clinicNoteLines.forEach((line) => {
+  allClinicNoteLines.forEach((line) => {
+    // If it's the technician's manual note line, make it slightly bolder/prominent
+    if (line.startsWith('• Clinical / Technician Note:')) {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+    }
     doc.text(line, marginX + 5, noteLineY);
-    noteLineY += 3.3;
+    noteLineY += lineSpacing;
   });
 
   // --- 7. SIGNATURE SECTION (Positioned BELOW Clinic Note and ABOVE Footer) ---
